@@ -4,7 +4,6 @@
 services:
 
   minecraft:
-
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -29,12 +28,9 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-
     container_name: "minecraft"
-
     entrypoint:
       - "/start"
-
     environment:
       - "EULA=TRUE"
       - "PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -47,13 +43,9 @@ services:
       - "VERSION=LATEST"
       - "UID=1000"
       - "GID=1000"
-
     hostname: "adcfacfd63e3"
-
     image: "itzg/minecraft-server:latest"
-
     ipc: "private"
-
     labels:
       org.opencontainers.image.authors: "Geoff Bourne <itzgeoff@gmail.com>"
       org.opencontainers.image.created: "2024-12-14T21:22:25.728Z"
@@ -66,23 +58,16 @@ services:
       org.opencontainers.image.title: "docker-minecraft-server"
       org.opencontainers.image.url: "https://github.com/itzg/docker-minecraft-server"
       org.opencontainers.image.version: "java21"
-
     logging:
       driver: "json-file"
       options: {}
-
     network_mode: "bridge"
-
     ports:
       - "25565:25565/tcp"
-
     stdin_open: true
-
     tty: true
-
     volumes:
       - "minecraft_data:/data"
-
     working_dir: "/data"
 
 version: "3.6"

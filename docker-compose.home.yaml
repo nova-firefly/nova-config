@@ -10,7 +10,6 @@ networks:
 services:
 
   homeassistant:
-
     cap_drop:
       - "CAP_AUDIT_CONTROL"
       - "CAP_BLOCK_SUSPEND"
@@ -35,12 +34,9 @@ services:
       - "CAP_SYS_TIME"
       - "CAP_SYS_TTY_CONFIG"
       - "CAP_WAKE_ALARM"
-
     container_name: "homeassistant"
-
     entrypoint:
       - "/init"
-
     environment:
       - "LANG=C.UTF-8"
       - "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -54,13 +50,9 @@ services:
       - "UV_EXTRA_INDEX_URL=https://wheels.home-assistant.io/musllinux-index/"
       - "UV_SYSTEM_PYTHON=true"
       - "UV_NO_CACHE=true"
-
     hostname: "serenity"
-
     image: "ghcr.io/home-assistant/home-assistant:stable"
-
     ipc: "private"
-
     labels:
       io.hass.arch: "amd64"
       io.hass.base.arch: "amd64"
@@ -78,36 +70,26 @@ services:
       org.opencontainers.image.title: "Home Assistant"
       org.opencontainers.image.url: "https://www.home-assistant.io/"
       org.opencontainers.image.version: "2021.10.6"
-
     logging:
       driver: "json-file"
       options: {}
-
     network_mode: "host"
-
     privileged: true
-
     restart: "unless-stopped"
-
     security_opt:
       - "label=disable"
-
     volumes:
       - "ha_config:/config"
-
     working_dir: "/config"
 
   music-assistant-server:
-
     container_name: "music-assistant-server"
-
     entrypoint:
       - "/usr/local/bin/entrypoint.sh"
       - "--data-dir"
       - "/data"
       - "--cache-dir"
       - "/data/.cache"
-
     environment:
       - "LOG_LEVEL=info"
       - "PATH=/app/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -115,16 +97,11 @@ services:
       - "PYTHON_VERSION=3.13.11"
       - "PYTHON_SHA256=16ede7bb7cdbfa895d11b0642fa0e523f291e6487194d53cf6d3b338c3a17ea2"
       - "VIRTUAL_ENV=/app/venv"
-
     expose:
       - "8095/tcp"
-
     hostname: "nova"
-
     image: "ghcr.io/music-assistant/server:latest"
-
     ipc: "private"
-
     labels:
       com.docker.compose.config-hash: "5e5157352c304e9e3d253c2e00378cbc193a3a227071ae4a9f1849c1adaa5e60"
       com.docker.compose.container-number: "1"
@@ -150,34 +127,24 @@ services:
       org.opencontainers.image.licenses: "Apache License 2.0"
       org.opencontainers.image.source: "https://github.com/music-assistant/server"
       org.opencontainers.image.title: "Music Assistant Server"
-
     logging:
       driver: "json-file"
       options: {}
-
     network_mode: "host"
-
     restart: "unless-stopped"
-
     security_opt:
       - "apparmor:unconfined"
-
     volumes:
       - "/home/koonan/docker/music-assistant-server/data:/data"
-
     working_dir: "/app/venv"
 
   zwave-js-ui:
-
     command:
       - "node"
       - "server/bin/www"
-
     container_name: "zwave-js-ui"
-
     devices:
       - "/dev/serial/by-id/usb-Zooz_800_Z-Wave_Stick_533D004242-if00:/dev/zwave"
-
     environment:
       - "ZWAVEJS_EXTERNAL_CONFIG=/usr/src/app/store/.config-db"
       - "TZ=America/Chicago"
@@ -185,13 +152,9 @@ services:
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       - "TAG_NAME="
       - "NODE_ENV=production"
-
     hostname: "dfc2d38d29a3"
-
     image: "zwavejs/zwave-js-ui:latest"
-
     ipc: "private"
-
     labels:
       com.docker.compose.config-hash: "8b32164dc70e2cd42b7f1bb9de09b010306923a7acac6a866e46621a8bf001e3"
       com.docker.compose.container-number: "1"
@@ -216,25 +179,18 @@ services:
       org.opencontainers.image.url: "https://github.com/zwave-js/zwave-js-ui"
       org.opencontainers.image.vendor: "zwave-js"
       org.opencontainers.image.version: "11.6.1"
-
     logging:
       driver: "json-file"
       options: {}
-
     networks:
       - "zwave_zwave"
-
     ports:
       - "3002:3000/tcp"
       - "8091:8091/tcp"
-
     restart: "always"
-
     tty: true
-
     volumes:
       - "zwave-js-ui:/usr/src/app/store"
-
     working_dir: "/usr/src/app"
 
 version: "3.6"

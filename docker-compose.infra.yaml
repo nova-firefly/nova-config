@@ -58,12 +58,9 @@ services:
     working_dir: "/app"
 
   duckdns:
-
     container_name: "duckdns"
-
     entrypoint:
       - "/init"
-
     environment:
       - "SUBDOMAINS=firefly-koonan"
       - "TOKEN=${DUCKDNS_TOKEN}"
@@ -76,13 +73,9 @@ services:
       - "S6_STAGE2_HOOK=/docker-mods"
       - "VIRTUAL_ENV=/lsiopy"
       - "LSIO_FIRST_PARTY=true"
-
     hostname: "8626b7da157a"
-
     image: "lscr.io/linuxserver/duckdns:latest"
-
     ipc: "private"
-
     labels:
       build_version: "Linuxserver.io version:- 95e5988b-ls68 Build-date:- 2025-10-27T04:22:01+00:00"
       maintainer: "aptalca"
@@ -100,55 +93,37 @@ services:
       org.opencontainers.image.url: "https://github.com/linuxserver/docker-duckdns/packages"
       org.opencontainers.image.vendor: "linuxserver.io"
       org.opencontainers.image.version: "95e5988b-ls68"
-
     logging:
       driver: "json-file"
       options: {}
-
     mac_address: "7a:ef:8b:9f:d7:98"
-
     network_mode: "bridge"
-
     restart: "unless-stopped"
-
     working_dir: "/"
 
   homepage:
-
     container_name: "homepage"
-
     image: "ghcr.io/gethomepage/homepage:latest"
-
     environment:
       - "PUID=1000"
       - "PGID=1000"
       - "TZ=America/Chicago"
-
     ports:
       - "3000:3000/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "homepage_config:/app/config"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   portainer:
-
     container_name: "portainer"
-
     entrypoint:
       - "/portainer"
-
     environment:
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
     hostname: "1bc9e6af38ae"
-
     image: "portainer/portainer-ce:latest"
-
     ipc: "private"
-
     labels:
       com.docker.desktop.extension.api.version: ">= 0.2.2"
       com.docker.desktop.extension.icon: "https://portainer-io-assets.sfo2.cdn.digitaloceanspaces.com/logos/portainer.png"
@@ -189,48 +164,33 @@ services:
         \ most popular GUI-based container management platform."
       org.opencontainers.image.title: "Portainer"
       org.opencontainers.image.vendor: "Portainer.io"
-
     logging:
       driver: "json-file"
       options: {}
-
     mac_address: "5e:08:8b:3d:44:fc"
-
     network_mode: "bridge"
-
     ports:
       - "9000:9000/tcp"
       - "9443:9443/tcp"
-
     restart: "always"
-
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "portainer_data:/data"
-
     working_dir: "/"
 
   traefik-traefik-1:
-
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
-
     container_name: "traefik-traefik-1"
-
     entrypoint:
       - "/entrypoint.sh"
-
     environment:
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
     hostname: "791e5a959ea1"
-
     image: "traefik:v3.6"
-
     ipc: "private"
-
     labels:
       com.docker.compose.config-hash: "94ad8ca976eec0cb23c03c7b973ae6cdc2599586e79d35bedde667ebc2001b0e"
       com.docker.compose.container-number: "1"
@@ -250,21 +210,16 @@ services:
       org.opencontainers.image.url: "https://traefik.io"
       org.opencontainers.image.vendor: "Traefik Labs"
       org.opencontainers.image.version: "v3.6.6"
-
     logging:
       driver: "json-file"
       options: {}
-
     networks:
       - "traefik_default"
-
     ports:
       - "80:80/tcp"
       - "8080:8080/tcp"
-
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-
     working_dir: "/"
 
   volume-sharer:

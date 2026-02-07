@@ -10,7 +10,6 @@ networks:
 services:
 
   bazarr:
-
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -35,12 +34,9 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-
     container_name: "bazarr"
-
     entrypoint:
       - "/init"
-
     environment:
       - "PUID=1000"
       - "PGID=1000"
@@ -54,13 +50,9 @@ services:
       - "S6_STAGE2_HOOK=/docker-mods"
       - "VIRTUAL_ENV=/lsiopy"
       - "LSIO_FIRST_PARTY=true"
-
     hostname: "f43384759f4f"
-
     image: "lscr.io/linuxserver/bazarr:latest"
-
     ipc: "private"
-
     labels:
       build_version: "Linuxserver.io version:- v1.5.3-ls324 Build-date:- 2025-10-28T21:30:03+00:00"
       maintainer: "chbmb"
@@ -78,20 +70,14 @@ services:
       org.opencontainers.image.url: "https://github.com/linuxserver/docker-bazarr/packages"
       org.opencontainers.image.vendor: "linuxserver.io"
       org.opencontainers.image.version: "v1.5.3-ls324"
-
     logging:
       driver: "json-file"
       options: {}
-
     mac_address: "e6:c9:5a:23:1d:15"
-
     network_mode: "bridge"
-
     ports:
       - "6767:6767/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "/data1/plex_data_1/_data/movies:/plex_movies_1"
       - "/data1/plex_data_1/_data/tv:/plex_tv_1"
@@ -101,31 +87,23 @@ services:
       - "/data3/tv:/plex_tv_3"
       - "/opt/subcleaner:/opt/subcleaner"
       - "bazarr_config:/config"
-
     working_dir: "/"
 
   overseerr:
-
     container_name: "overseerr"
-
     environment:
       - "PUID=1000"
       - "PGID=1000"
       - "TZ=America/Chicago"
       - "LOG_LEVEL=debug"
-
     image: "lscr.io/linuxserver/overseerr:latest"
-
     ports:
       - "5055:5055/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "overseerr_config:/config"
 
   plex:
-
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -150,12 +128,9 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-
     container_name: "plex"
-
     entrypoint:
       - "/init"
-
     environment:
       - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -182,13 +157,9 @@ services:
       - "PLEX_MEDIA_SERVER_INFO_VENDOR=Docker"
       - "PLEX_MEDIA_SERVER_INFO_DEVICE=Docker Container (LinuxServer.io)"
       - "TMPDIR=/run/plex-temp"
-
     hostname: "serenity"
-
     image: "ghcr.io/linuxserver/plex:latest"
-
     ipc: "private"
-
     labels:
       build_version: "Linuxserver.io version:- 1.24.3.5033-757abe6b4-ls76 Build-date:- 2021-09-28T05:58:19+02:00"
       maintainer: "thelamer"
@@ -208,29 +179,22 @@ services:
       org.opencontainers.image.vendor: "linuxserver.io"
       org.opencontainers.image.version: "1.24.3.5033-757abe6b4-ls76"
       traefik.http.routers.plex.rule: "Host(`plex.nova`)"
-
     logging:
       driver: "json-file"
       options: {}
-
     network_mode: "host"
-
     ports:
       - "32800:32800/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "/data1/plex_config/plex_config/_data:/config"
       - "/data1/plex_data_1/_data:/library1"
       - "/data2:/library2"
       - "/data3/movies:/library3/movies"
       - "/data3/tv:/library3/tv"
-
     working_dir: "/"
 
   prowlarr:
-
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -255,12 +219,9 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-
     container_name: "prowlarr"
-
     entrypoint:
       - "/init"
-
     environment:
       - "TZ=Etc/UTC"
       - "PUID=1000"
@@ -277,13 +238,9 @@ services:
       - "XDG_CONFIG_HOME=/config/xdg"
       - "COMPlus_EnableDiagnostics=0"
       - "TMPDIR=/run/prowlarr-temp"
-
     hostname: "1d08e4948609"
-
     image: "lscr.io/linuxserver/prowlarr:latest"
-
     ipc: "private"
-
     labels:
       build_version: "Linuxserver.io version:- 2.3.0.5236-ls136 Build-date:- 2026-02-04T05:01:26+00:00"
       com.docker.compose.config-hash: "ce0eef9d01f896d1eb02df934bd5a9184c04768edef18d2bfed5aab3e1d60a0e"
@@ -313,28 +270,20 @@ services:
       org.opencontainers.image.url: "https://github.com/linuxserver/docker-prowlarr/packages"
       org.opencontainers.image.vendor: "linuxserver.io"
       org.opencontainers.image.version: "2.3.0.5236-ls136"
-
     logging:
       driver: "json-file"
       options: {}
-
     mac_address: "e6:35:6b:a7:1b:ad"
-
     networks:
       - "media"
-
     ports:
       - "9696:9696/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "/path/to/prowlarr/data:/config"
-
     working_dir: "/"
 
   radarr:
-
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -359,12 +308,9 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-
     container_name: "radarr"
-
     entrypoint:
       - "/init"
-
     environment:
       - "LANG=en_US.UTF-8"
       - "LANGUAGE=en_US.UTF-8"
@@ -383,13 +329,9 @@ services:
       - "XDG_CONFIG_HOME=/config/xdg"
       - "COMPlus_EnableDiagnostics=0"
       - "TMPDIR=/run/radarr-temp"
-
     hostname: "155d40782f42"
-
     image: "ghcr.io/linuxserver/radarr:latest"
-
     ipc: "private"
-
     labels:
       build_version: "Linuxserver.io version:- 3.2.2.5080-ls117 Build-date:- 2021-09-27T17:58:47+02:00"
       maintainer: "thelamer"
@@ -410,30 +352,23 @@ services:
       traefik.http.routers.radarr.entrypoints: "web"
       traefik.http.routers.radarr.rule: "Host(`/radarr`)"
       traefik.http.services.radarr.loadbalancer.server.port: "7878"
-
     logging:
       driver: "json-file"
       options: {}
-
     networks:
       - "media"
-
     ports:
       - "7878:7878/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "/data1/plex_data_1/_data/movies:/plex_movies_1"
       - "/data2/movies:/plex_movies_2"
       - "/data3/movies:/plex_movies_3"
       - "radarr_config:/config"
       - "transmission_data:/data"
-
     working_dir: "/"
 
   sonarr:
-
     cap_drop:
       - "CAP_AUDIT_CONTROL"
       - "CAP_BLOCK_SUSPEND"
@@ -458,12 +393,9 @@ services:
       - "CAP_SYS_TIME"
       - "CAP_SYS_TTY_CONFIG"
       - "CAP_WAKE_ALARM"
-
     container_name: "sonarr"
-
     entrypoint:
       - "/init"
-
     environment:
       - "PGID=1000"
       - "PUID=1000"
@@ -482,13 +414,9 @@ services:
       - "SONARR_BRANCH=main"
       - "COMPlus_EnableDiagnostics=0"
       - "TMPDIR=/run/sonarr-temp"
-
     hostname: "21cab3d173e2"
-
     image: "ghcr.io/linuxserver/sonarr:latest"
-
     ipc: "private"
-
     labels:
       build_version: "Linuxserver.io version:- 3.0.6.1342-ls124 Build-date:- 2021-10-01T00:32:18+02:00"
       maintainer: "thespad"
@@ -508,41 +436,31 @@ services:
       org.opencontainers.image.url: "https://github.com/linuxserver/docker-sonarr/packages"
       org.opencontainers.image.vendor: "linuxserver.io"
       org.opencontainers.image.version: "3.0.6.1342-ls124"
-
     logging:
       driver: "json-file"
       options: {}
-
     networks:
       - "media"
-
     ports:
       - "8989:8989/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "/data1/plex_data_1/_data/tv:/plex_tv_1"
       - "/data2/tv:/plex_tv_2"
       - "/data3/tv:/plex_tv_3"
       - "sonarr_config:/config"
       - "transmission_data:/data"
-
     working_dir: "/"
 
   tautulli:
-
     command:
       - "python"
       - "Tautulli.py"
       - "--datadir"
       - "/config"
-
     container_name: "tautulli"
-
     entrypoint:
       - "./start.sh"
-
     environment:
       - "PGID=1000"
       - "TZ=America/Chicago"
@@ -557,13 +475,9 @@ services:
       - "LANG=C.UTF-8"
       - "PYTHON_SHA256=2a9920c7a0cd236de33644ed980a13cbbc21058bfdc528febb6081575ed73be3"
       - "TAUTULLI_DOCKER=True"
-
     hostname: "97f2eff809c1"
-
     image: "ghcr.io/tautulli/tautulli:latest"
-
     ipc: "private"
-
     labels:
       maintainer: "Tautulli"
       org.opencontainers.image.created: "2025-09-09T00:57:49.263Z"
@@ -575,27 +489,19 @@ services:
       org.opencontainers.image.title: "Tautulli"
       org.opencontainers.image.url: "https://github.com/Tautulli/Tautulli"
       org.opencontainers.image.version: "master"
-
     logging:
       driver: "json-file"
       options: {}
-
     mac_address: "e2:ef:0d:7f:e9:17"
-
     network_mode: "bridge"
-
     ports:
       - "8181:8181/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "tautulli_config:/config"
-
     working_dir: "/app"
 
   transmission:
-
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -619,13 +525,10 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-
     command:
       - "dumb-init"
       - "/etc/openvpn/start.sh"
-
     container_name: "transmission"
-
     environment:
       - "CREATE_TUN_DEVICE=true"
       - "DROP_DEFAULT_ROUTE="
@@ -661,13 +564,9 @@ services:
       - "TRANSMISSION_RPC_PASSWORD=${TRANSMISSION_RPC_PASSWORD:-}"
       - "OPENVPN_OPTS="
       - "WEBPROXY_BIND_ADDRESS="
-
     hostname: "bf9d2a3af845"
-
     image: "haugene/transmission-openvpn:dev"
-
     ipc: "private"
-
     labels:
       autoheal: "true"
       org.opencontainers.image.created: "2025-05-28T19:05:34.665Z"
@@ -680,20 +579,15 @@ services:
       org.opencontainers.image.title: "docker-transmission-openvpn"
       org.opencontainers.image.url: "https://github.com/haugene/docker-transmission-openvpn"
       org.opencontainers.image.version: "dev"
-
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
-
     networks:
       - "media"
-
     ports:
       - "9094:9091/tcp"
-
     restart: "unless-stopped"
-
     volumes:
       - "transmission_config:/config"
       - "transmission_data:/data"

@@ -4,7 +4,6 @@
 services:
 
   vibe-kanban:
-
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -29,41 +28,29 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-
     command:
       - "npx"
       - "vibe-kanban"
-
     container_name: "vibe-kanban"
-
     entrypoint:
       - "docker-entrypoint.sh"
-
     environment:
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       - "NODE_VERSION=20.20.0"
       - "YARN_VERSION=1.22.22"
       - "PORT=3000"
-
     hostname: "nova"
-
     image: "vibe-kanban:latest"
-
     ipc: "private"
-
     logging:
       driver: "json-file"
       options: {}
-
     network_mode: "host"
-
     ports:
       - "2468:3000/tcp"
-
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "vibe-kanban-repos:/repos"
-
     working_dir: "/app"
 
 version: "3.6"

@@ -10,18 +10,14 @@ networks:
 services:
 
   immich_machine_learning:
-
     command:
       - "python"
       - "-m"
       - "immich_ml"
-
     container_name: "immich_machine_learning"
-
     entrypoint:
       - "tini"
       - "--"
-
     environment:
       - "IMMICH_VERSION=release"
       - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
@@ -53,13 +49,9 @@ services:
       - "IMMICH_SOURCE_REF=v2.2.3"
       - "IMMICH_SOURCE_COMMIT=28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
       - "IMMICH_SOURCE_URL=https://github.com/immich-app/immich/commit/28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
-
     hostname: "2c80652fc6f9"
-
     image: "ghcr.io/immich-app/immich-machine-learning:release"
-
     ipc: "private"
-
     labels:
       com.docker.compose.config-hash: "92e3e77f2dd37337a729acf8afc4c4e4aaaa7f5470e4d61471cf5446410dcfea"
       com.docker.compose.container-number: "1"
@@ -79,33 +71,24 @@ services:
       org.opencontainers.image.title: "immich"
       org.opencontainers.image.url: "https://github.com/immich-app/immich"
       org.opencontainers.image.version: "v2.2.3"
-
     logging:
       driver: "json-file"
       options: {}
-
     networks:
       - "immich_default"
-
     restart: "always"
-
     volumes:
       - "immich_immich-ml-model-cache:/cache"
-
     working_dir: "/usr/src"
 
   immich_postgres:
-
     command:
       - "postgres"
       - "-c"
       - "config_file=/etc/postgresql/postgresql.conf"
-
     container_name: "immich_postgres"
-
     entrypoint:
       - "/usr/local/bin/immich-docker-entrypoint.sh"
-
     environment:
       - "POSTGRES_INITDB_ARGS=--data-checksums"
       - "POSTGRES_PASSWORD=${IMMICH_DB_PASSWORD}"
@@ -118,16 +101,11 @@ services:
       - "PG_VERSION=14.18-1.pgdg120+1"
       - "PGDATA=/var/lib/postgresql/data"
       - "DB_STORAGE_TYPE=SSD"
-
     expose:
       - "5432/tcp"
-
     hostname: "6649e79b630e"
-
     image: "ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:32324a2f41df5de9efe1af166b7008c3f55646f8d0e00d9550c16c9822366b4a"
-
     ipc: "private"
-
     labels:
       com.docker.compose.config-hash: "ff35c289ecbec99e2d84d5db5a4cca70491c0ee181ab9109f4a768a0255d13eb"
       com.docker.compose.container-number: "1"
@@ -147,16 +125,12 @@ services:
       org.opencontainers.image.title: "base-images"
       org.opencontainers.image.url: "https://github.com/immich-app/base-images"
       org.opencontainers.image.version: "14-vectorchord0.4.3-pgvector0.8.0-pgvectors0.2.0"
-
     logging:
       driver: "json-file"
       options: {}
-
     networks:
       - "immich_default"
-
     restart: "always"
-
     volumes:
       - "/home/koonan/immich-app/postgres:/var/lib/postgresql/data"
 
@@ -196,18 +170,14 @@ services:
     working_dir: "/data"
 
   immich_server:
-
     command:
       - "start.sh"
-
     container_name: "immich_server"
-
     entrypoint:
       - "tini"
       - "--"
       - "/bin/bash"
       - "-c"
-
     environment:
       - "IMMICH_VERSION=release"
       - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
@@ -233,13 +203,9 @@ services:
       - "IMMICH_SOURCE_REF=v2.2.3"
       - "IMMICH_SOURCE_COMMIT=28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
       - "IMMICH_SOURCE_URL=https://github.com/immich-app/immich/commit/28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
-
     hostname: "0dbb383705f9"
-
     image: "ghcr.io/immich-app/immich-server:release"
-
     ipc: "private"
-
     labels:
       com.docker.compose.config-hash: "1dfacdd8fab19e5a06b52ee6795891964104887a033df39de3cd3166403eec71"
       com.docker.compose.container-number: "1"
@@ -259,23 +225,17 @@ services:
       org.opencontainers.image.title: "immich"
       org.opencontainers.image.url: "https://github.com/immich-app/immich"
       org.opencontainers.image.version: "v2.2.3"
-
     logging:
       driver: "json-file"
       options: {}
-
     networks:
       - "immich_default"
-
     ports:
       - "2283:2283/tcp"
-
     restart: "always"
-
     volumes:
       - "/data3/immich_data:/data"
       - "/etc/localtime:/etc/localtime:ro"
-
     working_dir: "/usr/src/app"
 
 version: "3.6"
