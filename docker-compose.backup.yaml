@@ -1,0 +1,146 @@
+# Backup Stack - Backrest and Duplicati
+# Usage: docker compose -f docker-compose.backup.yaml up -d
+# Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY
+
+networks:
+  backrest_default:
+    external: true
+    name: "backrest_default"
+  duplicati_default:
+    external: true
+    name: "duplicati_default"
+
+services:
+
+  backrest:
+    command:
+      - "/backrest"
+    container_name: "backrest"
+    entrypoint:
+      - "/sbin/tini"
+      - "--"
+      - "/docker-entrypoint"
+    environment:
+      - "XDG_CACHE_HOME=/cache"
+      - "TZ=America/Denver"
+      - "BACKREST_DATA=/data"
+      - "BACKREST_CONFIG=/config/config.json"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    hostname: "backrest"
+    image: "garethgeorge/backrest:latest"
+    ipc: "private"
+    labels:
+      com.docker.compose.config-hash: "7a33fca0ca9f8d7b23cca298a8018effe3ba704718d8b3a792e7b91447fc1965"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:e6721638ead42f61d047a13728d3c5c55b931041f807d3b85012d6d6f0f97356"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "backrest"
+      com.docker.compose.project.config_files: "/opt/stacks/backrest/compose.yaml"
+      com.docker.compose.project.working_dir: "/opt/stacks/backrest"
+      com.docker.compose.service: "backrest"
+      com.docker.compose.version: "2.34.0"
+      org.opencontainers.image.source: "https://github.com/garethgeorge/backrest"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "backrest_default"
+    ports:
+      - "9898:9898/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1:/hd1:ro"
+      - "/data2:/hd2:ro"
+      - "/data3:/hd3:ro"
+      - "/home/koonan:/home:ro"
+      - "/var/lib/docker/volumes:/volumes:ro"
+      - "backrest_backrest_cache:/cache"
+      - "backrest_backrest_config:/config"
+      - "backrest_backrest_data:/data"
+    working_dir: "/"
+
+  duplicati:
+    container_name: "duplicati"
+    entrypoint:
+      - "/init"
+    environment:
+      - "SETTINGS_ENCRYPTION_KEY=${DUPLICATI_SETTINGS_ENCRYPTION_KEY}"
+      - "PUID=1000"
+      - "PGID=1000"
+      - "TZ=America/Denver"
+      - "PATH=/lsiopy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "HOME=/config"
+      - "LANGUAGE=en_US.UTF-8"
+      - "LANG=en_US.UTF-8"
+      - "TERM=xterm"
+      - "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0"
+      - "S6_VERBOSITY=1"
+      - "S6_STAGE2_HOOK=/docker-mods"
+      - "VIRTUAL_ENV=/lsiopy"
+      - "LSIO_FIRST_PARTY=true"
+      - "TMPDIR=/run/duplicati-temp"
+      - "DUPLICATI__REQUIRE_DB_ENCRYPTION_KEY=true"
+      - "DUPLICATI__SERVER_DATAFOLDER=/config"
+      - "DUPLICATI__WEBSERVICE_PORT=8200"
+      - "DUPLICATI__WEBSERVICE_INTERFACE=any"
+      - "DUPLICATI__WEBSERVICE_ALLOWED_HOSTNAMES=*"
+    hostname: "de744074a1d1"
+    image: "lscr.io/linuxserver/duplicati:latest"
+    ipc: "private"
+    labels:
+      build_version: "Linuxserver.io version:- v2.2.0.0_stable_2025-10-23-ls264 Build-date:- 2025-11-01T04:01:03+00:00"
+      com.docker.compose.config-hash: "83fbb7229ef80109c2aa55353d55d28228cedd2089ecf620ac0fe3d4b19b3b22"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:a4ae9c4176b85f16039901910e7114dcba9e9a0cee27406edc5045901a2d753c"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "duplicati"
+      com.docker.compose.project.config_files: "/home/koonan/duplicati/docker-compose.yaml"
+      com.docker.compose.project.working_dir: "/home/koonan/duplicati"
+      com.docker.compose.replace: "8d68316860b702e89e3d605a1a2790d98da195517323e2993b6d6311bf0a5162"
+      com.docker.compose.service: "duplicati"
+      com.docker.compose.version: "2.35.1"
+      maintainer: "aptalca"
+      org.opencontainers.image.authors: "linuxserver.io"
+      org.opencontainers.image.created: "2025-11-01T04:01:03+00:00"
+      org.opencontainers.image.description: "[Duplicati](https://www.duplicati.com/) is a backup client\
+        \ that securely stores encrypted, incremental, compressed backups on local storage, cloud storage\
+        \ services and remote file servers. It works with standard protocols like FTP, SSH, WebDAV as\
+        \ well as popular services like Microsoft OneDrive, Amazon S3, Google Drive, box.com, Mega, B2,\
+        \ and many others."
+      org.opencontainers.image.documentation: "https://docs.linuxserver.io/images/docker-duplicati"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+      org.opencontainers.image.ref.name: "b52d33d4310bc1111f3384483fd6235ae9381f8e"
+      org.opencontainers.image.revision: "b52d33d4310bc1111f3384483fd6235ae9381f8e"
+      org.opencontainers.image.source: "https://github.com/linuxserver/docker-duplicati"
+      org.opencontainers.image.title: "Duplicati"
+      org.opencontainers.image.url: "https://github.com/linuxserver/docker-duplicati/packages"
+      org.opencontainers.image.vendor: "linuxserver.io"
+      org.opencontainers.image.version: "v2.2.0.0_stable_2025-10-23-ls264"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "duplicati_default"
+    ports:
+      - "8200:8200/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/backups:/backups"
+      - "/docker/duplicati/config:/config"
+      - "/var/lib/docker/volumes:/source:ro"
+    working_dir: "/"
+
+version: "3.6"
+
+volumes:
+
+  backrest_backrest_cache:
+    external: true
+
+  backrest_backrest_config:
+    external: true
+
+  backrest_backrest_data:
+    external: true

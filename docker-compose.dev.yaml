@@ -1,0 +1,61 @@
+# Dev/Utility Stack - Vibe Kanban
+# Usage: docker compose -f docker-compose.dev.yaml up -d
+
+services:
+
+  vibe-kanban:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    command:
+      - "npx"
+      - "vibe-kanban"
+    container_name: "vibe-kanban"
+    entrypoint:
+      - "docker-entrypoint.sh"
+    environment:
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "NODE_VERSION=20.20.0"
+      - "YARN_VERSION=1.22.22"
+      - "PORT=3000"
+    hostname: "nova"
+    image: "vibe-kanban:latest"
+    ipc: "private"
+    logging:
+      driver: "json-file"
+      options: {}
+    network_mode: "host"
+    ports:
+      - "2468:3000/tcp"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "vibe-kanban-repos:/repos"
+    working_dir: "/app"
+
+version: "3.6"
+
+volumes:
+
+  vibe-kanban-repos:
+    external: true

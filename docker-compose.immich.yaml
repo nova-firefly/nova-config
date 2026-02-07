@@ -1,0 +1,249 @@
+# Immich Stack - Photo management with ML, Postgres, and Redis
+# Usage: docker compose -f docker-compose.immich.yaml up -d
+# Requires .env file for: IMMICH_DB_PASSWORD
+
+networks:
+  immich_default:
+    external: true
+    name: "immich_default"
+
+services:
+
+  immich_machine_learning:
+    command:
+      - "python"
+      - "-m"
+      - "immich_ml"
+    container_name: "immich_machine_learning"
+    entrypoint:
+      - "tini"
+      - "--"
+    environment:
+      - "IMMICH_VERSION=release"
+      - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
+      - "DB_USERNAME=postgres"
+      - "DB_DATABASE_NAME=immich"
+      - "UPLOAD_LOCATION=/data3/immich_data"
+      - "DB_DATA_LOCATION=./postgres"
+      - "TZ=America/Denver"
+      - "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "LANG=C.UTF-8"
+      - "GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D"
+      - "PYTHON_VERSION=3.11.13"
+      - "PYTHON_SHA256=8fb5f9fbc7609fa822cb31549884575db7fd9657cbffb89510b5d7975963a83a"
+      - "LD_PRELOAD=/usr/lib/libmimalloc.so.2"
+      - "MACHINE_LEARNING_MODEL_ARENA=false"
+      - "TRANSFORMERS_CACHE=/cache"
+      - "PYTHONDONTWRITEBYTECODE=1"
+      - "PYTHONUNBUFFERED=1"
+      - "PYTHONPATH=/usr/src"
+      - "DEVICE=cpu"
+      - "VIRTUAL_ENV=/opt/venv"
+      - "MACHINE_LEARNING_CACHE_FOLDER=/cache"
+      - "IMMICH_BUILD=19104095433"
+      - "IMMICH_BUILD_URL=https://github.com/immich-app/immich/actions/runs/19104095433"
+      - "IMMICH_BUILD_IMAGE=v2.2.3"
+      - "IMMICH_BUILD_IMAGE_URL=https://github.com/immich-app/immich/pkgs/container/immich-machine-learning"
+      - "IMMICH_REPOSITORY=immich-app/immich"
+      - "IMMICH_REPOSITORY_URL=https://github.com/immich-app/immich"
+      - "IMMICH_SOURCE_REF=v2.2.3"
+      - "IMMICH_SOURCE_COMMIT=28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
+      - "IMMICH_SOURCE_URL=https://github.com/immich-app/immich/commit/28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
+    hostname: "2c80652fc6f9"
+    image: "ghcr.io/immich-app/immich-machine-learning:release"
+    ipc: "private"
+    labels:
+      com.docker.compose.config-hash: "92e3e77f2dd37337a729acf8afc4c4e4aaaa7f5470e4d61471cf5446410dcfea"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:cbaddc4758c400262039a03eb39ad4d6a06faeb31ece46a6594701fc9529affc"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "immich"
+      com.docker.compose.project.config_files: "/home/koonan/immich-app/docker-compose.yml"
+      com.docker.compose.project.working_dir: "/home/koonan/immich-app"
+      com.docker.compose.service: "immich-machine-learning"
+      com.docker.compose.version: "2.35.1"
+      org.opencontainers.image.created: "2025-11-05T13:47:44.676Z"
+      org.opencontainers.image.description: "High performance self-hosted photo and video management solution."
+      org.opencontainers.image.licenses: "AGPL-3.0"
+      org.opencontainers.image.revision: "28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
+      org.opencontainers.image.source: "https://github.com/immich-app/immich"
+      org.opencontainers.image.title: "immich"
+      org.opencontainers.image.url: "https://github.com/immich-app/immich"
+      org.opencontainers.image.version: "v2.2.3"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "immich_default"
+    restart: "always"
+    volumes:
+      - "immich_immich-ml-model-cache:/cache"
+    working_dir: "/usr/src"
+
+  immich_postgres:
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    container_name: "immich_postgres"
+    entrypoint:
+      - "/usr/local/bin/immich-docker-entrypoint.sh"
+    environment:
+      - "POSTGRES_INITDB_ARGS=--data-checksums"
+      - "POSTGRES_PASSWORD=${IMMICH_DB_PASSWORD}"
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_DB=immich"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/14/bin"
+      - "GOSU_VERSION=1.17"
+      - "LANG=en_US.utf8"
+      - "PG_MAJOR=14"
+      - "PG_VERSION=14.18-1.pgdg120+1"
+      - "PGDATA=/var/lib/postgresql/data"
+      - "DB_STORAGE_TYPE=SSD"
+    expose:
+      - "5432/tcp"
+    hostname: "6649e79b630e"
+    image: "ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:32324a2f41df5de9efe1af166b7008c3f55646f8d0e00d9550c16c9822366b4a"
+    ipc: "private"
+    labels:
+      com.docker.compose.config-hash: "ff35c289ecbec99e2d84d5db5a4cca70491c0ee181ab9109f4a768a0255d13eb"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:86a9b06ef82525cd385caaa029b5fb21e8206ddf12a5441e66e9dec4348609c7"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "immich"
+      com.docker.compose.project.config_files: "/home/koonan/immich-app/docker-compose.yml"
+      com.docker.compose.project.working_dir: "/home/koonan/immich-app"
+      com.docker.compose.service: "database"
+      com.docker.compose.version: "2.35.1"
+      org.opencontainers.image.created: "2025-07-23T21:03:59.099Z"
+      org.opencontainers.image.description: "Base images for Immich containers"
+      org.opencontainers.image.licenses: "AGPL-3.0"
+      org.opencontainers.image.revision: "ee806e819e922de0a2744cf61da90428b169dc4a"
+      org.opencontainers.image.source: "https://github.com/immich-app/base-images"
+      org.opencontainers.image.title: "base-images"
+      org.opencontainers.image.url: "https://github.com/immich-app/base-images"
+      org.opencontainers.image.version: "14-vectorchord0.4.3-pgvector0.8.0-pgvectors0.2.0"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "immich_default"
+    restart: "always"
+    volumes:
+      - "/home/koonan/immich-app/postgres:/var/lib/postgresql/data"
+
+  immich_redis:
+    command:
+      - "valkey-server"
+    container_name: "immich_redis"
+    entrypoint:
+      - "docker-entrypoint.sh"
+    environment:
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "VALKEY_VERSION=8.1.3"
+    expose:
+      - "6379/tcp"
+    hostname: "1e78005ab8d5"
+    image: "docker.io/valkey/valkey:8-bookworm@sha256:a137a2b60aca1a75130022d6bb96af423fefae4eb55faf395732db3544803280"
+    ipc: "private"
+    labels:
+      com.docker.compose.config-hash: "2e187c8585a9a43c222d935ab5e5e99e955238cc6da0f75c39123093cc7fa6f8"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:7cb874b6878d1a539328fa947200bfae55d8af78a3884209a99733eef7d0d970"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "immich"
+      com.docker.compose.project.config_files: "/home/koonan/immich-app/docker-compose.yml"
+      com.docker.compose.project.working_dir: "/home/koonan/immich-app"
+      com.docker.compose.service: "redis"
+      com.docker.compose.version: "2.35.1"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "immich_default"
+    restart: "always"
+    volumes:
+      - "eeba826780300f3d846b69ccaecc2f70dc9dd09cdb8ce35b3eb4462d5ee3b122:/data"
+    working_dir: "/data"
+
+  immich_server:
+    command:
+      - "start.sh"
+    container_name: "immich_server"
+    entrypoint:
+      - "tini"
+      - "--"
+      - "/bin/bash"
+      - "-c"
+    environment:
+      - "IMMICH_VERSION=release"
+      - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
+      - "DB_USERNAME=postgres"
+      - "DB_DATABASE_NAME=immich"
+      - "UPLOAD_LOCATION=/data3/immich_data"
+      - "DB_DATA_LOCATION=./postgres"
+      - "TZ=America/Denver"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/src/app/server/bin"
+      - "NODE_VERSION=22.18.0"
+      - "YARN_VERSION=1.22.22"
+      - "DEBIAN_RELEASE=trixie"
+      - "LD_LIBRARY_PATH=/usr/lib/jellyfin-ffmpeg/lib:/usr/lib/wsl/lib"
+      - "NODE_ENV=production"
+      - "NVIDIA_DRIVER_CAPABILITIES=all"
+      - "NVIDIA_VISIBLE_DEVICES=all"
+      - "IMMICH_BUILD=19104095433"
+      - "IMMICH_BUILD_URL=https://github.com/immich-app/immich/actions/runs/19104095433"
+      - "IMMICH_BUILD_IMAGE=v2.2.3"
+      - "IMMICH_BUILD_IMAGE_URL=https://github.com/immich-app/immich/pkgs/container/immich-server"
+      - "IMMICH_REPOSITORY=immich-app/immich"
+      - "IMMICH_REPOSITORY_URL=https://github.com/immich-app/immich"
+      - "IMMICH_SOURCE_REF=v2.2.3"
+      - "IMMICH_SOURCE_COMMIT=28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
+      - "IMMICH_SOURCE_URL=https://github.com/immich-app/immich/commit/28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
+    hostname: "0dbb383705f9"
+    image: "ghcr.io/immich-app/immich-server:release"
+    ipc: "private"
+    labels:
+      com.docker.compose.config-hash: "1dfacdd8fab19e5a06b52ee6795891964104887a033df39de3cd3166403eec71"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: "redis:service_started:false,database:service_started:false"
+      com.docker.compose.image: "sha256:f2d652a5104fa1533ba0b43012c802ce43b1f517ada456b8f8522cef29ff2fbd"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "immich"
+      com.docker.compose.project.config_files: "/home/koonan/immich-app/docker-compose.yml"
+      com.docker.compose.project.working_dir: "/home/koonan/immich-app"
+      com.docker.compose.service: "immich-server"
+      com.docker.compose.version: "2.35.1"
+      org.opencontainers.image.created: "2025-11-05T13:47:40.897Z"
+      org.opencontainers.image.description: "High performance self-hosted photo and video management solution."
+      org.opencontainers.image.licenses: "AGPL-3.0"
+      org.opencontainers.image.revision: "28eb1bc13cfd4642fe90fd8cf724ba7acf94f675"
+      org.opencontainers.image.source: "https://github.com/immich-app/immich"
+      org.opencontainers.image.title: "immich"
+      org.opencontainers.image.url: "https://github.com/immich-app/immich"
+      org.opencontainers.image.version: "v2.2.3"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "immich_default"
+    ports:
+      - "2283:2283/tcp"
+    restart: "always"
+    volumes:
+      - "/data3/immich_data:/data"
+      - "/etc/localtime:/etc/localtime:ro"
+    working_dir: "/usr/src/app"
+
+version: "3.6"
+
+volumes:
+
+  eeba826780300f3d846b69ccaecc2f70dc9dd09cdb8ce35b3eb4462d5ee3b122:
+    external: true
+
+  immich_immich-ml-model-cache:
+    external: true

@@ -1,6 +1,18 @@
 # Nova Compose Files
 
-Docker Compose configuration for managing self-hosted services.
+Docker Compose configuration for managing self-hosted services, split into independent stacks.
+
+## Stacks
+
+| Stack | File | Services |
+|-------|------|----------|
+| **Media** | `docker-compose.media.yaml` | Plex, Radarr, Sonarr, Bazarr, Prowlarr, Transmission (VPN), Tautulli, Overseerr |
+| **Immich** | `docker-compose.immich.yaml` | Immich Server, Machine Learning, Postgres, Redis |
+| **Home** | `docker-compose.home.yaml` | Home Assistant, Z-Wave JS UI, Music Assistant |
+| **Infra** | `docker-compose.infra.yaml` | Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Volume Sharer |
+| **Backup** | `docker-compose.backup.yaml` | Backrest, Duplicati |
+| **Gaming** | `docker-compose.gaming.yaml` | Minecraft |
+| **Dev** | `docker-compose.dev.yaml` | Vibe Kanban |
 
 ## Prerequisites
 
@@ -25,15 +37,48 @@ Docker Compose configuration for managing self-hosted services.
    nano .env  # or your preferred editor
    ```
 
-4. Validate configuration:
+4. Start a specific stack:
    ```bash
-   docker-compose config
+   docker compose -f docker-compose.media.yaml up -d
    ```
 
-5. Start services:
+5. Start all stacks:
    ```bash
-   docker-compose up -d
+   for f in docker-compose.*.yaml; do docker compose -f "$f" up -d; done
    ```
+
+## Managing Stacks
+
+```bash
+# Start a stack
+docker compose -f docker-compose.media.yaml up -d
+
+# Stop a stack
+docker compose -f docker-compose.media.yaml down
+
+# View logs for a stack
+docker compose -f docker-compose.media.yaml logs -f
+
+# Update images for a stack
+docker compose -f docker-compose.media.yaml pull && docker compose -f docker-compose.media.yaml up -d
+
+# Validate a stack
+docker compose -f docker-compose.media.yaml config
+```
+
+## Environment Variables
+
+See `.env.example` for all required variables. Each variable is annotated with which stack uses it.
+
+| Variable | Stack | Source |
+|----------|-------|--------|
+| `DUCKDNS_TOKEN` | infra | https://www.duckdns.org/ |
+| `DUPLICATI_SETTINGS_ENCRYPTION_KEY` | backup | `openssl rand -base64 32` |
+| `IMMICH_DB_PASSWORD` | immich | `openssl rand -base64 24` |
+| `PLEX_CLAIM_TOKEN` | media | https://www.plex.tv/claim/ |
+| `TRANSMISSION_OPENVPN_USERNAME` | media | https://mullvad.net/account/ |
+| `TRANSMISSION_OPENVPN_PASSWORD` | media | https://mullvad.net/account/ |
+| `ZWAVE_SESSION_SECRET` | home | `openssl rand -base64 32` |
 
 ## Security Notes
 
@@ -41,29 +86,11 @@ Docker Compose configuration for managing self-hosted services.
 - Store `.env` backup securely (encrypted password manager)
 - Rotate credentials periodically
 - Review `.gitignore` before committing new files
-- Use `docker-compose config` to verify variable substitution
-
-## Obtaining Credentials
-
-- **DuckDNS Token**: https://www.duckdns.org/
-- **Plex Claim Token**: https://www.plex.tv/claim/ (expires in 4 minutes)
-- **Mullvad VPN**: https://mullvad.net/account/
 
 ## Troubleshooting
 
 If a service fails to start:
-1. Check environment variables: `docker-compose config`
-2. Review service logs: `docker-compose logs [service-name]`
+1. Check environment variables: `docker compose -f <stack-file> config`
+2. Review service logs: `docker compose -f <stack-file> logs [service-name]`
 3. Verify .env file syntax (no spaces around `=`)
 4. Ensure all required variables are set in .env
-
-## Services
-
-This configuration manages 25+ self-hosted services including:
-- Immich (photo management)
-- Plex (media server)
-- Transmission (torrent client with VPN)
-- Duplicati (backup service)
-- DuckDNS (dynamic DNS)
-- Z-Wave JS UI (smart home control)
-- And many more...

@@ -1,0 +1,618 @@
+# Media Stack - Plex, *arr apps, Transmission, Tautulli, Overseerr
+# Usage: docker compose -f docker-compose.media.yaml up -d
+# Requires .env file for: PLEX_CLAIM_TOKEN, TRANSMISSION_OPENVPN_*
+
+networks:
+  media:
+    external: true
+    name: "media"
+
+services:
+
+  bazarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "bazarr"
+    entrypoint:
+      - "/init"
+    environment:
+      - "PUID=1000"
+      - "PGID=1000"
+      - "TZ=America/Chicago"
+      - "PS1=$$(whoami)@$$(hostname):$$(pwd)\\$$"
+      - "PATH=/lsiopy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "HOME=/root"
+      - "TERM=xterm"
+      - "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0"
+      - "S6_VERBOSITY=1"
+      - "S6_STAGE2_HOOK=/docker-mods"
+      - "VIRTUAL_ENV=/lsiopy"
+      - "LSIO_FIRST_PARTY=true"
+    hostname: "f43384759f4f"
+    image: "lscr.io/linuxserver/bazarr:latest"
+    ipc: "private"
+    labels:
+      build_version: "Linuxserver.io version:- v1.5.3-ls324 Build-date:- 2025-10-28T21:30:03+00:00"
+      maintainer: "chbmb"
+      org.opencontainers.image.authors: "linuxserver.io"
+      org.opencontainers.image.created: "2025-10-28T21:30:03+00:00"
+      org.opencontainers.image.description: "[Bazarr](https://www.bazarr.media/) is a companion application\
+        \ to Sonarr and Radarr. It can manage and download subtitles based on your requirements. You define\
+        \ your preferences by TV show or movie and Bazarr takes care of everything for you."
+      org.opencontainers.image.documentation: "https://docs.linuxserver.io/images/docker-bazarr"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+      org.opencontainers.image.ref.name: "bc19d74ce1ede34f9a96abed00d92f6e120f5b8d"
+      org.opencontainers.image.revision: "bc19d74ce1ede34f9a96abed00d92f6e120f5b8d"
+      org.opencontainers.image.source: "https://github.com/linuxserver/docker-bazarr"
+      org.opencontainers.image.title: "Bazarr"
+      org.opencontainers.image.url: "https://github.com/linuxserver/docker-bazarr/packages"
+      org.opencontainers.image.vendor: "linuxserver.io"
+      org.opencontainers.image.version: "v1.5.3-ls324"
+    logging:
+      driver: "json-file"
+      options: {}
+    mac_address: "e6:c9:5a:23:1d:15"
+    network_mode: "bridge"
+    ports:
+      - "6767:6767/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/movies:/plex_movies_1"
+      - "/data1/plex_data_1/_data/tv:/plex_tv_1"
+      - "/data2/movies:/plex_movies_2"
+      - "/data2/tv:/plex_tv_2"
+      - "/data3/movies:/plex_movies_3"
+      - "/data3/tv:/plex_tv_3"
+      - "/opt/subcleaner:/opt/subcleaner"
+      - "bazarr_config:/config"
+    working_dir: "/"
+
+  overseerr:
+    container_name: "overseerr"
+    environment:
+      - "PUID=1000"
+      - "PGID=1000"
+      - "TZ=America/Chicago"
+      - "LOG_LEVEL=debug"
+    image: "lscr.io/linuxserver/overseerr:latest"
+    ports:
+      - "5055:5055/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "overseerr_config:/config"
+
+  plex:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "plex"
+    entrypoint:
+      - "/init"
+    environment:
+      - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "PGID=1000"
+      - "PLEX_CLAIM=${PLEX_CLAIM_TOKEN}"
+      - "PUID=1000"
+      - "VERSION=docker"
+      - "HOME=/root"
+      - "LANGUAGE=en_US.UTF-8"
+      - "LANG=en_US.UTF-8"
+      - "TERM=xterm"
+      - "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0"
+      - "S6_VERBOSITY=1"
+      - "S6_STAGE2_HOOK=/docker-mods"
+      - "VIRTUAL_ENV=/lsiopy"
+      - "LSIO_FIRST_PARTY=true"
+      - "DEBIAN_FRONTEND=noninteractive"
+      - "PLEX_DOWNLOAD=https://downloads.plex.tv/plex-media-server-new"
+      - "PLEX_ARCH=amd64"
+      - "PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR=/config/Library/Application Support"
+      - "PLEX_MEDIA_SERVER_HOME=/usr/lib/plexmediaserver"
+      - "PLEX_MEDIA_SERVER_MAX_PLUGIN_PROCS=6"
+      - "PLEX_MEDIA_SERVER_USER=abc"
+      - "PLEX_MEDIA_SERVER_INFO_VENDOR=Docker"
+      - "PLEX_MEDIA_SERVER_INFO_DEVICE=Docker Container (LinuxServer.io)"
+      - "TMPDIR=/run/plex-temp"
+    hostname: "serenity"
+    image: "ghcr.io/linuxserver/plex:latest"
+    ipc: "private"
+    labels:
+      build_version: "Linuxserver.io version:- 1.24.3.5033-757abe6b4-ls76 Build-date:- 2021-09-28T05:58:19+02:00"
+      maintainer: "thelamer"
+      org.opencontainers.image.authors: "linuxserver.io"
+      org.opencontainers.image.created: "2021-09-28T05:58:19+02:00"
+      org.opencontainers.image.description: "[Plex](https://plex.tv) organizes video, music and photos\
+        \ from personal media libraries and streams them to smart TVs, streaming boxes and mobile devices.\
+        \ This container is packaged as a standalone Plex Media Server. has always been a top priority.\
+        \ Straightforward design and bulk actions mean getting things done faster."
+      org.opencontainers.image.documentation: "https://docs.linuxserver.io/images/docker-plex"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+      org.opencontainers.image.ref.name: "7f6e08ef13287e8ba33009e9ec473c6e86917a3c"
+      org.opencontainers.image.revision: "7f6e08ef13287e8ba33009e9ec473c6e86917a3c"
+      org.opencontainers.image.source: "https://github.com/linuxserver/docker-plex"
+      org.opencontainers.image.title: "Plex"
+      org.opencontainers.image.url: "https://github.com/linuxserver/docker-plex/packages"
+      org.opencontainers.image.vendor: "linuxserver.io"
+      org.opencontainers.image.version: "1.24.3.5033-757abe6b4-ls76"
+      traefik.http.routers.plex.rule: "Host(`plex.nova`)"
+    logging:
+      driver: "json-file"
+      options: {}
+    network_mode: "host"
+    ports:
+      - "32800:32800/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_config/plex_config/_data:/config"
+      - "/data1/plex_data_1/_data:/library1"
+      - "/data2:/library2"
+      - "/data3/movies:/library3/movies"
+      - "/data3/tv:/library3/tv"
+    working_dir: "/"
+
+  prowlarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "prowlarr"
+    entrypoint:
+      - "/init"
+    environment:
+      - "TZ=Etc/UTC"
+      - "PUID=1000"
+      - "PGID=1000"
+      - "PATH=/lsiopy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "PS1=$$(whoami)@$$(hostname):$$(pwd)\\$$"
+      - "HOME=/root"
+      - "TERM=xterm"
+      - "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0"
+      - "S6_VERBOSITY=1"
+      - "S6_STAGE2_HOOK=/docker-mods"
+      - "VIRTUAL_ENV=/lsiopy"
+      - "LSIO_FIRST_PARTY=true"
+      - "XDG_CONFIG_HOME=/config/xdg"
+      - "COMPlus_EnableDiagnostics=0"
+      - "TMPDIR=/run/prowlarr-temp"
+    hostname: "1d08e4948609"
+    image: "lscr.io/linuxserver/prowlarr:latest"
+    ipc: "private"
+    labels:
+      build_version: "Linuxserver.io version:- 2.3.0.5236-ls136 Build-date:- 2026-02-04T05:01:26+00:00"
+      com.docker.compose.config-hash: "ce0eef9d01f896d1eb02df934bd5a9184c04768edef18d2bfed5aab3e1d60a0e"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:0896dd6c8b696d781d6e99c4117b4545eccd9b1ecd6c1304903a22838b3e73b1"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "prowlarr"
+      com.docker.compose.project.config_files: "/home/koonan/prowlarr/docker-compose.yaml"
+      com.docker.compose.project.working_dir: "/home/koonan/prowlarr"
+      com.docker.compose.service: "prowlarr"
+      com.docker.compose.version: "2.35.1"
+      maintainer: "Roxedus,thespad"
+      org.opencontainers.image.authors: "linuxserver.io"
+      org.opencontainers.image.created: "2026-02-04T05:01:26+00:00"
+      org.opencontainers.image.description: "[Prowlarr](https://github.com/Prowlarr/Prowlarr) is a indexer\
+        \ manager/proxy built on the popular arr .net/reactjs base stack to integrate with your various\
+        \ PVR apps. Prowlarr supports both Torrent Trackers and Usenet Indexers. It integrates seamlessly\
+        \ with Sonarr, Radarr, Lidarr, and Readarr offering complete management of your indexers with\
+        \ no per app Indexer setup required (we do it all).  "
+      org.opencontainers.image.documentation: "https://docs.linuxserver.io/images/docker-prowlarr"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+      org.opencontainers.image.ref.name: "c69d919784c79f1b91f0a33d7869e0e3746f404b"
+      org.opencontainers.image.revision: "c69d919784c79f1b91f0a33d7869e0e3746f404b"
+      org.opencontainers.image.source: "https://github.com/linuxserver/docker-prowlarr"
+      org.opencontainers.image.title: "Prowlarr"
+      org.opencontainers.image.url: "https://github.com/linuxserver/docker-prowlarr/packages"
+      org.opencontainers.image.vendor: "linuxserver.io"
+      org.opencontainers.image.version: "2.3.0.5236-ls136"
+    logging:
+      driver: "json-file"
+      options: {}
+    mac_address: "e6:35:6b:a7:1b:ad"
+    networks:
+      - "media"
+    ports:
+      - "9696:9696/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/path/to/prowlarr/data:/config"
+    working_dir: "/"
+
+  radarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "radarr"
+    entrypoint:
+      - "/init"
+    environment:
+      - "LANG=en_US.UTF-8"
+      - "LANGUAGE=en_US.UTF-8"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "PGID=1000"
+      - "PS1=$$(whoami)@$$(hostname):$$(pwd)\\$$"
+      - "PUID=1000"
+      - "TZ=America/Chicago"
+      - "HOME=/root"
+      - "TERM=xterm"
+      - "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0"
+      - "S6_VERBOSITY=1"
+      - "S6_STAGE2_HOOK=/docker-mods"
+      - "VIRTUAL_ENV=/lsiopy"
+      - "LSIO_FIRST_PARTY=true"
+      - "XDG_CONFIG_HOME=/config/xdg"
+      - "COMPlus_EnableDiagnostics=0"
+      - "TMPDIR=/run/radarr-temp"
+    hostname: "155d40782f42"
+    image: "ghcr.io/linuxserver/radarr:latest"
+    ipc: "private"
+    labels:
+      build_version: "Linuxserver.io version:- 3.2.2.5080-ls117 Build-date:- 2021-09-27T17:58:47+02:00"
+      maintainer: "thelamer"
+      org.opencontainers.image.authors: "linuxserver.io"
+      org.opencontainers.image.created: "2021-09-27T17:58:47+02:00"
+      org.opencontainers.image.description: "[Radarr](https://github.com/Radarr/Radarr) - A fork of Sonarr\
+        \ to work with movies à la Couchpotato.  "
+      org.opencontainers.image.documentation: "https://docs.linuxserver.io/images/docker-radarr"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+      org.opencontainers.image.ref.name: "3d3be90eb1f3277c6fd53e3dee434052f08bd0dc"
+      org.opencontainers.image.revision: "3d3be90eb1f3277c6fd53e3dee434052f08bd0dc"
+      org.opencontainers.image.source: "https://github.com/linuxserver/docker-radarr"
+      org.opencontainers.image.title: "Radarr"
+      org.opencontainers.image.url: "https://github.com/linuxserver/docker-radarr/packages"
+      org.opencontainers.image.vendor: "linuxserver.io"
+      org.opencontainers.image.version: "3.2.2.5080-ls117"
+      traefik.enable: "true"
+      traefik.http.routers.radarr.entrypoints: "web"
+      traefik.http.routers.radarr.rule: "Host(`/radarr`)"
+      traefik.http.services.radarr.loadbalancer.server.port: "7878"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "media"
+    ports:
+      - "7878:7878/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/movies:/plex_movies_1"
+      - "/data2/movies:/plex_movies_2"
+      - "/data3/movies:/plex_movies_3"
+      - "radarr_config:/config"
+      - "transmission_data:/data"
+    working_dir: "/"
+
+  sonarr:
+    cap_drop:
+      - "CAP_AUDIT_CONTROL"
+      - "CAP_BLOCK_SUSPEND"
+      - "CAP_DAC_READ_SEARCH"
+      - "CAP_IPC_LOCK"
+      - "CAP_IPC_OWNER"
+      - "CAP_LEASE"
+      - "CAP_LINUX_IMMUTABLE"
+      - "CAP_MAC_ADMIN"
+      - "CAP_MAC_OVERRIDE"
+      - "CAP_NET_ADMIN"
+      - "CAP_NET_BROADCAST"
+      - "CAP_SYSLOG"
+      - "CAP_SYS_ADMIN"
+      - "CAP_SYS_BOOT"
+      - "CAP_SYS_MODULE"
+      - "CAP_SYS_NICE"
+      - "CAP_SYS_PACCT"
+      - "CAP_SYS_PTRACE"
+      - "CAP_SYS_RAWIO"
+      - "CAP_SYS_RESOURCE"
+      - "CAP_SYS_TIME"
+      - "CAP_SYS_TTY_CONFIG"
+      - "CAP_WAKE_ALARM"
+    container_name: "sonarr"
+    entrypoint:
+      - "/init"
+    environment:
+      - "PGID=1000"
+      - "PUID=1000"
+      - "TZ=America/Chicago"
+      - "PATH=/lsiopy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "PS1=$$(whoami)@$$(hostname):$$(pwd)\\$$ "
+      - "HOME=/root"
+      - "TERM=xterm"
+      - "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0"
+      - "S6_VERBOSITY=1"
+      - "S6_STAGE2_HOOK=/docker-mods"
+      - "VIRTUAL_ENV=/lsiopy"
+      - "LSIO_FIRST_PARTY=true"
+      - "XDG_CONFIG_HOME=/config/xdg"
+      - "SONARR_CHANNEL=v4-stable"
+      - "SONARR_BRANCH=main"
+      - "COMPlus_EnableDiagnostics=0"
+      - "TMPDIR=/run/sonarr-temp"
+    hostname: "21cab3d173e2"
+    image: "ghcr.io/linuxserver/sonarr:latest"
+    ipc: "private"
+    labels:
+      build_version: "Linuxserver.io version:- 3.0.6.1342-ls124 Build-date:- 2021-10-01T00:32:18+02:00"
+      maintainer: "thespad"
+      org.opencontainers.image.authors: "linuxserver.io"
+      org.opencontainers.image.created: "2021-10-01T00:32:18+02:00"
+      org.opencontainers.image.description: "[Sonarr](https://sonarr.tv/) (formerly NZBdrone) is a PVR\
+        \ for usenet and bittorrent users. It can monitor multiple RSS feeds for new episodes of your\
+        \ favorite shows and will grab, sort and rename them. It can also be configured to automatically\
+        \ upgrade the quality of files already downloaded when a better quality format becomes available.\
+        \  "
+      org.opencontainers.image.documentation: "https://docs.linuxserver.io/images/docker-sonarr"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+      org.opencontainers.image.ref.name: "3c26433c5a0bce74a278dae904eec769077aeb6f"
+      org.opencontainers.image.revision: "3c26433c5a0bce74a278dae904eec769077aeb6f"
+      org.opencontainers.image.source: "https://github.com/linuxserver/docker-sonarr"
+      org.opencontainers.image.title: "Sonarr"
+      org.opencontainers.image.url: "https://github.com/linuxserver/docker-sonarr/packages"
+      org.opencontainers.image.vendor: "linuxserver.io"
+      org.opencontainers.image.version: "3.0.6.1342-ls124"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "media"
+    ports:
+      - "8989:8989/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/tv:/plex_tv_1"
+      - "/data2/tv:/plex_tv_2"
+      - "/data3/tv:/plex_tv_3"
+      - "sonarr_config:/config"
+      - "transmission_data:/data"
+    working_dir: "/"
+
+  tautulli:
+    command:
+      - "python"
+      - "Tautulli.py"
+      - "--datadir"
+      - "/config"
+    container_name: "tautulli"
+    entrypoint:
+      - "./start.sh"
+    environment:
+      - "PGID=1000"
+      - "TZ=America/Chicago"
+      - "PUID=1000"
+      - "GPG_KEY=E3FF2839C048B25C084DEBE9B26995E310250568"
+      - "PYTHON_VERSION=3.9.16"
+      - "PYTHON_PIP_VERSION=22.0.4"
+      - "PYTHON_SETUPTOOLS_VERSION=58.1.0"
+      - "PYTHON_GET_PIP_URL=https://github.com/pypa/get-pip/raw/d5cb0afaf23b8520f1bbcfed521017b4a95f5c01/public/get-pip.py"
+      - "PYTHON_GET_PIP_SHA256=394be00f13fa1b9aaa47e911bdb59a09c3b2986472130f30aa0bfaf7f3980637"
+      - "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "LANG=C.UTF-8"
+      - "PYTHON_SHA256=2a9920c7a0cd236de33644ed980a13cbbc21058bfdc528febb6081575ed73be3"
+      - "TAUTULLI_DOCKER=True"
+    hostname: "97f2eff809c1"
+    image: "ghcr.io/tautulli/tautulli:latest"
+    ipc: "private"
+    labels:
+      maintainer: "Tautulli"
+      org.opencontainers.image.created: "2025-09-09T00:57:49.263Z"
+      org.opencontainers.image.description: "A Python based monitoring and tracking tool for Plex Media\
+        \ Server."
+      org.opencontainers.image.licenses: "GPL-3.0"
+      org.opencontainers.image.revision: "cc0150a1b2b745980467003a73aa1be51c1e426a"
+      org.opencontainers.image.source: "https://github.com/Tautulli/Tautulli"
+      org.opencontainers.image.title: "Tautulli"
+      org.opencontainers.image.url: "https://github.com/Tautulli/Tautulli"
+      org.opencontainers.image.version: "master"
+    logging:
+      driver: "json-file"
+      options: {}
+    mac_address: "e2:ef:0d:7f:e9:17"
+    network_mode: "bridge"
+    ports:
+      - "8181:8181/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "tautulli_config:/config"
+    working_dir: "/app"
+
+  transmission:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    command:
+      - "dumb-init"
+      - "/etc/openvpn/start.sh"
+    container_name: "transmission"
+    environment:
+      - "CREATE_TUN_DEVICE=true"
+      - "DROP_DEFAULT_ROUTE="
+      - "ENABLE_UFW=false"
+      - "GLOBAL_APPLY_PERMISSIONS=true"
+      - "HEALTH_CHECK_HOST=google.com"
+      - "LOCAL_NETWORK=10.0.0.0/16"
+      - "LOG_TO_STDOUT=false"
+      - "OPENVPN_CONFIG=se_all"
+      - "OPENVPN_PASSWORD=${TRANSMISSION_OPENVPN_PASSWORD}"
+      - "OPENVPN_PROVIDER=MULLVAD"
+      - "OPENVPN_USERNAME=${TRANSMISSION_OPENVPN_USERNAME}"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "PEER_DNS=true"
+      - "PEER_DNS_PIN_ROUTES=true"
+      - "PGID=1000"
+      - "PUID=1000"
+      - "REVISION=ae45b1f22178ddee089d9ea10d4732dbde2d8ef2"
+      - "SELFHEAL=false"
+      - "TRANSMISSION_DOWNLOAD_DIR=/data/completed"
+      - "TRANSMISSION_HOME=/data/transmission-home"
+      - "TRANSMISSION_INCOMPLETE_DIR=/data/incomplete"
+      - "TRANSMISSION_RPC_PORT=9091"
+      - "TRANSMISSION_WATCH_DIR=/data/watch"
+      - "UFW_ALLOW_GW_NET=false"
+      - "UFW_DISABLE_IPTABLES_REJECT=false"
+      - "UFW_EXTRA_PORTS="
+      - "WEBPROXY_ENABLED=false"
+      - "WEBPROXY_PASSWORD=${TRANSMISSION_WEBPROXY_PASSWORD:-}"
+      - "WEBPROXY_PORT=8118"
+      - "WEBPROXY_USERNAME=${TRANSMISSION_WEBPROXY_USERNAME:-}"
+      - "TRANSMISSION_RPC_USERNAME=${TRANSMISSION_RPC_USERNAME:-}"
+      - "TRANSMISSION_RPC_PASSWORD=${TRANSMISSION_RPC_PASSWORD:-}"
+      - "OPENVPN_OPTS="
+      - "WEBPROXY_BIND_ADDRESS="
+    hostname: "bf9d2a3af845"
+    image: "haugene/transmission-openvpn:dev"
+    ipc: "private"
+    labels:
+      autoheal: "true"
+      org.opencontainers.image.created: "2025-05-28T19:05:34.665Z"
+      org.opencontainers.image.description: "Docker container running Transmission torrent client with\
+        \ WebUI over an OpenVPN tunnel"
+      org.opencontainers.image.licenses: "GPL-3.0"
+      org.opencontainers.image.ref.name: "ubuntu"
+      org.opencontainers.image.revision: "ae45b1f22178ddee089d9ea10d4732dbde2d8ef2"
+      org.opencontainers.image.source: "https://github.com/haugene/docker-transmission-openvpn"
+      org.opencontainers.image.title: "docker-transmission-openvpn"
+      org.opencontainers.image.url: "https://github.com/haugene/docker-transmission-openvpn"
+      org.opencontainers.image.version: "dev"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+    networks:
+      - "media"
+    ports:
+      - "9094:9091/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "transmission_config:/config"
+      - "transmission_data:/data"
+
+version: "3.6"
+
+volumes:
+
+  bazarr_config:
+    external: true
+
+  overseerr_config:
+    external: true
+
+  radarr_config:
+    external: true
+
+  sonarr_config:
+    external: true
+
+  tautulli_config:
+    external: true
+
+  transmission_config:
+    external: true
+
+  transmission_data:
+    external: true
