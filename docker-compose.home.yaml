@@ -1,0 +1,248 @@
+# Home Automation Stack - Home Assistant, Z-Wave, Music Assistant
+# Usage: docker compose -f docker-compose.home.yaml up -d
+# Requires .env file for: ZWAVE_SESSION_SECRET
+
+networks:
+  zwave_zwave:
+    external: true
+    name: "zwave_zwave"
+
+services:
+
+  homeassistant:
+
+    cap_drop:
+      - "CAP_AUDIT_CONTROL"
+      - "CAP_BLOCK_SUSPEND"
+      - "CAP_DAC_READ_SEARCH"
+      - "CAP_IPC_LOCK"
+      - "CAP_IPC_OWNER"
+      - "CAP_LEASE"
+      - "CAP_LINUX_IMMUTABLE"
+      - "CAP_MAC_ADMIN"
+      - "CAP_MAC_OVERRIDE"
+      - "CAP_NET_ADMIN"
+      - "CAP_NET_BROADCAST"
+      - "CAP_SYSLOG"
+      - "CAP_SYS_ADMIN"
+      - "CAP_SYS_BOOT"
+      - "CAP_SYS_MODULE"
+      - "CAP_SYS_NICE"
+      - "CAP_SYS_PACCT"
+      - "CAP_SYS_PTRACE"
+      - "CAP_SYS_RAWIO"
+      - "CAP_SYS_RESOURCE"
+      - "CAP_SYS_TIME"
+      - "CAP_SYS_TTY_CONFIG"
+      - "CAP_WAKE_ALARM"
+
+    container_name: "homeassistant"
+
+    entrypoint:
+      - "/init"
+
+    environment:
+      - "LANG=C.UTF-8"
+      - "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "S6_BEHAVIOUR_IF_STAGE2_FAILS=2"
+      - "S6_CMD_WAIT_FOR_SERVICES=1"
+      - "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0"
+      - "S6_SERVICES_GRACETIME=220000"
+      - "S6_SERVICES_READYTIME=50"
+      - "TZ=America/Chicago"
+      - "WHEELS_LINKS=https://wheels.home-assistant.io/alpine-3.14/amd64/"
+      - "UV_EXTRA_INDEX_URL=https://wheels.home-assistant.io/musllinux-index/"
+      - "UV_SYSTEM_PYTHON=true"
+      - "UV_NO_CACHE=true"
+
+    hostname: "serenity"
+
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+
+    ipc: "private"
+
+    labels:
+      io.hass.arch: "amd64"
+      io.hass.base.arch: "amd64"
+      io.hass.base.image: "homeassistant/amd64-base:3.14"
+      io.hass.base.name: "python"
+      io.hass.base.version: "2021.09.1"
+      io.hass.type: "core"
+      io.hass.version: "2021.10.6"
+      org.opencontainers.image.authors: "The Home Assistant Authors"
+      org.opencontainers.image.created: "2021-10-18 06:34:53+00:00"
+      org.opencontainers.image.description: "Open-source home automation platform running on Python 3"
+      org.opencontainers.image.documentation: "https://www.home-assistant.io/docs/"
+      org.opencontainers.image.licenses: "Apache License 2.0"
+      org.opencontainers.image.source: "https://github.com/home-assistant/core"
+      org.opencontainers.image.title: "Home Assistant"
+      org.opencontainers.image.url: "https://www.home-assistant.io/"
+      org.opencontainers.image.version: "2021.10.6"
+
+    logging:
+      driver: "json-file"
+      options: {}
+
+    network_mode: "host"
+
+    privileged: true
+
+    restart: "unless-stopped"
+
+    security_opt:
+      - "label=disable"
+
+    volumes:
+      - "ha_config:/config"
+
+    working_dir: "/config"
+
+  music-assistant-server:
+
+    container_name: "music-assistant-server"
+
+    entrypoint:
+      - "/usr/local/bin/entrypoint.sh"
+      - "--data-dir"
+      - "/data"
+      - "--cache-dir"
+      - "/data/.cache"
+
+    environment:
+      - "LOG_LEVEL=info"
+      - "PATH=/app/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305"
+      - "PYTHON_VERSION=3.13.11"
+      - "PYTHON_SHA256=16ede7bb7cdbfa895d11b0642fa0e523f291e6487194d53cf6d3b338c3a17ea2"
+      - "VIRTUAL_ENV=/app/venv"
+
+    expose:
+      - "8095/tcp"
+
+    hostname: "nova"
+
+    image: "ghcr.io/music-assistant/server:latest"
+
+    ipc: "private"
+
+    labels:
+      com.docker.compose.config-hash: "5e5157352c304e9e3d253c2e00378cbc193a3a227071ae4a9f1849c1adaa5e60"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:2d9e8e000490f14c40aeeb723bfa8c0b5da2c79412036493cd6749cd95772cf5"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "music-assistant"
+      com.docker.compose.project.config_files: "/home/koonan/music-assistant/docker-compose.yaml"
+      com.docker.compose.project.working_dir: "/home/koonan/music-assistant"
+      com.docker.compose.service: "music-assistant-server"
+      com.docker.compose.version: "2.35.1"
+      io.hass.description: "Music Assistant Server"
+      io.hass.name: "Music Assistant Server"
+      io.hass.platform: "linux/amd64"
+      io.hass.type: "addon"
+      io.hass.version: "2.7.6"
+      org.opencontainers.image.authors: "The Music Assistant Team"
+      org.opencontainers.image.description: "Music Assistant is a free, opensource Media library manager\
+        \ that connects to your streaming services and a wide range of connected speakers. The server\
+        \ is the beating heart, the core of Music Assistant and must run on an always-on device like a\
+        \ Raspberry Pi, a NAS or an Intel NUC or alike."
+      org.opencontainers.image.documentation: "https://music-assistant.io"
+      org.opencontainers.image.licenses: "Apache License 2.0"
+      org.opencontainers.image.source: "https://github.com/music-assistant/server"
+      org.opencontainers.image.title: "Music Assistant Server"
+
+    logging:
+      driver: "json-file"
+      options: {}
+
+    network_mode: "host"
+
+    restart: "unless-stopped"
+
+    security_opt:
+      - "apparmor:unconfined"
+
+    volumes:
+      - "/home/koonan/docker/music-assistant-server/data:/data"
+
+    working_dir: "/app/venv"
+
+  zwave-js-ui:
+
+    command:
+      - "node"
+      - "server/bin/www"
+
+    container_name: "zwave-js-ui"
+
+    devices:
+      - "/dev/serial/by-id/usb-Zooz_800_Z-Wave_Stick_533D004242-if00:/dev/zwave"
+
+    environment:
+      - "ZWAVEJS_EXTERNAL_CONFIG=/usr/src/app/store/.config-db"
+      - "TZ=America/Chicago"
+      - "SESSION_SECRET=${ZWAVE_SESSION_SECRET}"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "TAG_NAME="
+      - "NODE_ENV=production"
+
+    hostname: "dfc2d38d29a3"
+
+    image: "zwavejs/zwave-js-ui:latest"
+
+    ipc: "private"
+
+    labels:
+      com.docker.compose.config-hash: "8b32164dc70e2cd42b7f1bb9de09b010306923a7acac6a866e46621a8bf001e3"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:a5f36f9f363c1d45e70c3d779a70045d379781807dafe3c730df5ef45d270dea"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "zwave"
+      com.docker.compose.project.config_files: "/opt/stacks/zwave/compose.yaml"
+      com.docker.compose.project.working_dir: "/opt/stacks/zwave"
+      com.docker.compose.service: "zwave-js-ui"
+      com.docker.compose.version: "2.34.0"
+      maintainer: "robertsLando"
+      org.opencontainers.image.authors: "Daniel Lando <daniel.sorridi@gmail.com>"
+      org.opencontainers.image.created: "2025-10-29T16:51:49.611Z"
+      org.opencontainers.image.description: "Full featured Z-Wave Control Panel UI and MQTT gateway. Built\
+        \ using Nodejs, and Vue/Vuetify"
+      org.opencontainers.image.documentation: "https://zwave-js.github.io/zwave-js-ui"
+      org.opencontainers.image.licenses: "MIT"
+      org.opencontainers.image.revision: "44b16b2d3de4841ff6b3f29dcc15cd6e6931d6bd"
+      org.opencontainers.image.source: "https://github.com/zwave-js/zwave-js-ui"
+      org.opencontainers.image.title: "zwave-js-ui"
+      org.opencontainers.image.url: "https://github.com/zwave-js/zwave-js-ui"
+      org.opencontainers.image.vendor: "zwave-js"
+      org.opencontainers.image.version: "11.6.1"
+
+    logging:
+      driver: "json-file"
+      options: {}
+
+    networks:
+      - "zwave_zwave"
+
+    ports:
+      - "3002:3000/tcp"
+      - "8091:8091/tcp"
+
+    restart: "always"
+
+    tty: true
+
+    volumes:
+      - "zwave-js-ui:/usr/src/app/store"
+
+    working_dir: "/usr/src/app"
+
+version: "3.6"
+
+volumes:
+
+  ha_config:
+    external: true
+
+  zwave-js-ui:
+    external: true

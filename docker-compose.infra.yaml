@@ -1,0 +1,345 @@
+# Infrastructure Stack - Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Volume Sharer
+# Usage: docker compose -f docker-compose.infra.yaml up -d
+# Requires .env file for: DUCKDNS_TOKEN
+
+networks:
+  dockge_default:
+    external: true
+    name: "dockge_default"
+  traefik_default:
+    external: true
+    name: "traefik_default"
+  wud_default:
+    external: true
+    name: "wud_default"
+
+services:
+
+  dockge-dockge-1:
+    command:
+      - "tsx"
+      - "./backend/index.ts"
+    container_name: "dockge-dockge-1"
+    entrypoint:
+      - "/usr/bin/dumb-init"
+      - "--"
+    environment:
+      - "DOCKGE_STACKS_DIR=/opt/stacks"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "NODE_VERSION=22.14.0"
+      - "YARN_VERSION=1.22.22"
+      - "UV_USE_IO_URING=0"
+    hostname: "991d256607d3"
+    image: "louislam/dockge:1"
+    ipc: "private"
+    labels:
+      com.docker.compose.config-hash: "3f050a39e79270d9c2d6af4bb70ec1687282588958b84d68d2191911ad605707"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:e85d511b2a8b883da8a1ac2fde39ecddacdc011734e9f89a14b7798d82d5a0d3"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "dockge"
+      com.docker.compose.project.config_files: "/opt/dockge/compose.yaml"
+      com.docker.compose.project.working_dir: "/opt/dockge"
+      com.docker.compose.service: "dockge"
+      com.docker.compose.version: "2.35.1"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "dockge_default"
+    ports:
+      - "5001:5001/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/opt/dockge/data:/app/data"
+      - "/opt/stacks:/opt/stacks"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    working_dir: "/app"
+
+  duckdns:
+
+    container_name: "duckdns"
+
+    entrypoint:
+      - "/init"
+
+    environment:
+      - "SUBDOMAINS=firefly-koonan"
+      - "TOKEN=${DUCKDNS_TOKEN}"
+      - "PATH=/lsiopy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "PS1=$$(whoami)@$$(hostname):$$(pwd)\\$$ "
+      - "HOME=/root"
+      - "TERM=xterm"
+      - "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0"
+      - "S6_VERBOSITY=1"
+      - "S6_STAGE2_HOOK=/docker-mods"
+      - "VIRTUAL_ENV=/lsiopy"
+      - "LSIO_FIRST_PARTY=true"
+
+    hostname: "8626b7da157a"
+
+    image: "lscr.io/linuxserver/duckdns:latest"
+
+    ipc: "private"
+
+    labels:
+      build_version: "Linuxserver.io version:- 95e5988b-ls68 Build-date:- 2025-10-27T04:22:01+00:00"
+      maintainer: "aptalca"
+      org.opencontainers.image.authors: "linuxserver.io"
+      org.opencontainers.image.created: "2025-10-27T04:22:01+00:00"
+      org.opencontainers.image.description: "[Duckdns](https://duckdns.org/) is a free service which will\
+        \ point a DNS (sub domains of duckdns.org) to an IP of your choice. The service is completely\
+        \ free, and doesn't require reactivation or forum posts to maintain its existence."
+      org.opencontainers.image.documentation: "https://docs.linuxserver.io/images/docker-duckdns"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+      org.opencontainers.image.ref.name: "1da47edc1359ef22c2c1368f598e67679fd9de26"
+      org.opencontainers.image.revision: "1da47edc1359ef22c2c1368f598e67679fd9de26"
+      org.opencontainers.image.source: "https://github.com/linuxserver/docker-duckdns"
+      org.opencontainers.image.title: "Duckdns"
+      org.opencontainers.image.url: "https://github.com/linuxserver/docker-duckdns/packages"
+      org.opencontainers.image.vendor: "linuxserver.io"
+      org.opencontainers.image.version: "95e5988b-ls68"
+
+    logging:
+      driver: "json-file"
+      options: {}
+
+    mac_address: "7a:ef:8b:9f:d7:98"
+
+    network_mode: "bridge"
+
+    restart: "unless-stopped"
+
+    working_dir: "/"
+
+  homepage:
+
+    container_name: "homepage"
+
+    image: "ghcr.io/gethomepage/homepage:latest"
+
+    environment:
+      - "PUID=1000"
+      - "PGID=1000"
+      - "TZ=America/Chicago"
+
+    ports:
+      - "3000:3000/tcp"
+
+    restart: "unless-stopped"
+
+    volumes:
+      - "homepage_config:/app/config"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  portainer:
+
+    container_name: "portainer"
+
+    entrypoint:
+      - "/portainer"
+
+    environment:
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+    hostname: "1bc9e6af38ae"
+
+    image: "portainer/portainer-ce:latest"
+
+    ipc: "private"
+
+    labels:
+      com.docker.desktop.extension.api.version: ">= 0.2.2"
+      com.docker.desktop.extension.icon: "https://portainer-io-assets.sfo2.cdn.digitaloceanspaces.com/logos/portainer.png"
+      com.docker.extension.additional-urls: "[{\"title\":\"Website\",\"url\":\"https://www.portainer.io?utm_campaign=DockerCon&utm_source=DockerDesktop\"\
+        },{\"title\":\"Documentation\",\"url\":\"https://docs.portainer.io\"},{\"title\":\"Support\",\"\
+        url\":\"https://join.slack.com/t/portainer/shared_invite/zt-txh3ljab-52QHTyjCqbe5RibC2lcjKA\"\
+        }]"
+      com.docker.extension.detailed-description: "<p data-renderer-start-pos=\"226\">Portainer&rsquo;s\
+        \ Docker Desktop extension gives you access to all of Portainer&rsquo;s rich management functionality\
+        \ within your docker desktop experience.</p><h2 data-renderer-start-pos=\"374\">With Portainer\
+        \ you can:</h2><ul><li>See all your running containers</li><li>Easily view all of your container\
+        \ logs</li><li>Console into containers</li><li>Easily deploy your code into containers using a\
+        \ simple form</li><li>Turn your YAML into custom templates for easy reuse</li></ul><h2 data-renderer-start-pos=\"\
+        660\">About Portainer&nbsp;</h2><p data-renderer-start-pos=\"680\">Portainer is the worlds&rsquo;\
+        \ most popular universal container management platform with more than 650,000 active monthly users.\
+        \ Portainer can be used to manage Docker Standalone, Kubernetes and Docker Swarm environments\
+        \ through a single common interface. It includes a simple GitOps automation engine and a Kube\
+        \ API.&nbsp;</p><p data-renderer-start-pos=\"1006\">Portainer Business Edition is our fully supported\
+        \ commercial grade product for business-wide use. It includes all the functionality that businesses\
+        \ need to manage containers at scale. Visit <a class=\"sc-jKJlTe dPfAtb\" href=\"http://portainer.io/\"\
+        \ title=\"http://Portainer.io\" data-renderer-mark=\"true\">Portainer.io</a> to learn more about\
+        \ Portainer Business and <a class=\"sc-jKJlTe dPfAtb\" href=\"http://portainer.io/take-3?utm_campaign=DockerCon&amp;utm_source=Docker%20Desktop\"\
+        \ title=\"http://portainer.io/take-3?utm_campaign=DockerCon&amp;utm_source=Docker%20Desktop\"\
+        \ data-renderer-mark=\"true\">get 3 free nodes.</a></p>"
+      com.docker.extension.publisher-url: "https://www.portainer.io"
+      com.docker.extension.screenshots: "[{\"alt\": \"screenshot one\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-1.png\"\
+        },{\"alt\": \"screenshot two\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-2.png\"\
+        },{\"alt\": \"screenshot three\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-3.png\"\
+        },{\"alt\": \"screenshot four\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-4.png\"\
+        },{\"alt\": \"screenshot five\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-5.png\"\
+        },{\"alt\": \"screenshot six\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-6.png\"\
+        },{\"alt\": \"screenshot seven\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-7.png\"\
+        },{\"alt\": \"screenshot eight\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-8.png\"\
+        },{\"alt\": \"screenshot nine\", \"url\": \"https://portainer-io-assets.sfo2.digitaloceanspaces.com/screenshots/docker-extension-9.png\"\
+        }]"
+      io.portainer.server: "true"
+      org.opencontainers.image.description: "Docker container management made simple, with the world's\
+        \ most popular GUI-based container management platform."
+      org.opencontainers.image.title: "Portainer"
+      org.opencontainers.image.vendor: "Portainer.io"
+
+    logging:
+      driver: "json-file"
+      options: {}
+
+    mac_address: "5e:08:8b:3d:44:fc"
+
+    network_mode: "bridge"
+
+    ports:
+      - "9000:9000/tcp"
+      - "9443:9443/tcp"
+
+    restart: "always"
+
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "portainer_data:/data"
+
+    working_dir: "/"
+
+  traefik-traefik-1:
+
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+
+    container_name: "traefik-traefik-1"
+
+    entrypoint:
+      - "/entrypoint.sh"
+
+    environment:
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+    hostname: "791e5a959ea1"
+
+    image: "traefik:v3.6"
+
+    ipc: "private"
+
+    labels:
+      com.docker.compose.config-hash: "94ad8ca976eec0cb23c03c7b973ae6cdc2599586e79d35bedde667ebc2001b0e"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:f174a52e1993a764172bba2c07106a766f2895b2b069a19c7d3bb6f69a18d222"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "traefik"
+      com.docker.compose.project.config_files: "/opt/stacks/traefik/compose.yaml"
+      com.docker.compose.project.working_dir: "/opt/stacks/traefik"
+      com.docker.compose.replace: "40753551fcf2b0164ffacd98af763fd3022ef332546fd3442aaf4204807c045f"
+      com.docker.compose.service: "traefik"
+      com.docker.compose.version: "2.34.0"
+      org.opencontainers.image.description: "A modern reverse-proxy"
+      org.opencontainers.image.documentation: "https://docs.traefik.io"
+      org.opencontainers.image.source: "https://github.com/traefik/traefik"
+      org.opencontainers.image.title: "Traefik"
+      org.opencontainers.image.url: "https://traefik.io"
+      org.opencontainers.image.vendor: "Traefik Labs"
+      org.opencontainers.image.version: "v3.6.6"
+
+    logging:
+      driver: "json-file"
+      options: {}
+
+    networks:
+      - "traefik_default"
+
+    ports:
+      - "80:80/tcp"
+      - "8080:8080/tcp"
+
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+    working_dir: "/"
+
+  volume-sharer:
+    container_name: "volume-sharer"
+    entrypoint:
+      - "volume-sharer.sh"
+    environment:
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "USERID=0"
+      - "GROUPID=0"
+    hostname: "serenity"
+    image: "gdiepen/volume-sharer"
+    ipc: "private"
+    logging:
+      driver: "json-file"
+      options: {}
+    network_mode: "host"
+    ports:
+      - "139:139/tcp"
+      - "445:445/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/var/lib/docker/volumes:/docker_volumes"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12:/etc/samba"
+
+  wud:
+    command:
+      - "node"
+      - "index"
+    container_name: "wud"
+    entrypoint:
+      - "/usr/bin/entrypoint.sh"
+    environment:
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - "NODE_VERSION=23.11.1"
+      - "YARN_VERSION=1.22.22"
+      - "WORKDIR=/home/node/app"
+      - "WUD_LOG_FORMAT=text"
+      - "WUD_VERSION=8.1.1"
+    hostname: "3c1f06c61711"
+    image: "getwud/wud"
+    ipc: "private"
+    labels:
+      com.docker.compose.config-hash: "18b44e4b81de65d265b1f1107242b63c2d890399fabf79a4ce3dab9ed77540ee"
+      com.docker.compose.container-number: "1"
+      com.docker.compose.depends_on: ""
+      com.docker.compose.image: "sha256:f39367c3ffad9a03cb2f540138902194de0f0b15a2cf9ab992ef6f0e908b94ea"
+      com.docker.compose.oneoff: "False"
+      com.docker.compose.project: "wud"
+      com.docker.compose.project.config_files: "/opt/stacks/wud/compose.yaml"
+      com.docker.compose.project.working_dir: "/opt/stacks/wud"
+      com.docker.compose.service: "whatsupdocker"
+      com.docker.compose.version: "2.34.0"
+      maintainer: "fmartinou"
+    logging:
+      driver: "json-file"
+      options: {}
+    networks:
+      - "wud_default"
+    ports:
+      - "3003:3000/tcp"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    working_dir: "/home/node/app"
+
+version: "3.6"
+
+volumes:
+
+  d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12:
+    external: true
+
+  homepage_config:
+    external: true
+
+  portainer_data:
+    external: true
