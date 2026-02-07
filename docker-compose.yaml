@@ -1,3 +1,9 @@
+# Docker Compose Configuration for Nova Self-Hosted Services
+# Requires .env file in the same directory
+# See .env.example for required environment variables
+#
+# DO NOT commit secrets to this file - use .env instead
+
 networks:
   backrest_default:
     external: true
@@ -234,7 +240,7 @@ services:
 
     environment:
       - "SUBDOMAINS=firefly-koonan"
-      - "TOKEN=REDACTED_DUCKDNS_TOKEN"
+      - "TOKEN=${DUCKDNS_TOKEN}"
       - "PATH=/lsiopy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       - "PS1=$$(whoami)@$$(hostname):$$(pwd)\\$$ "
       - "HOME=/root"
@@ -289,7 +295,7 @@ services:
       - "/init"
 
     environment:
-      - "SETTINGS_ENCRYPTION_KEY=REDACTED_DUPLICATI_ENCRYPTION_KEY"
+      - "SETTINGS_ENCRYPTION_KEY=${DUPLICATI_SETTINGS_ENCRYPTION_KEY}"
       - "PUID=1000"
       - "PGID=1000"
       - "TZ=America/Denver"
@@ -469,7 +475,7 @@ services:
 
     environment:
       - "IMMICH_VERSION=release"
-      - "DB_PASSWORD=REDACTED_IMMICH_DB_PASSWORD"
+      - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
       - "DB_USERNAME=postgres"
       - "DB_DATABASE_NAME=immich"
       - "UPLOAD_LOCATION=/data3/immich_data"
@@ -553,7 +559,7 @@ services:
 
     environment:
       - "POSTGRES_INITDB_ARGS=--data-checksums"
-      - "POSTGRES_PASSWORD=REDACTED_IMMICH_DB_PASSWORD"
+      - "POSTGRES_PASSWORD=${IMMICH_DB_PASSWORD}"
       - "POSTGRES_USER=postgres"
       - "POSTGRES_DB=immich"
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/14/bin"
@@ -655,7 +661,7 @@ services:
 
     environment:
       - "IMMICH_VERSION=release"
-      - "DB_PASSWORD=REDACTED_IMMICH_DB_PASSWORD"
+      - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
       - "DB_USERNAME=postgres"
       - "DB_DATABASE_NAME=immich"
       - "UPLOAD_LOCATION=/data3/immich_data"
@@ -1180,7 +1186,7 @@ services:
       - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       - "PGID=1000"
-      - "PLEX_CLAIM=REDACTED_PLEX_CLAIM_TOKEN"
+      - "PLEX_CLAIM=${PLEX_CLAIM_TOKEN}"
       - "PUID=1000"
       - "VERSION=docker"
       - "HOME=/root"
@@ -1818,9 +1824,9 @@ services:
       - "LOCAL_NETWORK=10.0.0.0/16"
       - "LOG_TO_STDOUT=false"
       - "OPENVPN_CONFIG=se_all"
-      - "OPENVPN_PASSWORD=REDACTED_OPENVPN_PASSWORD"
+      - "OPENVPN_PASSWORD=${TRANSMISSION_OPENVPN_PASSWORD}"
       - "OPENVPN_PROVIDER=MULLVAD"
-      - "OPENVPN_USERNAME=REDACTED_MULLVAD_USERNAME"
+      - "OPENVPN_USERNAME=${TRANSMISSION_OPENVPN_USERNAME}"
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       - "PEER_DNS=true"
       - "PEER_DNS_PIN_ROUTES=true"
@@ -1837,11 +1843,11 @@ services:
       - "UFW_DISABLE_IPTABLES_REJECT=false"
       - "UFW_EXTRA_PORTS="
       - "WEBPROXY_ENABLED=false"
-      - "WEBPROXY_PASSWORD="
+      - "WEBPROXY_PASSWORD=${TRANSMISSION_WEBPROXY_PASSWORD:-}"
       - "WEBPROXY_PORT=8118"
-      - "WEBPROXY_USERNAME="
-      - "TRANSMISSION_RPC_USERNAME="
-      - "TRANSMISSION_RPC_PASSWORD="
+      - "WEBPROXY_USERNAME=${TRANSMISSION_WEBPROXY_USERNAME:-}"
+      - "TRANSMISSION_RPC_USERNAME=${TRANSMISSION_RPC_USERNAME:-}"
+      - "TRANSMISSION_RPC_PASSWORD=${TRANSMISSION_RPC_PASSWORD:-}"
       - "OPENVPN_OPTS="
       - "WEBPROXY_BIND_ADDRESS="
 
@@ -2022,7 +2028,7 @@ services:
     environment:
       - "ZWAVEJS_EXTERNAL_CONFIG=/usr/src/app/store/.config-db"
       - "TZ=America/Chicago"
-      - "SESSION_SECRET=REDACTED_ZWAVE_SESSION_SECRET"
+      - "SESSION_SECRET=${ZWAVE_SESSION_SECRET}"
       - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       - "TAG_NAME="
       - "NODE_ENV=production"
