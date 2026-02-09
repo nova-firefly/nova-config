@@ -288,7 +288,6 @@ services:
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
-      - "DAC_READ_SEARCH"
       - "IPC_LOCK"
       - "IPC_OWNER"
       - "LEASE"
