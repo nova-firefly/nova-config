@@ -199,7 +199,7 @@ services:
       - "/data2/movies:/plex_movies_2"
       - "/data3/movies:/plex_movies_3"
       - "radarr_config:/config"
-      - "transmission_data:/data"
+      - "transmission_data:/downloads"
 
   sonarr:
     cap_drop:
@@ -242,7 +242,7 @@ services:
       - "/data2/tv:/plex_tv_2"
       - "/data3/tv:/plex_tv_3"
       - "sonarr_config:/config"
-      - "transmission_data:/data"
+      - "transmission_data:/downloads"
 
   tautulli:
     container_name: "tautulli"
