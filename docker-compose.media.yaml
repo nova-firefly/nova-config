@@ -1,6 +1,6 @@
-# Media Stack - Plex, *arr apps, Transmission, Tautulli, Overseerr
+# Media Stack - Plex, *arr apps, Gluetun + Transmission, Tautulli, Overseerr
 # Usage: docker compose -f docker-compose.media.yaml up -d
-# Requires .env file for: PLEX_CLAIM_TOKEN, TRANSMISSION_OPENVPN_*
+# Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*
 
 networks:
   media:
@@ -257,6 +257,33 @@ services:
     volumes:
       - "tautulli_config:/config"
 
+  gluetun:
+    cap_add:
+      - "NET_ADMIN"
+    container_name: "gluetun"
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    environment:
+      - "FIREWALL_VPN_INPUT_PORTS=${MULLVAD_WIREGUARD_PORT_FORWARD:-}"
+      - "SERVER_COUNTRIES=${MULLVAD_SERVER_COUNTRY:-Sweden}"
+      - "TZ=${TZ}"
+      - "VPN_SERVICE_PROVIDER=mullvad"
+      - "VPN_TYPE=wireguard"
+      - "WIREGUARD_ADDRESSES=${MULLVAD_WIREGUARD_ADDRESSES}"
+      - "WIREGUARD_PRIVATE_KEY=${MULLVAD_WIREGUARD_PRIVATE_KEY}"
+    image: "qmcgaw/gluetun:latest"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+    networks:
+      - "media"
+    ports:
+      - "9094:9091/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "gluetun_data:/gluetun"
+
   transmission:
     cap_drop:
       - "AUDIT_CONTROL"
@@ -268,6 +295,7 @@ services:
       - "LINUX_IMMUTABLE"
       - "MAC_ADMIN"
       - "MAC_OVERRIDE"
+      - "NET_ADMIN"
       - "NET_BROADCAST"
       - "SYSLOG"
       - "SYS_ADMIN"
@@ -283,45 +311,11 @@ services:
       - "WAKE_ALARM"
     container_name: "transmission"
     environment:
-      - "CREATE_TUN_DEVICE=true"
-      - "ENABLE_UFW=false"
-      - "GLOBAL_APPLY_PERMISSIONS=true"
-      - "HEALTH_CHECK_HOST=google.com"
-      - "LOCAL_NETWORK=10.0.0.0/16"
-      - "LOG_TO_STDOUT=false"
-      - "OPENVPN_CONFIG=se_all"
-      - "OPENVPN_PASSWORD=${TRANSMISSION_OPENVPN_PASSWORD}"
-      - "OPENVPN_PROVIDER=MULLVAD"
-      - "OPENVPN_USERNAME=${TRANSMISSION_OPENVPN_USERNAME}"
-      - "PEER_DNS=true"
-      - "PEER_DNS_PIN_ROUTES=true"
-      - "PGID=${PGID}"
       - "PUID=${PUID}"
-      - "SELFHEAL=false"
-      - "TRANSMISSION_DOWNLOAD_DIR=/data/completed"
-      - "TRANSMISSION_HOME=/data/transmission-home"
-      - "TRANSMISSION_INCOMPLETE_DIR=/data/incomplete"
-      - "TRANSMISSION_RPC_PORT=9091"
-      - "TRANSMISSION_WATCH_DIR=/data/watch"
-      - "UFW_ALLOW_GW_NET=false"
-      - "UFW_DISABLE_IPTABLES_REJECT=false"
-      - "WEBPROXY_ENABLED=false"
-      - "WEBPROXY_PASSWORD=${TRANSMISSION_WEBPROXY_PASSWORD:-}"
-      - "WEBPROXY_PORT=8118"
-      - "WEBPROXY_USERNAME=${TRANSMISSION_WEBPROXY_USERNAME:-}"
-      - "TRANSMISSION_RPC_USERNAME=${TRANSMISSION_RPC_USERNAME:-}"
-      - "TRANSMISSION_RPC_PASSWORD=${TRANSMISSION_RPC_PASSWORD:-}"
-    image: "haugene/transmission-openvpn:dev"
-    labels:
-      autoheal: "true"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-    networks:
-      - "media"
-    ports:
-      - "9094:9091/tcp"
+      - "PGID=${PGID}"
+      - "TZ=${TZ}"
+    image: "lscr.io/linuxserver/transmission:latest"
+    network_mode: "service:gluetun"
     restart: "unless-stopped"
     volumes:
       - "transmission_config:/config"
@@ -330,6 +324,9 @@ services:
 volumes:
 
   bazarr_config:
+    external: true
+
+  gluetun_data:
     external: true
 
   overseerr_config:
