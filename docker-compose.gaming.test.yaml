@@ -1,0 +1,19 @@
+# Gaming Stack - Test environment overrides
+# Remaps ports (+10000 offset), uses test-prefixed volumes
+
+services:
+
+  minecraft:
+    container_name: "test_minecraft"
+    ports: !override
+      - "35565:25565/tcp"
+    volumes: !override
+      - "test_minecraft_data:/data"
+
+volumes:
+
+  minecraft_data:
+    name: "minecraft_data_unused"
+
+  test_minecraft_data:
+    external: true

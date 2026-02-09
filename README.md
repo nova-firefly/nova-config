@@ -80,6 +80,51 @@ See `.env.example` for all required variables. Each variable is annotated with w
 | `TRANSMISSION_OPENVPN_PASSWORD` | media | https://mullvad.net/account/ |
 | `ZWAVE_SESSION_SECRET` | home | `openssl rand -base64 32` |
 
+## Test Environment
+
+Both prod and test environments can run side-by-side on the same host. The test environment uses offset ports, separate Docker volumes, and separate networks to avoid conflicts.
+
+### Environment Detection
+
+The environment is auto-detected from the git branch:
+- `main` branch → **prod** (uses `docker-compose.{stack}.yaml` only)
+- Any other branch → **test** (layers `docker-compose.{stack}.test.yaml` overrides)
+
+Override with `--env` flag or `NOVA_ENV` variable.
+
+### Test Setup
+
+```bash
+# 1. Create test environment file
+cp .env.test.example .env.test
+nano .env.test  # fill in test credentials
+
+# 2. Create test volumes and networks
+./nova.sh --env test init
+
+# 3. Start test stacks
+./nova.sh --env test up gaming     # single stack
+./nova.sh --env test up            # all stacks
+```
+
+### Usage Examples
+
+```bash
+./nova.sh env                      # show detected environment
+./nova.sh --env test up media      # start media in test mode
+./nova.sh --env test logs media -f # follow test media logs
+./nova.sh --env test down          # stop all test stacks
+./nova.sh --env prod up            # explicitly use prod
+```
+
+### Host-Network Services
+
+Services using `network_mode: host` cannot have their ports remapped and are **excluded from the test environment**: plex, homeassistant, music-assistant-server, vibe-kanban, volume-sharer.
+
+### Test Port Mappings
+
+Test ports use a +10000 offset from prod (e.g., radarr `7878` → `17878`). See the test override files for the full mapping.
+
 ## Security Notes
 
 - **NEVER** commit the `.env` file to version control

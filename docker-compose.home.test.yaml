@@ -1,0 +1,46 @@
+# Home Stack - Test environment overrides
+# Remaps ports (+10000 offset), uses test-prefixed volumes and networks
+# homeassistant and music-assistant-server are excluded (host network mode)
+
+services:
+
+  homeassistant:
+    profiles:
+      - "prod-only"
+
+  music-assistant-server:
+    profiles:
+      - "prod-only"
+
+  zwave-js-ui:
+    container_name: "test_zwave-js-ui"
+    networks: !override
+      - "test_zwave_zwave"
+    ports: !override
+      - "13002:3000/tcp"
+      - "18091:8091/tcp"
+    volumes: !override
+      - "test_zwave-js-ui:/usr/src/app/store"
+
+networks:
+
+  zwave_zwave:
+    name: "zwave_zwave_unused"
+
+  test_zwave_zwave:
+    external: true
+    name: "test_zwave_zwave"
+
+volumes:
+
+  ha_config:
+    name: "ha_config_unused"
+
+  zwave-js-ui:
+    name: "zwave-js-ui_unused"
+
+  test_ha_config:
+    external: true
+
+  test_zwave-js-ui:
+    external: true

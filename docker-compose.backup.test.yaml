@@ -1,0 +1,63 @@
+# Backup Stack - Test environment overrides
+# Remaps ports (+10000 offset), uses test-prefixed volumes and networks
+
+services:
+
+  backrest:
+    container_name: "test_backrest"
+    networks: !override
+      - "test_backrest_default"
+    ports: !override
+      - "19898:9898/tcp"
+    volumes: !override
+      - "/data1:/hd1:ro"
+      - "/data2:/hd2:ro"
+      - "/data3:/hd3:ro"
+      - "/home/koonan:/home:ro"
+      - "/var/lib/docker/volumes:/volumes:ro"
+      - "test_backrest_backrest_cache:/cache"
+      - "test_backrest_backrest_config:/config"
+      - "test_backrest_backrest_data:/data"
+
+  duplicati:
+    container_name: "test_duplicati"
+    networks: !override
+      - "test_duplicati_default"
+    ports: !override
+      - "18200:8200/tcp"
+
+networks:
+
+  backrest_default:
+    name: "backrest_default_unused"
+
+  duplicati_default:
+    name: "duplicati_default_unused"
+
+  test_backrest_default:
+    external: true
+    name: "test_backrest_default"
+
+  test_duplicati_default:
+    external: true
+    name: "test_duplicati_default"
+
+volumes:
+
+  backrest_backrest_cache:
+    name: "backrest_backrest_cache_unused"
+
+  backrest_backrest_config:
+    name: "backrest_backrest_config_unused"
+
+  backrest_backrest_data:
+    name: "backrest_backrest_data_unused"
+
+  test_backrest_backrest_cache:
+    external: true
+
+  test_backrest_backrest_config:
+    external: true
+
+  test_backrest_backrest_data:
+    external: true
