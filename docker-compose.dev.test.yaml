@@ -13,4 +13,4 @@ volumes:
     name: "vibe-kanban-repos_unused"
 
   test_vibe-kanban-repos:
-    external: true
+    name: "test_vibe-kanban-repos"

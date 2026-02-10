@@ -35,11 +35,9 @@ networks:
     name: "duplicati_default_unused"
 
   test_backrest_default:
-    external: true
     name: "test_backrest_default"
 
   test_duplicati_default:
-    external: true
     name: "test_duplicati_default"
 
 volumes:
@@ -54,10 +52,10 @@ volumes:
     name: "backrest_backrest_data_unused"
 
   test_backrest_backrest_cache:
-    external: true
+    name: "test_backrest_backrest_cache"
 
   test_backrest_backrest_config:
-    external: true
+    name: "test_backrest_backrest_config"
 
   test_backrest_backrest_data:
-    external: true
+    name: "test_backrest_backrest_data"

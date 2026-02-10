@@ -62,15 +62,12 @@ networks:
     name: "wud_default_unused"
 
   test_dockge_default:
-    external: true
     name: "test_dockge_default"
 
   test_traefik_default:
-    external: true
     name: "test_traefik_default"
 
   test_wud_default:
-    external: true
     name: "test_wud_default"
 
 volumes:
@@ -85,10 +82,10 @@ volumes:
     name: "portainer_data_unused"
 
   test_d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12:
-    external: true
+    name: "test_d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12"
 
   test_homepage_config:
-    external: true
+    name: "test_homepage_config"
 
   test_portainer_data:
-    external: true
+    name: "test_portainer_data"

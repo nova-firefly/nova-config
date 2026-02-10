@@ -99,10 +99,7 @@ Override with `--env` flag or `NOVA_ENV` variable.
 cp .env.test.example .env.test
 nano .env.test  # fill in test credentials
 
-# 2. Create test volumes and networks
-./nova.sh --env test init
-
-# 3. Start test stacks
+# 2. Start test stacks (volumes and networks are created automatically)
 ./nova.sh --env test up gaming     # single stack
 ./nova.sh --env test up            # all stacks
 ```
@@ -113,9 +110,11 @@ nano .env.test  # fill in test credentials
 ./nova.sh env                      # show detected environment
 ./nova.sh --env test up media      # start media in test mode
 ./nova.sh --env test logs media -f # follow test media logs
-./nova.sh --env test down          # stop all test stacks
+./nova.sh --env test down          # stop test stacks + remove test volumes
 ./nova.sh --env prod up            # explicitly use prod
 ```
+
+Test volumes and networks are **ephemeral** — they are auto-created on `up` and auto-removed on `down`.
 
 ### Host-Network Services
 

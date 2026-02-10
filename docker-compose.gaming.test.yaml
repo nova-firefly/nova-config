@@ -16,4 +16,4 @@ volumes:
     name: "minecraft_data_unused"
 
   test_minecraft_data:
-    external: true
+    name: "test_minecraft_data"

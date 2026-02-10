@@ -28,7 +28,6 @@ networks:
     name: "zwave_zwave_unused"
 
   test_zwave_zwave:
-    external: true
     name: "test_zwave_zwave"
 
 volumes:
@@ -40,7 +39,7 @@ volumes:
     name: "zwave-js-ui_unused"
 
   test_ha_config:
-    external: true
+    name: "test_ha_config"
 
   test_zwave-js-ui:
-    external: true
+    name: "test_zwave-js-ui"

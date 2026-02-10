@@ -92,7 +92,6 @@ networks:
     name: "media_unused"
 
   test_media:
-    external: true
     name: "test_media"
 
 volumes:
@@ -122,25 +121,25 @@ volumes:
     name: "transmission_data_unused"
 
   test_bazarr_config:
-    external: true
+    name: "test_bazarr_config"
 
   test_gluetun_data:
-    external: true
+    name: "test_gluetun_data"
 
   test_overseerr_config:
-    external: true
+    name: "test_overseerr_config"
 
   test_radarr_config:
-    external: true
+    name: "test_radarr_config"
 
   test_sonarr_config:
-    external: true
+    name: "test_sonarr_config"
 
   test_tautulli_config:
-    external: true
+    name: "test_tautulli_config"
 
   test_transmission_config:
-    external: true
+    name: "test_transmission_config"
 
   test_transmission_data:
-    external: true
+    name: "test_transmission_data"

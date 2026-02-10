@@ -11,7 +11,6 @@
 #   ps        List running containers
 #   config    Validate compose files
 #   env       Show detected environment and git branch
-#   init      Create external volumes and networks for the environment
 #
 # Options:
 #   --env prod|test   Override environment (default: auto-detect from git branch)
@@ -27,7 +26,6 @@
 # Examples:
 #   ./nova.sh up                    # Auto-detect env, start all stacks
 #   ./nova.sh --env test up media   # Force test env, start media stack
-#   ./nova.sh --env test init       # Create test volumes and networks
 #   ./nova.sh env                   # Show current environment
 #   ./nova.sh update infra          # Pull + restart infra stack
 #   ./nova.sh logs media -f         # Follow media stack logs
@@ -37,26 +35,6 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 ALL_STACKS=(media immich home infra backup gaming dev)
-
-# --- Volume and network definitions per stack (for init command) ---
-
-declare -A STACK_VOLUMES
-STACK_VOLUMES[media]="bazarr_config gluetun_data overseerr_config radarr_config sonarr_config tautulli_config transmission_config transmission_data"
-STACK_VOLUMES[immich]="immich_immich-ml-model-cache eeba826780300f3d846b69ccaecc2f70dc9dd09cdb8ce35b3eb4462d5ee3b122"
-STACK_VOLUMES[home]="ha_config zwave-js-ui"
-STACK_VOLUMES[infra]="d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12 homepage_config portainer_data"
-STACK_VOLUMES[backup]="backrest_backrest_cache backrest_backrest_config backrest_backrest_data"
-STACK_VOLUMES[gaming]="minecraft_data"
-STACK_VOLUMES[dev]="vibe-kanban-repos"
-
-declare -A STACK_NETWORKS
-STACK_NETWORKS[media]="media"
-STACK_NETWORKS[immich]="immich_default"
-STACK_NETWORKS[home]="zwave_zwave"
-STACK_NETWORKS[infra]="dockge_default traefik_default wud_default"
-STACK_NETWORKS[backup]="backrest_default duplicati_default"
-STACK_NETWORKS[gaming]=""
-STACK_NETWORKS[dev]=""
 
 # --- Environment detection ---
 
@@ -118,54 +96,6 @@ run_compose() {
   docker compose $compose_args "$cmd" "$@"
 }
 
-# --- Init command: create external volumes and networks ---
-
-init_env() {
-  local env="$1"
-  local stack="${2:-}"
-
-  local stacks_to_init=()
-  if [[ -n "$stack" ]]; then
-    stacks_to_init=("$stack")
-  else
-    stacks_to_init=("${ALL_STACKS[@]}")
-  fi
-
-  local prefix=""
-  if [[ "$env" == "test" ]]; then
-    prefix="test_"
-  fi
-
-  for s in "${stacks_to_init[@]}"; do
-    echo "==> Initializing $env volumes and networks for: $s"
-
-    # Create volumes
-    for vol in ${STACK_VOLUMES[$s]:-}; do
-      local vol_name="${prefix}${vol}"
-      if docker volume inspect "$vol_name" &>/dev/null; then
-        echo "  Volume exists: $vol_name"
-      else
-        docker volume create "$vol_name"
-        echo "  Created volume: $vol_name"
-      fi
-    done
-
-    # Create networks
-    for net in ${STACK_NETWORKS[$s]:-}; do
-      local net_name="${prefix}${net}"
-      if docker network inspect "$net_name" &>/dev/null; then
-        echo "  Network exists: $net_name"
-      else
-        docker network create "$net_name"
-        echo "  Created network: $net_name"
-      fi
-    done
-  done
-
-  echo ""
-  echo "Init complete for $env environment."
-}
-
 # --- Parse --env flag ---
 
 NOVA_ENV_OVERRIDE=""
@@ -194,7 +124,7 @@ export NOVA_ENV="$ENV"
 # --- Show usage if no args ---
 
 if [[ $# -lt 1 ]]; then
-  head -34 "$0" | grep '^#' | sed 's/^# \?//'
+  head -32 "$0" | grep '^#' | sed 's/^# \?//'
   exit 0
 fi
 
@@ -219,11 +149,24 @@ case "$CMD" in
     fi
     ;;
 
-  init)
-    init_env "$ENV" "$STACK"
+  down)
+    # In test mode, pass --volumes to remove Compose-managed test volumes
+    local down_args=("$@")
+    if [[ "$ENV" == "test" ]]; then
+      down_args+=("--volumes")
+    fi
+    if [[ -z "$STACK" ]]; then
+      for s in "${ALL_STACKS[@]}"; do
+        echo "==> $s [$ENV]"
+        run_compose "$ENV" down "$s" "${down_args[@]}"
+      done
+    else
+      echo "==> $STACK [$ENV]"
+      run_compose "$ENV" down "$STACK" "${down_args[@]}"
+    fi
     ;;
 
-  up|down|pull|ps|config)
+  up|pull|ps|config)
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s [$ENV]"
