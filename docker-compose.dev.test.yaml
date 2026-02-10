@@ -1,0 +1,16 @@
+# Dev Stack - Test environment overrides
+# vibe-kanban is excluded (host network mode)
+
+services:
+
+  vibe-kanban:
+    profiles:
+      - "prod-only"
+
+volumes:
+
+  vibe-kanban-repos:
+    name: "vibe-kanban-repos_unused"
+
+  test_vibe-kanban-repos:
+    name: "test_vibe-kanban-repos"

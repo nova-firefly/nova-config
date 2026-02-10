@@ -95,7 +95,7 @@ services:
     volumes:
       - "/var/lib/docker/volumes:/docker_volumes"
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12:/etc/samba"
+      - "volume_sharer_samba_config:/etc/samba"
 
   wud:
     container_name: "wud"
@@ -111,8 +111,9 @@ services:
 
 volumes:
 
-  d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12:
+  volume_sharer_samba_config:
     external: true
+    name: "d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12"
 
   homepage_config:
     external: true

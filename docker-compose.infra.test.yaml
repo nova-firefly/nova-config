@@ -1,0 +1,91 @@
+# Infra Stack - Test environment overrides
+# Remaps ports (+10000 offset), uses test-prefixed volumes and networks
+# volume-sharer is excluded (host network mode)
+
+services:
+
+  volume-sharer:
+    profiles:
+      - "prod-only"
+
+  dockge-dockge-1:
+    container_name: "test_dockge"
+    networks: !override
+      - "test_dockge_default"
+    ports: !override
+      - "15001:5001/tcp"
+
+  duckdns:
+    container_name: "test_duckdns"
+
+  homepage:
+    container_name: "test_homepage"
+    ports: !override
+      - "13000:3000/tcp"
+    volumes: !override
+      - "test_homepage_config:/app/config"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  portainer:
+    container_name: "test_portainer"
+    ports: !override
+      - "19000:9000/tcp"
+      - "19443:9443/tcp"
+    volumes: !override
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "test_portainer_data:/data"
+
+  traefik-traefik-1:
+    container_name: "test_traefik"
+    networks: !override
+      - "test_traefik_default"
+    ports: !override
+      - "10080:80/tcp"
+      - "18080:8080/tcp"
+
+  wud:
+    container_name: "test_wud"
+    networks: !override
+      - "test_wud_default"
+    ports: !override
+      - "13003:3000/tcp"
+
+networks:
+
+  dockge_default:
+    name: "dockge_default_unused"
+
+  traefik_default:
+    name: "traefik_default_unused"
+
+  wud_default:
+    name: "wud_default_unused"
+
+  test_dockge_default:
+    name: "test_dockge_default"
+
+  test_traefik_default:
+    name: "test_traefik_default"
+
+  test_wud_default:
+    name: "test_wud_default"
+
+volumes:
+
+  volume_sharer_samba_config:
+    name: "volume_sharer_samba_config_unused"
+
+  homepage_config:
+    name: "homepage_config_unused"
+
+  portainer_data:
+    name: "portainer_data_unused"
+
+  test_volume_sharer_samba_config:
+    name: "test_volume_sharer_samba_config"
+
+  test_homepage_config:
+    name: "test_homepage_config"
+
+  test_portainer_data:
+    name: "test_portainer_data"
