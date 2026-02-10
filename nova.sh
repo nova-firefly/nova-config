@@ -151,7 +151,7 @@ case "$CMD" in
 
   down)
     # In test mode, pass --volumes to remove Compose-managed test volumes
-    local down_args=("$@")
+    down_args=("$@")
     if [[ "$ENV" == "test" ]]; then
       down_args+=("--volumes")
     fi
