@@ -72,8 +72,8 @@ networks:
 
 volumes:
 
-  d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12:
-    name: "d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12_unused"
+  volume_sharer_samba_config:
+    name: "volume_sharer_samba_config_unused"
 
   homepage_config:
     name: "homepage_config_unused"
@@ -81,8 +81,8 @@ volumes:
   portainer_data:
     name: "portainer_data_unused"
 
-  test_d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12:
-    name: "test_d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12"
+  test_volume_sharer_samba_config:
+    name: "test_volume_sharer_samba_config"
 
   test_homepage_config:
     name: "test_homepage_config"
