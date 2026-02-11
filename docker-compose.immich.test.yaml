@@ -47,6 +47,7 @@ networks:
     name: "test_immich_default"
 
   test_traefik_default:
+    external: true
     name: "test_traefik_default"
 
 volumes:

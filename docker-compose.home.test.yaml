@@ -35,6 +35,7 @@ networks:
     name: "test_zwave_zwave"
 
   test_traefik_default:
+    external: true
     name: "test_traefik_default"
 
 volumes:

@@ -46,6 +46,7 @@ networks:
     name: "test_duplicati_default"
 
   test_traefik_default:
+    external: true
     name: "test_traefik_default"
 
 volumes:

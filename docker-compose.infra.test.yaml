@@ -74,6 +74,7 @@ networks:
     name: "test_dockge_default"
 
   test_traefik_default:
+    external: true
     name: "test_traefik_default"
 
   test_wud_default:

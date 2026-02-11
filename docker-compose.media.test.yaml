@@ -108,6 +108,7 @@ networks:
     name: "test_media"
 
   test_traefik_default:
+    external: true
     name: "test_traefik_default"
 
 volumes:
