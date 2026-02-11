@@ -25,6 +25,11 @@ services:
       traefik.http.routers.dockge.rule: "Host(`dockge${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
       traefik.http.routers.dockge.entrypoints: "web"
       traefik.http.services.dockge.loadbalancer.server.port: "5001"
+      homepage.group: "Infrastructure"
+      homepage.name: "Dockge"
+      homepage.icon: "dockge.png"
+      homepage.href: "http://dockge${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Docker Compose Manager"
     networks:
       - "dockge_default"
       - "traefik_default"
@@ -52,8 +57,6 @@ services:
       - "PGID=${PGID}"
       - "TZ=${TZ}"
       - "HOMEPAGE_ALLOWED_HOSTS=${NOVA_HOSTNAME}:3000,${NOVA_DOMAIN}:3000,${NOVA_HOSTNAME}:13000,home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
-      - "HOMEPAGE_VAR_DOMAIN=${NOVA_DOMAIN}"
-      - "HOMEPAGE_VAR_TRAEFIK_SUFFIX=${NOVA_TRAEFIK_SUFFIX}"
     labels:
       traefik.enable: "true"
       traefik.http.routers.homepage.rule: "Host(`home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
@@ -77,6 +80,11 @@ services:
       traefik.http.routers.portainer.rule: "Host(`portainer${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
       traefik.http.routers.portainer.entrypoints: "web"
       traefik.http.services.portainer.loadbalancer.server.port: "9000"
+      homepage.group: "Infrastructure"
+      homepage.name: "Portainer"
+      homepage.icon: "portainer.svg"
+      homepage.href: "http://portainer${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Container Management"
     networks:
       - "traefik_default"
     ports:
@@ -105,6 +113,11 @@ services:
       traefik.http.routers.traefik-dashboard.rule: "Host(`traefik${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
       traefik.http.routers.traefik-dashboard.entrypoints: "web"
       traefik.http.routers.traefik-dashboard.service: "api@internal"
+      homepage.group: "Infrastructure"
+      homepage.name: "Traefik"
+      homepage.icon: "traefik.svg"
+      homepage.href: "http://traefik${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Reverse Proxy Dashboard"
     networks:
       - "traefik_default"
     ports:
@@ -142,6 +155,11 @@ services:
       traefik.http.routers.wud.rule: "Host(`wud${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
       traefik.http.routers.wud.entrypoints: "web"
       traefik.http.services.wud.loadbalancer.server.port: "3000"
+      homepage.group: "Infrastructure"
+      homepage.name: "WUD"
+      homepage.icon: "whatsupdocker.png"
+      homepage.href: "http://wud${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Container Update Notifications"
     networks:
       - "wud_default"
       - "traefik_default"
