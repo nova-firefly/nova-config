@@ -51,6 +51,7 @@ services:
       - "PUID=${PUID}"
       - "PGID=${PGID}"
       - "TZ=${TZ}"
+      - "HOMEPAGE_ALLOWED_HOSTS=${NOVA_HOSTNAME}:3000,${NOVA_DOMAIN}:3000,${NOVA_HOSTNAME}:13000"
     labels:
       traefik.enable: "true"
       traefik.http.routers.homepage.rule: "Host(`home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
