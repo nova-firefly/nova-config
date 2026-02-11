@@ -15,7 +15,7 @@
 # Options:
 #   --env prod|test   Override environment (default: auto-detect from git branch)
 #
-# Stack names: media, immich, home, infra, backup, gaming, dev
+# Stack names: infra, media, immich, home, backup, gaming, dev
 # Omit stack name to apply to all stacks.
 #
 # Environment detection:
@@ -34,7 +34,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-ALL_STACKS=(media immich home infra backup gaming dev)
+ALL_STACKS=(infra media immich home backup gaming dev)
 
 # --- Environment detection ---
 
@@ -54,6 +54,17 @@ detect_env() {
     echo "prod"
   else
     echo "test"
+  fi
+}
+
+# --- Ensure traefik network exists ---
+
+ensure_traefik_network() {
+  local env="$1"
+  if [[ "$env" == "test" ]]; then
+    docker network create test_traefik_default 2>/dev/null || true
+  else
+    docker network create traefik_default 2>/dev/null || true
   fi
 }
 
@@ -166,7 +177,20 @@ case "$CMD" in
     fi
     ;;
 
-  up|pull|ps|config)
+  up)
+    ensure_traefik_network "$ENV"
+    if [[ -z "$STACK" ]]; then
+      for s in "${ALL_STACKS[@]}"; do
+        echo "==> $s [$ENV]"
+        run_compose "$ENV" "$CMD" "$s" "$@"
+      done
+    else
+      echo "==> $STACK [$ENV]"
+      run_compose "$ENV" "$CMD" "$STACK" "$@"
+    fi
+    ;;
+
+  pull|ps|config)
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s [$ENV]"
@@ -179,6 +203,7 @@ case "$CMD" in
     ;;
 
   update)
+    ensure_traefik_network "$ENV"
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s [$ENV]"

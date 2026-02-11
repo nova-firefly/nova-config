@@ -1,11 +1,14 @@
 # Home Automation Stack - Home Assistant, Z-Wave, Music Assistant
 # Usage: docker compose -f docker-compose.home.yaml up -d
-# Requires .env file for: ZWAVE_SESSION_SECRET
+# Requires .env file for: ZWAVE_SESSION_SECRET, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
 
 networks:
   zwave_zwave:
     external: true
     name: "zwave_zwave"
+  traefik_default:
+    external: true
+    name: "traefik_default"
 
 services:
 
@@ -72,8 +75,14 @@ services:
       - "SESSION_SECRET=${ZWAVE_SESSION_SECRET}"
       - "NODE_ENV=production"
     image: "zwavejs/zwave-js-ui:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.zwave.rule: "Host(`zwave${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.zwave.entrypoints: "web"
+      traefik.http.services.zwave.loadbalancer.server.port: "3000"
     networks:
       - "zwave_zwave"
+      - "traefik_default"
     ports:
       - "3002:3000/tcp"
       - "8091:8091/tcp"

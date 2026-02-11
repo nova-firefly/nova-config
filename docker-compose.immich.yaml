@@ -1,11 +1,14 @@
 # Immich Stack - Photo management with ML, Postgres, and Redis
 # Usage: docker compose -f docker-compose.immich.yaml up -d
-# Requires .env file for: IMMICH_DB_PASSWORD
+# Requires .env file for: IMMICH_DB_PASSWORD, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
 
 networks:
   immich_default:
     external: true
     name: "immich_default"
+  traefik_default:
+    external: true
+    name: "traefik_default"
 
 services:
 
@@ -71,8 +74,14 @@ services:
       - "NVIDIA_DRIVER_CAPABILITIES=all"
       - "NVIDIA_VISIBLE_DEVICES=all"
     image: "ghcr.io/immich-app/immich-server:release"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.immich.rule: "Host(`immich${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.immich.entrypoints: "web"
+      traefik.http.services.immich.loadbalancer.server.port: "2283"
     networks:
       - "immich_default"
+      - "traefik_default"
     ports:
       - "2283:2283/tcp"
     restart: "always"

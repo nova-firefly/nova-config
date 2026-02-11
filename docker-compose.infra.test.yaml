@@ -12,6 +12,7 @@ services:
     container_name: "test_dockge"
     networks: !override
       - "test_dockge_default"
+      - "test_traefik_default"
     ports: !override
       - "15001:5001/tcp"
 
@@ -20,6 +21,8 @@ services:
 
   homepage:
     container_name: "test_homepage"
+    networks: !override
+      - "test_traefik_default"
     ports: !override
       - "13000:3000/tcp"
     volumes: !override
@@ -28,6 +31,8 @@ services:
 
   portainer:
     container_name: "test_portainer"
+    networks: !override
+      - "test_traefik_default"
     ports: !override
       - "19000:9000/tcp"
       - "19443:9443/tcp"
@@ -42,11 +47,15 @@ services:
     ports: !override
       - "10080:80/tcp"
       - "18080:8080/tcp"
+    volumes: !override
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./traefik/dynamic.test.yaml:/etc/traefik/dynamic.yaml:ro"
 
   wud:
     container_name: "test_wud"
     networks: !override
       - "test_wud_default"
+      - "test_traefik_default"
     ports: !override
       - "13003:3000/tcp"
 
