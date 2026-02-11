@@ -16,6 +16,7 @@ services:
     container_name: "test_zwave-js-ui"
     networks: !override
       - "test_zwave_zwave"
+      - "test_traefik_default"
     ports: !override
       - "13002:3000/tcp"
       - "18091:8091/tcp"
@@ -27,8 +28,15 @@ networks:
   zwave_zwave:
     name: "zwave_zwave_unused"
 
+  traefik_default:
+    name: "traefik_default_unused"
+
   test_zwave_zwave:
     name: "test_zwave_zwave"
+
+  test_traefik_default:
+    external: true
+    name: "test_traefik_default"
 
 volumes:
 

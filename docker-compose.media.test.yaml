@@ -10,6 +10,8 @@ services:
 
   bazarr:
     container_name: "test_bazarr"
+    networks: !override
+      - "test_traefik_default"
     ports: !override
       - "16767:6767/tcp"
     volumes: !override
@@ -24,6 +26,8 @@ services:
 
   overseerr:
     container_name: "test_overseerr"
+    networks: !override
+      - "test_traefik_default"
     ports: !override
       - "15055:5055/tcp"
     volumes: !override
@@ -33,6 +37,7 @@ services:
     container_name: "test_prowlarr"
     networks: !override
       - "test_media"
+      - "test_traefik_default"
     ports: !override
       - "19696:9696/tcp"
     volumes: !override
@@ -42,6 +47,7 @@ services:
     container_name: "test_radarr"
     networks: !override
       - "test_media"
+      - "test_traefik_default"
     ports: !override
       - "17878:7878/tcp"
     volumes: !override
@@ -55,6 +61,7 @@ services:
     container_name: "test_sonarr"
     networks: !override
       - "test_media"
+      - "test_traefik_default"
     ports: !override
       - "18989:8989/tcp"
     volumes: !override
@@ -66,6 +73,8 @@ services:
 
   tautulli:
     container_name: "test_tautulli"
+    networks: !override
+      - "test_traefik_default"
     ports: !override
       - "18181:8181/tcp"
     volumes: !override
@@ -75,6 +84,7 @@ services:
     container_name: "test_gluetun"
     networks: !override
       - "test_media"
+      - "test_traefik_default"
     ports: !override
       - "19094:9091/tcp"
     volumes: !override
@@ -91,8 +101,15 @@ networks:
   media:
     name: "media_unused"
 
+  traefik_default:
+    name: "traefik_default_unused"
+
   test_media:
     name: "test_media"
+
+  test_traefik_default:
+    external: true
+    name: "test_traefik_default"
 
 volumes:
 

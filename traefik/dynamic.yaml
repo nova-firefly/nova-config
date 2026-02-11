@@ -1,0 +1,40 @@
+# Traefik File Provider - Production
+# Routes for services using network_mode: host
+# These cannot be discovered by Traefik's Docker provider
+# host.docker.internal resolves to the Docker host via extra_hosts
+
+http:
+  routers:
+    plex:
+      rule: "Host(`plex.firefly-koonan.duckdns.org`)"
+      entrypoints:
+        - "web"
+      service: "plex"
+
+    homeassistant:
+      rule: "Host(`ha.firefly-koonan.duckdns.org`)"
+      entrypoints:
+        - "web"
+      service: "homeassistant"
+
+    vibe-kanban:
+      rule: "Host(`kanban.firefly-koonan.duckdns.org`)"
+      entrypoints:
+        - "web"
+      service: "vibe-kanban"
+
+  services:
+    plex:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:32800"
+
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8123"
+
+    vibe-kanban:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3000"

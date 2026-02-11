@@ -28,6 +28,7 @@ services:
     container_name: "test_immich_server"
     networks: !override
       - "test_immich_default"
+      - "test_traefik_default"
     ports: !override
       - "12283:2283/tcp"
     volumes: !override
@@ -39,8 +40,15 @@ networks:
   immich_default:
     name: "immich_default_unused"
 
+  traefik_default:
+    name: "traefik_default_unused"
+
   test_immich_default:
     name: "test_immich_default"
+
+  test_traefik_default:
+    external: true
+    name: "test_traefik_default"
 
 volumes:
 

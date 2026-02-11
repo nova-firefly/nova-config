@@ -1,14 +1,14 @@
 # Backup Stack - Backrest and Duplicati
 # Usage: docker compose -f docker-compose.backup.yaml up -d
-# Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY
+# Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
 
 networks:
   backrest_default:
     external: true
     name: "backrest_default"
-  duplicati_default:
+  traefik_default:
     external: true
-    name: "duplicati_default"
+    name: "traefik_default"
 
 services:
 
@@ -21,8 +21,14 @@ services:
       - "BACKREST_CONFIG=/config/config.json"
     hostname: "backrest"
     image: "garethgeorge/backrest:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.backrest.rule: "Host(`backrest${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.backrest.entrypoints: "web"
+      traefik.http.services.backrest.loadbalancer.server.port: "9898"
     networks:
       - "backrest_default"
+      - "traefik_default"
     ports:
       - "9898:9898/tcp"
     restart: "unless-stopped"
@@ -35,30 +41,6 @@ services:
       - "backrest_backrest_cache:/cache"
       - "backrest_backrest_config:/config"
       - "backrest_backrest_data:/data"
-
-  duplicati:
-    container_name: "duplicati"
-    environment:
-      - "SETTINGS_ENCRYPTION_KEY=${DUPLICATI_SETTINGS_ENCRYPTION_KEY}"
-      - "PUID=${PUID}"
-      - "PGID=${PGID}"
-      - "TZ=${TZ}"
-      - "TMPDIR=/run/duplicati-temp"
-      - "DUPLICATI__REQUIRE_DB_ENCRYPTION_KEY=true"
-      - "DUPLICATI__SERVER_DATAFOLDER=/config"
-      - "DUPLICATI__WEBSERVICE_PORT=8200"
-      - "DUPLICATI__WEBSERVICE_INTERFACE=any"
-      - "DUPLICATI__WEBSERVICE_ALLOWED_HOSTNAMES=*"
-    image: "lscr.io/linuxserver/duplicati:latest"
-    networks:
-      - "duplicati_default"
-    ports:
-      - "8200:8200/tcp"
-    restart: "unless-stopped"
-    volumes:
-      - "/backups:/backups"
-      - "/docker/duplicati/config:/config"
-      - "/var/lib/docker/volumes:/source:ro"
 
 volumes:
 
