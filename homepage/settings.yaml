@@ -1,0 +1,20 @@
+---
+title: Nova
+favicon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/homepage.svg
+headerStyle: clean
+layout:
+  Infrastructure:
+    style: row
+    columns: 3
+  Media:
+    style: row
+    columns: 3
+  Downloads:
+    style: row
+    columns: 3
+  Home Automation:
+    style: row
+    columns: 2
+  Development:
+    style: row
+    columns: 1

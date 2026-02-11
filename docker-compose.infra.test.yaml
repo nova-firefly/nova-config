@@ -25,9 +25,6 @@ services:
       - "test_traefik_default"
     ports: !override
       - "13000:3000/tcp"
-    volumes: !override
-      - "test_homepage_config:/app/config"
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   portainer:
     container_name: "test_portainer"
@@ -85,17 +82,11 @@ volumes:
   volume_sharer_samba_config:
     name: "volume_sharer_samba_config_unused"
 
-  homepage_config:
-    name: "homepage_config_unused"
-
   portainer_data:
     name: "portainer_data_unused"
 
   test_volume_sharer_samba_config:
     name: "test_volume_sharer_samba_config"
-
-  test_homepage_config:
-    name: "test_homepage_config"
 
   test_portainer_data:
     name: "test_portainer_data"

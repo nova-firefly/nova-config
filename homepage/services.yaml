@@ -1,0 +1,74 @@
+---
+- Infrastructure:
+    - Traefik:
+        icon: traefik.svg
+        href: "http://traefik{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Reverse Proxy Dashboard
+    - Portainer:
+        icon: portainer.svg
+        href: "http://portainer{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Container Management
+    - Dockge:
+        icon: dockge.png
+        href: "http://dockge{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Docker Compose Manager
+    - WUD:
+        icon: whatsupdocker.png
+        href: "http://wud{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Container Update Notifications
+    - Backrest:
+        icon: backrest.png
+        href: "http://backrest{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Backup Management
+
+- Media:
+    - Plex:
+        icon: plex.svg
+        href: "http://plex{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Media Server
+    - Overseerr:
+        icon: overseerr.svg
+        href: "http://overseerr{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Media Requests
+    - Tautulli:
+        icon: tautulli.svg
+        href: "http://tautulli{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Plex Monitoring
+
+- Downloads:
+    - Radarr:
+        icon: radarr.svg
+        href: "http://radarr{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Movie Management
+    - Sonarr:
+        icon: sonarr.svg
+        href: "http://sonarr{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: TV Show Management
+    - Bazarr:
+        icon: bazarr.svg
+        href: "http://bazarr{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Subtitle Management
+    - Prowlarr:
+        icon: prowlarr.svg
+        href: "http://prowlarr{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Indexer Management
+    - Transmission:
+        icon: transmission.svg
+        href: "http://transmission{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Torrent Client
+
+- Home Automation:
+    - Home Assistant:
+        icon: home-assistant.svg
+        href: "http://ha{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Smart Home Control
+    - Z-Wave JS UI:
+        icon: z-wave-js-ui.png
+        href: "http://zwave{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Z-Wave Device Management
+
+- Development:
+    - Vibe Kanban:
+        icon: kanban.svg
+        href: "http://kanban{{HOMEPAGE_VAR_TRAEFIK_SUFFIX}}.{{HOMEPAGE_VAR_DOMAIN}}"
+        description: Project Management
