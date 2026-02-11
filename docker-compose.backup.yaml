@@ -6,9 +6,6 @@ networks:
   backrest_default:
     external: true
     name: "backrest_default"
-  duplicati_default:
-    external: true
-    name: "duplicati_default"
   traefik_default:
     external: true
     name: "traefik_default"
@@ -44,36 +41,6 @@ services:
       - "backrest_backrest_cache:/cache"
       - "backrest_backrest_config:/config"
       - "backrest_backrest_data:/data"
-
-  duplicati:
-    container_name: "duplicati"
-    environment:
-      - "SETTINGS_ENCRYPTION_KEY=${DUPLICATI_SETTINGS_ENCRYPTION_KEY}"
-      - "PUID=${PUID}"
-      - "PGID=${PGID}"
-      - "TZ=${TZ}"
-      - "TMPDIR=/run/duplicati-temp"
-      - "DUPLICATI__REQUIRE_DB_ENCRYPTION_KEY=true"
-      - "DUPLICATI__SERVER_DATAFOLDER=/config"
-      - "DUPLICATI__WEBSERVICE_PORT=8200"
-      - "DUPLICATI__WEBSERVICE_INTERFACE=any"
-      - "DUPLICATI__WEBSERVICE_ALLOWED_HOSTNAMES=*"
-    image: "lscr.io/linuxserver/duplicati:latest"
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.duplicati.rule: "Host(`duplicati${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.duplicati.entrypoints: "web"
-      traefik.http.services.duplicati.loadbalancer.server.port: "8200"
-    networks:
-      - "duplicati_default"
-      - "traefik_default"
-    ports:
-      - "8200:8200/tcp"
-    restart: "unless-stopped"
-    volumes:
-      - "/backups:/backups"
-      - "/docker/duplicati/config:/config"
-      - "/var/lib/docker/volumes:/source:ro"
 
 volumes:
 

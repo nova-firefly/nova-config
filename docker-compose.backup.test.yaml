@@ -20,30 +20,16 @@ services:
       - "test_backrest_backrest_config:/config"
       - "test_backrest_backrest_data:/data"
 
-  duplicati:
-    container_name: "test_duplicati"
-    networks: !override
-      - "test_duplicati_default"
-      - "test_traefik_default"
-    ports: !override
-      - "18200:8200/tcp"
-
 networks:
 
   backrest_default:
     name: "backrest_default_unused"
-
-  duplicati_default:
-    name: "duplicati_default_unused"
 
   traefik_default:
     name: "traefik_default_unused"
 
   test_backrest_default:
     name: "test_backrest_default"
-
-  test_duplicati_default:
-    name: "test_duplicati_default"
 
   test_traefik_default:
     external: true
