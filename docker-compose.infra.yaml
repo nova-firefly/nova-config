@@ -121,6 +121,14 @@ services:
       traefik.http.routers.traefik-dashboard.entrypoints: "websecure"
       traefik.http.routers.traefik-dashboard.tls: "true"
       traefik.http.routers.traefik-dashboard.service: "api@internal"
+      traefik.http.routers.root-redirect.rule: "Host(`${NOVA_DOMAIN}`)"
+      traefik.http.routers.root-redirect.entrypoints: "websecure"
+      traefik.http.routers.root-redirect.tls: "true"
+      traefik.http.routers.root-redirect.middlewares: "root-to-homepage"
+      traefik.http.routers.root-redirect.service: "noop@internal"
+      traefik.http.middlewares.root-to-homepage.redirectregex.regex: "^https://${NOVA_DOMAIN}/(.*)"
+      traefik.http.middlewares.root-to-homepage.redirectregex.replacement: "https://home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}/$${1}"
+      traefik.http.middlewares.root-to-homepage.redirectregex.permanent: "true"
     networks:
       - "traefik_default"
     ports:
