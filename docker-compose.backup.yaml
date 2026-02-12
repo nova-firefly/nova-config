@@ -26,6 +26,11 @@ services:
       traefik.http.routers.backrest.rule: "Host(`backrest${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
       traefik.http.routers.backrest.entrypoints: "web"
       traefik.http.services.backrest.loadbalancer.server.port: "9898"
+      homepage.group: "Infrastructure"
+      homepage.name: "Backrest"
+      homepage.icon: "backrest.png"
+      homepage.href: "http://backrest${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Backup Management"
     networks:
       - "backrest_default"
       - "traefik_default"
