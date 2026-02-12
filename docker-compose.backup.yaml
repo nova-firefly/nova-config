@@ -24,7 +24,8 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.backrest.rule: "Host(`backrest${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.backrest.entrypoints: "web"
+      traefik.http.routers.backrest.entrypoints: "websecure"
+      traefik.http.routers.backrest.tls: "true"
       traefik.http.services.backrest.loadbalancer.server.port: "9898"
     networks:
       - "backrest_default"

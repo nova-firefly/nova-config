@@ -23,7 +23,8 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.dockge.rule: "Host(`dockge${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.dockge.entrypoints: "web"
+      traefik.http.routers.dockge.entrypoints: "websecure"
+      traefik.http.routers.dockge.tls: "true"
       traefik.http.services.dockge.loadbalancer.server.port: "5001"
     networks:
       - "dockge_default"
@@ -51,11 +52,12 @@ services:
       - "PUID=${PUID}"
       - "PGID=${PGID}"
       - "TZ=${TZ}"
-      - "HOMEPAGE_ALLOWED_HOSTS=${NOVA_HOSTNAME}:3000,${NOVA_DOMAIN}:3000,${NOVA_HOSTNAME}:13000"
+      - "HOMEPAGE_ALLOWED_HOSTS=${NOVA_HOSTNAME}:3000,${NOVA_DOMAIN}:3000,${NOVA_HOSTNAME}:13000,home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
     labels:
       traefik.enable: "true"
       traefik.http.routers.homepage.rule: "Host(`home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.homepage.entrypoints: "web"
+      traefik.http.routers.homepage.entrypoints: "websecure"
+      traefik.http.routers.homepage.tls: "true"
       traefik.http.services.homepage.loadbalancer.server.port: "3000"
     networks:
       - "traefik_default"
@@ -73,7 +75,8 @@ services:
       io.portainer.server: "true"
       traefik.enable: "true"
       traefik.http.routers.portainer.rule: "Host(`portainer${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.portainer.entrypoints: "web"
+      traefik.http.routers.portainer.entrypoints: "websecure"
+      traefik.http.routers.portainer.tls: "true"
       traefik.http.services.portainer.loadbalancer.server.port: "9000"
     networks:
       - "traefik_default"
@@ -87,31 +90,47 @@ services:
 
   traefik-traefik-1:
     command:
-      - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedByDefault=false"
       - "--providers.docker.network=traefik_default"
       - "--providers.file.filename=/etc/traefik/dynamic.yaml"
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls.certresolver=letsencrypt"
+      - "--entrypoints.websecure.http.tls.domains[0].main=${NOVA_DOMAIN}"
+      - "--entrypoints.websecure.http.tls.domains[0].sans=*.${NOVA_DOMAIN}"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.provider=duckdns"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.delaybeforecheck=30"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--api.dashboard=true"
     container_name: "traefik-traefik-1"
+    environment:
+      - "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     image: "traefik:v3.6"
     labels:
       traefik.enable: "true"
       traefik.http.routers.traefik-dashboard.rule: "Host(`traefik${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.traefik-dashboard.entrypoints: "web"
+      traefik.http.routers.traefik-dashboard.entrypoints: "websecure"
+      traefik.http.routers.traefik-dashboard.tls: "true"
       traefik.http.routers.traefik-dashboard.service: "api@internal"
     networks:
       - "traefik_default"
     ports:
       - "80:80/tcp"
-      - "8080:8080/tcp"
+      - "443:443/tcp"
     restart: "unless-stopped"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml:ro"
+      - "traefik_acme:/letsencrypt"
 
   volume-sharer:
     container_name: "volume-sharer"
@@ -138,7 +157,8 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.wud.rule: "Host(`wud${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.wud.entrypoints: "web"
+      traefik.http.routers.wud.entrypoints: "websecure"
+      traefik.http.routers.wud.tls: "true"
       traefik.http.services.wud.loadbalancer.server.port: "3000"
     networks:
       - "wud_default"
@@ -149,6 +169,9 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
 
 volumes:
+
+  traefik_acme:
+    external: true
 
   volume_sharer_samba_config:
     external: true

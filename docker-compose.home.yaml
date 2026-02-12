@@ -78,7 +78,8 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.zwave.rule: "Host(`zwave${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.zwave.entrypoints: "web"
+      traefik.http.routers.zwave.entrypoints: "websecure"
+      traefik.http.routers.zwave.tls: "true"
       traefik.http.services.zwave.loadbalancer.server.port: "3000"
     networks:
       - "zwave_zwave"
