@@ -27,6 +27,11 @@ services:
       traefik.http.routers.backrest.entrypoints: "websecure"
       traefik.http.routers.backrest.tls: "true"
       traefik.http.services.backrest.loadbalancer.server.port: "9898"
+      homepage.group: "Infrastructure"
+      homepage.name: "Backrest"
+      homepage.icon: "backrest.png"
+      homepage.href: "http://backrest${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Backup Management"
     networks:
       - "backrest_default"
       - "traefik_default"

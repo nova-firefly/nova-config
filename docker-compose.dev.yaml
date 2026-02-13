@@ -33,6 +33,12 @@ services:
       - "PORT=3000"
     hostname: "${NOVA_HOSTNAME}"
     image: "vibe-kanban:latest"
+    labels:
+      homepage.group: "Development"
+      homepage.name: "Vibe Kanban"
+      homepage.icon: "kanban.svg"
+      homepage.href: "http://kanban.${NOVA_DOMAIN}"
+      homepage.description: "Project Management"
     network_mode: "host"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"

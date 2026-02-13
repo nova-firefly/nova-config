@@ -26,6 +26,11 @@ services:
       traefik.http.routers.dockge.entrypoints: "websecure"
       traefik.http.routers.dockge.tls: "true"
       traefik.http.services.dockge.loadbalancer.server.port: "5001"
+      homepage.group: "Infrastructure"
+      homepage.name: "Dockge"
+      homepage.icon: "dockge.png"
+      homepage.href: "http://dockge${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Docker Compose Manager"
     networks:
       - "dockge_default"
       - "traefik_default"
@@ -65,7 +70,7 @@ services:
       - "3000:3000/tcp"
     restart: "unless-stopped"
     volumes:
-      - "homepage_config:/app/config"
+      - "./homepage:/app/config"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   portainer:
@@ -78,6 +83,11 @@ services:
       traefik.http.routers.portainer.entrypoints: "websecure"
       traefik.http.routers.portainer.tls: "true"
       traefik.http.services.portainer.loadbalancer.server.port: "9000"
+      homepage.group: "Infrastructure"
+      homepage.name: "Portainer"
+      homepage.icon: "portainer.svg"
+      homepage.href: "http://portainer${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Container Management"
     networks:
       - "traefik_default"
     ports:
@@ -130,6 +140,11 @@ services:
       traefik.http.middlewares.root-to-homepage.redirectregex.regex: "^https://${NOVA_DOMAIN}/(.*)"
       traefik.http.middlewares.root-to-homepage.redirectregex.replacement: "https://home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}/$${1}"
       traefik.http.middlewares.root-to-homepage.redirectregex.permanent: "true"
+      homepage.group: "Infrastructure"
+      homepage.name: "Traefik"
+      homepage.icon: "traefik.svg"
+      homepage.href: "http://traefik${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Reverse Proxy Dashboard"
     networks:
       - "traefik_default"
     ports:
@@ -169,6 +184,11 @@ services:
       traefik.http.routers.wud.entrypoints: "websecure"
       traefik.http.routers.wud.tls: "true"
       traefik.http.services.wud.loadbalancer.server.port: "3000"
+      homepage.group: "Infrastructure"
+      homepage.name: "WUD"
+      homepage.icon: "whatsupdocker.png"
+      homepage.href: "http://wud${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Container Update Notifications"
     networks:
       - "wud_default"
       - "traefik_default"
@@ -185,9 +205,6 @@ volumes:
   volume_sharer_samba_config:
     external: true
     name: "d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12"
-
-  homepage_config:
-    external: true
 
   portainer_data:
     external: true
