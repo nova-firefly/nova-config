@@ -107,7 +107,6 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       - "--api.dashboard=true"
-      - "--log.level=DEBUG"
     container_name: "traefik-traefik-1"
     environment:
       - "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}"
