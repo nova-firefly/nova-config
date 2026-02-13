@@ -54,12 +54,8 @@ services:
     container_name: "homepage"
     image: "ghcr.io/gethomepage/homepage:latest"
     environment:
-      - "PUID=${PUID}"
-      - "PGID=${PGID}"
       - "TZ=${TZ}"
       - "HOMEPAGE_ALLOWED_HOSTS=${NOVA_HOSTNAME}:3000,${NOVA_DOMAIN}:3000,${NOVA_HOSTNAME}:13000,home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
-    group_add:
-      - "${DOCKER_GID}"
     labels:
       traefik.enable: "true"
       traefik.http.routers.homepage.rule: "Host(`home${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
