@@ -8,19 +8,22 @@ http:
     plex:
       rule: "Host(`plex.firefly-koonan.duckdns.org`)"
       entrypoints:
-        - "web"
+        - "websecure"
+      tls: {}
       service: "plex"
 
     homeassistant:
       rule: "Host(`ha.firefly-koonan.duckdns.org`)"
       entrypoints:
-        - "web"
+        - "websecure"
+      tls: {}
       service: "homeassistant"
 
     vibe-kanban:
       rule: "Host(`kanban.firefly-koonan.duckdns.org`)"
       entrypoints:
-        - "web"
+        - "websecure"
+      tls: {}
       service: "vibe-kanban"
 
   services:

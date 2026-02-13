@@ -43,10 +43,11 @@ services:
       - "test_traefik_default"
     ports: !override
       - "10080:80/tcp"
-      - "18080:8080/tcp"
+      - "10443:443/tcp"
     volumes: !override
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./traefik/dynamic.test.yaml:/etc/traefik/dynamic.yaml:ro"
+      - "test_traefik_acme:/letsencrypt"
 
   wud:
     container_name: "test_wud"
@@ -85,8 +86,14 @@ volumes:
   portainer_data:
     name: "portainer_data_unused"
 
+  traefik_acme:
+    name: "traefik_acme_unused"
+
   test_volume_sharer_samba_config:
     name: "test_volume_sharer_samba_config"
 
   test_portainer_data:
     name: "test_portainer_data"
+
+  test_traefik_acme:
+    name: "test_traefik_acme"
