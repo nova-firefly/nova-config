@@ -37,6 +37,7 @@ services:
     container_name: "vibe-kanban"
     environment:
       - "PORT=4000"
+      - "TZ=${TZ}"
     hostname: "${NOVA_HOSTNAME}"
     labels:
       traefik.enable: "true"

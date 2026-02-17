@@ -21,6 +21,14 @@ services:
       # Do not edit the next line. If you want to change the media storage location on your system, edit the value of UPLOAD_LOCATION in the .env file
       - ${UPLOAD_LOCATION}:/data
       - /etc/localtime:/etc/localtime:ro
+    environment:
+      - "TZ=${TZ}"
+      - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
+      - "IMMICH_DB_PATH=${IMMICH_DB_PATH}"
+      - "UPLOAD_LOCATION=${UPLOAD_LOCATION}"
+      - "DB_DATA_LOCATION=${DB_DATA_LOCATION}"
+      - "DB_USERNAME=${DB_USERNAME}"
+      - "DB_DATABASE_NAME=${DB_DATABASE_NAME}"
     env_file:
       - .env
     ports:
