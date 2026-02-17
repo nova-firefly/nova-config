@@ -13,6 +13,8 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "test_vibe-kanban-repos:/repos"
       - "test_vibe-kanban-cache:/root/.npm/_npx"
+      - "/home/koonan/.ssh:/root/.ssh:ro"
+      - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 
 networks:
 
