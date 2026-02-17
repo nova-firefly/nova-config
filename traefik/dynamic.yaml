@@ -19,13 +19,6 @@ http:
       tls: {}
       service: "homeassistant"
 
-    vibe-kanban:
-      rule: "Host(`kanban.firefly-koonan.duckdns.org`)"
-      entrypoints:
-        - "websecure"
-      tls: {}
-      service: "vibe-kanban"
-
   services:
     plex:
       loadBalancer:
@@ -36,8 +29,3 @@ http:
       loadBalancer:
         servers:
           - url: "http://host.docker.internal:8123"
-
-    vibe-kanban:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:4000"

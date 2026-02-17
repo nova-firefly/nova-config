@@ -1,6 +1,11 @@
 # Dev/Utility Stack - Vibe Kanban
 # Usage: docker compose -f docker-compose.dev.yaml up -d
 
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
 services:
 
   vibe-kanban:
@@ -34,12 +39,20 @@ services:
       - "PORT=4000"
     hostname: "${NOVA_HOSTNAME}"
     labels:
+      traefik.enable: "true"
+      traefik.http.routers.vibe-kanban.rule: "Host(`kanban${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.vibe-kanban.entrypoints: "websecure"
+      traefik.http.routers.vibe-kanban.tls: "true"
+      traefik.http.services.vibe-kanban.loadbalancer.server.port: "4000"
       homepage.group: "Development"
       homepage.name: "Vibe Kanban"
       homepage.icon: "kanban.svg"
-      homepage.href: "http://kanban.${NOVA_DOMAIN}"
+      homepage.href: "http://kanban${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Project Management"
-    network_mode: "host"
+    networks:
+      - "traefik_default"
+    ports:
+      - "4000:4000/tcp"
     restart: "unless-stopped"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
