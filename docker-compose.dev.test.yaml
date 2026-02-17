@@ -1,16 +1,38 @@
 # Dev Stack - Test environment overrides
-# vibe-kanban is excluded (host network mode)
+# Remaps ports (+10000 offset), uses test-prefixed volumes and networks
 
 services:
 
   vibe-kanban:
-    profiles:
-      - "prod-only"
+    container_name: "test_vibe-kanban"
+    networks: !override
+      - "test_traefik_default"
+    ports: !override
+      - "14000:4000/tcp"
+    volumes: !override
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "test_vibe-kanban-repos:/repos"
+      - "test_vibe-kanban-cache:/root/.npm/_npx"
+
+networks:
+
+  traefik_default:
+    name: "traefik_default_unused"
+
+  test_traefik_default:
+    external: true
+    name: "test_traefik_default"
 
 volumes:
 
   vibe-kanban-repos:
     name: "vibe-kanban-repos_unused"
 
+  vibe-kanban-cache:
+    name: "vibe-kanban-cache_unused"
+
   test_vibe-kanban-repos:
     name: "test_vibe-kanban-repos"
+
+  test_vibe-kanban-cache:
+    name: "test_vibe-kanban-cache"
