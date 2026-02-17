@@ -13,6 +13,9 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "test_vibe-kanban-repos:/repos"
       - "test_vibe-kanban-cache:/root/.npm/_npx"
+      - "test_vibe-kanban-claude:/root/.claude"
+      - "/home/koonan/.ssh:/root/.ssh:ro"
+      - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 
 networks:
 
@@ -28,11 +31,17 @@ volumes:
   vibe-kanban-repos:
     name: "vibe-kanban-repos_unused"
 
+  vibe-kanban-claude:
+    name: "vibe-kanban-claude_unused"
+
   vibe-kanban-cache:
     name: "vibe-kanban-cache_unused"
 
   test_vibe-kanban-repos:
     name: "test_vibe-kanban-repos"
+
+  test_vibe-kanban-claude:
+    name: "test_vibe-kanban-claude"
 
   test_vibe-kanban-cache:
     name: "test_vibe-kanban-cache"

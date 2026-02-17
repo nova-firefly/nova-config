@@ -37,6 +37,7 @@ services:
     container_name: "vibe-kanban"
     environment:
       - "PORT=4000"
+      - "IS_SANDBOX=1"
     hostname: "${NOVA_HOSTNAME}"
     labels:
       traefik.enable: "true"
@@ -58,10 +59,15 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "vibe-kanban-repos:/repos"
       - "vibe-kanban-cache:/root/.npm/_npx"
+      - "vibe-kanban-claude:/root/.claude"
+      - "/home/koonan/.ssh:/root/.ssh:ro"
+      - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 
 volumes:
 
   vibe-kanban-repos:
     external: true
+
+  vibe-kanban-claude:
 
   vibe-kanban-cache:
