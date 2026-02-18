@@ -67,16 +67,9 @@ services:
     container_name: "music-assistant-server"
     environment:
       - "LOG_LEVEL=info"
-    expose:
-      - "8095/tcp"
     hostname: "${NOVA_HOSTNAME}"
     image: "ghcr.io/music-assistant/server:latest"
     labels:
-      traefik.enable: "true"
-      traefik.http.routers.ma.rule: "Host(`ma${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
-      traefik.http.routers.ma.entrypoints: "websecure"
-      traefik.http.routers.ma.tls: "true"
-      traefik.http.services.ma.loadbalancer.server.port: "8095"
       homepage.group: "Home Automation"
       homepage.name: "Music Assistant"
       homepage.href: "https://ma.${NOVA_DOMAIN}"
@@ -84,10 +77,7 @@ services:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
-    networks:
-      - "traefik_default"
-    ports:
-      - "8095:8095/tcp"
+    network_mode: "host"
     restart: "unless-stopped"
     security_opt:
       - "apparmor:unconfined"
