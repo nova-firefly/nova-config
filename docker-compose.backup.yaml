@@ -32,6 +32,9 @@ services:
       homepage.icon: "backrest.png"
       homepage.href: "http://backrest${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Backup Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.backup,discord.notify"
     networks:
       - "backrest_default"
       - "traefik_default"

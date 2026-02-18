@@ -3,9 +3,6 @@
 # Requires .env file for: ZWAVE_SESSION_SECRET, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
 
 networks:
-  zwave_zwave:
-    external: true
-    name: "zwave_zwave"
   traefik_default:
     external: true
     name: "traefik_default"
@@ -43,14 +40,24 @@ services:
     hostname: "${NOVA_HOSTNAME}"
     image: "ghcr.io/home-assistant/home-assistant:stable"
     labels:
+      traefik.enable: "true"
+      traefik.http.routers.ha.rule: "Host(`ha${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.ha.entrypoints: "websecure"
+      traefik.http.routers.ha.tls: "true"
+      traefik.http.services.ha.loadbalancer.server.port: "8123"
       homepage.group: "Home Automation"
       homepage.name: "Home Assistant"
       homepage.icon: "home-assistant.svg"
-      homepage.href: "http://ha.${NOVA_DOMAIN}"
+      homepage.href: "https://ha.${NOVA_DOMAIN}"
       homepage.description: "Smart Home Control"
-    network_mode: "host"
+      wud.watch: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
     privileged: true
     restart: "unless-stopped"
+    ports:
+      - "8123:8123/tcp"
     security_opt:
       - "label=disable"
     volumes:
@@ -64,7 +71,23 @@ services:
       - "8095/tcp"
     hostname: "${NOVA_HOSTNAME}"
     image: "ghcr.io/music-assistant/server:latest"
-    network_mode: "host"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.ma.rule: "Host(`ma${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.ma.entrypoints: "websecure"
+      traefik.http.routers.ma.tls: "true"
+      traefik.http.services.ma.loadbalancer.server.port: "8095"
+      homepage.group: "Home Automation"
+      homepage.name: "Music Assistant"
+      homepage.href: "https://ma.${NOVA_DOMAIN}"
+      homepage.description: "Music Player"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "8095:8095/tcp"
     restart: "unless-stopped"
     security_opt:
       - "apparmor:unconfined"
@@ -86,18 +109,17 @@ services:
       traefik.http.routers.zwave.rule: "Host(`zwave${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
       traefik.http.routers.zwave.entrypoints: "websecure"
       traefik.http.routers.zwave.tls: "true"
-      traefik.http.services.zwave.loadbalancer.server.port: "3000"
+      traefik.http.services.zwave.loadbalancer.server.port: "8091"
       homepage.group: "Home Automation"
       homepage.name: "Z-Wave JS UI"
       homepage.icon: "z-wave-js-ui.png"
       homepage.href: "http://zwave${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Z-Wave Device Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     networks:
-      - "zwave_zwave"
       - "traefik_default"
-    ports:
-      - "3002:3000/tcp"
-      - "8091:8091/tcp"
     restart: "always"
     tty: true
     volumes:

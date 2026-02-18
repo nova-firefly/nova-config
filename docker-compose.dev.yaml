@@ -51,6 +51,7 @@ services:
       homepage.icon: "kanban.svg"
       homepage.href: "http://kanban${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Project Management"
+      wud.watch: "false"
     networks:
       - "traefik_default"
     ports:
