@@ -36,6 +36,7 @@ services:
       - "WAKE_ALARM"
     container_name: "vibe-kanban"
     environment:
+      - "GH_TOKEN=${GH_TOKEN}"
       - "PORT=4000"
       - "TZ=${TZ}"
       - "IS_SANDBOX=1"
