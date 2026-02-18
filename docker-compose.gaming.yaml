@@ -36,6 +36,10 @@ services:
       - "UID=${PUID}"
       - "GID=${PGID}"
     image: "itzg/minecraft-server:latest"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     ports:
       - "25565:25565/tcp"
     stdin_open: true

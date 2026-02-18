@@ -54,6 +54,9 @@ services:
       homepage.icon: "bazarr.svg"
       homepage.href: "http://bazarr${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Subtitle Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -88,6 +91,9 @@ services:
       homepage.icon: "overseerr.svg"
       homepage.href: "http://overseerr${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Media Requests"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -136,6 +142,9 @@ services:
       homepage.icon: "plex.svg"
       homepage.href: "http://plex.${NOVA_DOMAIN}"
       homepage.description: "Media Server"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     network_mode: "host"
     ports:
       - "32800:32800/tcp"
@@ -189,6 +198,9 @@ services:
       homepage.icon: "prowlarr.svg"
       homepage.href: "http://prowlarr${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Indexer Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
     networks:
       - "media"
       - "traefik_default"
@@ -240,6 +252,9 @@ services:
       homepage.icon: "radarr.svg"
       homepage.href: "http://radarr${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Movie Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
     networks:
       - "media"
       - "traefik_default"
@@ -295,6 +310,9 @@ services:
       homepage.icon: "sonarr.svg"
       homepage.href: "http://sonarr${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "TV Show Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
     networks:
       - "media"
       - "traefik_default"
@@ -326,6 +344,9 @@ services:
       homepage.icon: "tautulli.svg"
       homepage.href: "http://tautulli${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Plex Monitoring"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -360,6 +381,9 @@ services:
       homepage.icon: "transmission.svg"
       homepage.href: "http://transmission${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Torrent Client"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     logging:
       driver: "json-file"
       options:
@@ -403,6 +427,10 @@ services:
       - "PGID=${PGID}"
       - "TZ=${TZ}"
     image: "lscr.io/linuxserver/transmission:latest"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
     network_mode: "service:gluetun"
     restart: "unless-stopped"
     volumes:

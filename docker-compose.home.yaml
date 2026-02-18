@@ -48,6 +48,8 @@ services:
       homepage.icon: "home-assistant.svg"
       homepage.href: "http://ha.${NOVA_DOMAIN}"
       homepage.description: "Smart Home Control"
+      wud.watch: "true"
+      wud.trigger.include: "discord.notify"
     network_mode: "host"
     privileged: true
     restart: "unless-stopped"
@@ -64,6 +66,10 @@ services:
       - "8095/tcp"
     hostname: "${NOVA_HOSTNAME}"
     image: "ghcr.io/music-assistant/server:latest"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     network_mode: "host"
     restart: "unless-stopped"
     security_opt:
@@ -92,6 +98,9 @@ services:
       homepage.icon: "z-wave-js-ui.png"
       homepage.href: "http://zwave${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Z-Wave Device Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     networks:
       - "zwave_zwave"
       - "traefik_default"
