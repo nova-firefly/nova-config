@@ -129,6 +129,7 @@ services:
     container_name: "traefik-traefik-1"
     environment:
       - "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}"
+      - "NOVA_DOMAIN=${NOVA_DOMAIN}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     image: "traefik:v3.6"
