@@ -55,6 +55,8 @@ services:
       homepage.description: "Smart Home Control"
       wud.watch: "true"
       wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
     privileged: true
     restart: "unless-stopped"
     ports:
@@ -85,8 +87,10 @@ services:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
     ports:
-      - "8095:8095/tcp"    
+      - "8095:8095/tcp"
     restart: "unless-stopped"
     security_opt:
       - "apparmor:unconfined"
