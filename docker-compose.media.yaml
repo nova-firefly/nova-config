@@ -137,6 +137,11 @@ services:
     hostname: "${NOVA_HOSTNAME}"
     image: "ghcr.io/linuxserver/plex:latest"
     labels:
+      traefik.enable: "true"
+      traefik.http.routers.plex.rule: "Host(`plex${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.plex.entrypoints: "websecure"
+      traefik.http.routers.plex.tls: "false"
+      traefik.http.services.plex.loadbalancer.server.port: "32400"
       homepage.group: "Media"
       homepage.name: "Plex"
       homepage.icon: "plex.svg"
@@ -145,9 +150,8 @@ services:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
-    network_mode: "host"
     ports:
-      - "32800:32800/tcp"
+      - "32400:32400/tcp"
     restart: "unless-stopped"
     volumes:
       - "/data1/plex_config/plex_config/_data:/config"
@@ -425,6 +429,8 @@ services:
     environment:
       - "PUID=${PUID}"
       - "PGID=${PGID}"
+      - "USER=${TRANSMISSION_USER}"
+      - "PASS=${TRANSMISSION_PASS}"
       - "TZ=${TZ}"
     image: "lscr.io/linuxserver/transmission:latest"
     labels:
