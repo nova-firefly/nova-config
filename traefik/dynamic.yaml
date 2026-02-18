@@ -6,15 +6,15 @@
 http:
   routers:
     ma:
-      rule: "Host(`ma.{{ env \"NOVA_DOMAIN\" }}`)"
+      rule: Host(`ma.{{ env "NOVA_DOMAIN" }}`)
       entrypoints:
-        - "websecure"
+        - websecure
       tls: {}
-      service: "ma"
+      service: ma
 
   services:
     ma:
       loadBalancer:
         servers:
-          - url: "http://host.docker.internal:8095"
+          - url: http://host.docker.internal:8095
         passHostHeader: true
