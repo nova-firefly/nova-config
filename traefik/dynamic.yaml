@@ -2,20 +2,3 @@
 # Routes for services using network_mode: host
 # These cannot be discovered by Traefik's Docker provider
 # host.docker.internal resolves to the Docker host via extra_hosts
-
-http:
-  routers:
-
-    homeassistant:
-      rule: "Host(`ha.firefly-koonan.duckdns.org`)"
-      entrypoints:
-        - "websecure"
-      tls: {}
-      service: "homeassistant"
-
-  services:
-
-    homeassistant:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8123"
