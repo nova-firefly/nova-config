@@ -5,16 +5,16 @@
           type: glances
           url: http://host.docker.internal:61208
           version: 4
-          metric: fs:/data1
+          metric: fs:/rootfs/data1
     - data2:
         widget:
           type: glances
           url: http://host.docker.internal:61208
           version: 4
-          metric: fs:/data2
+          metric: fs:/rootfs/data2
     - data3:
         widget:
           type: glances
           url: http://host.docker.internal:61208
           version: 4
-          metric: fs:/data3
+          metric: fs:/rootfs/data3
