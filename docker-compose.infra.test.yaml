@@ -1,8 +1,12 @@
 # Infra Stack - Test environment overrides
 # Remaps ports (+10000 offset), uses test-prefixed volumes and networks
-# volume-sharer is excluded (host network mode)
+# volume-sharer and glances are excluded (host network mode)
 
 services:
+
+  glances:
+    profiles:
+      - "prod-only"
 
   volume-sharer:
     profiles:

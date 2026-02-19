@@ -1,4 +1,4 @@
-# Infrastructure Stack - Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Volume Sharer
+# Infrastructure Stack - Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Glances, Volume Sharer
 # Usage: docker compose -f docker-compose.infra.yaml up -d
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
 
@@ -57,6 +57,8 @@ services:
 
   homepage:
     container_name: "homepage"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     image: "ghcr.io/gethomepage/homepage:latest"
     environment:
       - "TZ=${TZ}"
@@ -78,6 +80,9 @@ services:
     volumes:
       - "./homepage:/app/config"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/data1:/data1:ro"
+      - "/data2:/data2:ro"
+      - "/data3:/data3:ro"
 
   portainer:
     container_name: "portainer"
@@ -167,6 +172,28 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml:ro"
       - "traefik_acme:/letsencrypt"
+
+  glances:
+    container_name: "glances"
+    environment:
+      - "TZ=${TZ}"
+      - "GLANCES_OPT=-w"
+    image: "nicolargo/glances:latest-full"
+    labels:
+      homepage.group: "Infrastructure"
+      homepage.name: "Glances"
+      homepage.icon: "glances.png"
+      homepage.href: "https://glances.${NOVA_DOMAIN}"
+      homepage.description: "System Monitoring"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.infra,discord.notify"
+    network_mode: "host"
+    pid: "host"
+    restart: "unless-stopped"
+    volumes:
+      - "/:/rootfs:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   volume-sharer:
     container_name: "volume-sharer"
