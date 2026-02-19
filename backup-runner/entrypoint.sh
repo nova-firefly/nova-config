@@ -4,11 +4,12 @@
 # Runs backup plans via the Backrest API on a weekly schedule (Monday 4am).
 # Before each attempt, checks that the SFTP host is reachable.
 # Retries every 6 hours until success or the next weekly window.
+# Sends a Discord alert after 3 consecutive failures.
 #
 # Environment variables (set in docker-compose):
-#   SFTP_HOST        - SFTP destination hostname/IP
-#   SFTP_PORT        - SFTP port (default: 22)
-#   BACKREST_URL     - Backrest API base URL (default: http://backrest:9898)
+#   SFTP_HOST           - SFTP destination hostname/IP
+#   SFTP_PORT           - SFTP port (default: 22)
+#   BACKREST_URL        - Backrest API base URL (default: http://backrest:9898)
 #   DISCORD_WEBHOOK_URL - Optional Discord webhook for failure notifications
 
 set -eu
@@ -126,7 +127,7 @@ run_all_backups() {
 
     # Dump Immich postgres before backing up
     if ! dump_immich_postgres; then
-        notify_discord ":x: Backup failed: could not dump Immich postgres"
+        log "Aborting backup: postgres dump failed"
         return 1
     fi
 
@@ -139,7 +140,7 @@ run_all_backups() {
     done
 
     if [ -n "$failed" ]; then
-        notify_discord ":x: Backup failed for plans:${failed}"
+        log "Plans failed:${failed}"
         return 1
     fi
 
@@ -150,7 +151,7 @@ run_all_backups() {
 
 # --- Main cron loop ---
 # Runs weekly on Monday 4am, retrying every 6h on failure until the next Monday.
-# On container start: check if we're past this week's Monday 4am and haven't run yet.
+# Sends a Discord alert after 3 consecutive failures.
 
 log "Backup runner started. Waiting for Monday 4am schedule..."
 
@@ -166,16 +167,33 @@ while true; do
     # It's Monday (1) and at or after 4am
     if [ "$dow" = "1" ] && [ "$hour" -ge 4 ] && [ "$week" != "$last_run_week" ]; then
         log "Scheduled backup window: Monday $hour:xx (week $week)"
-        if run_all_backups; then
-            last_run_week="$week"
-            log "Backup succeeded. Next run: next Monday at 4am."
-            # Sleep until next Monday: calculate remaining seconds in the week
-            sleep 604800  # 7 days - will re-align on wake
-        else
-            log "Backup failed. Retrying in 6 hours..."
-            notify_discord ":warning: Backup failed. Will retry in 6 hours."
+        attempt=0
+        while true; do
+            attempt=$((attempt + 1))
+            log "Attempt $attempt..."
+            if run_all_backups; then
+                last_run_week="$week"
+                log "Backup succeeded on attempt $attempt. Next run: next Monday at 4am."
+                sleep 604800  # 7 days - will re-align on wake
+                break
+            fi
+
+            log "Attempt $attempt failed. Retrying in 6 hours..."
+
+            if [ "$attempt" -eq 3 ]; then
+                notify_discord ":rotating_light: Backup has failed **3 times** this week (attempts so far: $attempt). Will keep retrying every 6 hours. Check Backrest logs."
+            fi
+
             sleep "$RETRY_INTERVAL_SECONDS"
-        fi
+
+            # If we've crossed into a new week, give up and wait for next Monday
+            new_week=$(date '+%V')
+            if [ "$new_week" != "$week" ]; then
+                log "New week started without a successful backup. Resetting for next Monday."
+                notify_discord ":x: Backup never succeeded this week after $attempt attempts. Will retry next Monday."
+                break
+            fi
+        done
     else
         # Sleep 60s between schedule checks (lightweight polling)
         sleep 60
