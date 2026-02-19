@@ -80,6 +80,9 @@ services:
     volumes:
       - "./homepage:/app/config"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/data1:/data1:ro"
+      - "/data2:/data2:ro"
+      - "/data3:/data3:ro"
 
   portainer:
     container_name: "portainer"
