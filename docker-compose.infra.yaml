@@ -57,6 +57,8 @@ services:
 
   homepage:
     container_name: "homepage"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     image: "ghcr.io/gethomepage/homepage:latest"
     environment:
       - "TZ=${TZ}"
