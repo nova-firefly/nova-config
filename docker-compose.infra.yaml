@@ -1,4 +1,4 @@
-# Infrastructure Stack - Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Volume Sharer
+# Infrastructure Stack - Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Glances, Volume Sharer
 # Usage: docker compose -f docker-compose.infra.yaml up -d
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
 
@@ -167,6 +167,28 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml:ro"
       - "traefik_acme:/letsencrypt"
+
+  glances:
+    container_name: "glances"
+    environment:
+      - "TZ=${TZ}"
+      - "GLANCES_OPT=-w"
+    image: "nicolargo/glances:latest-full"
+    labels:
+      homepage.group: "Infrastructure"
+      homepage.name: "Glances"
+      homepage.icon: "glances.png"
+      homepage.href: "https://glances.${NOVA_DOMAIN}"
+      homepage.description: "System Monitoring"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.infra,discord.notify"
+    network_mode: "host"
+    pid: "host"
+    restart: "unless-stopped"
+    volumes:
+      - "/:/rootfs:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   volume-sharer:
     container_name: "volume-sharer"

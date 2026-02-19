@@ -6,6 +6,9 @@ background:
   image: https://images.unsplash.com/photo-1506318137071-a8e063b4bec0
 cardBlur: xs
 layout:
+  System:
+    style: row
+    columns: 3
   Infrastructure:
     style: row
     columns: 3
