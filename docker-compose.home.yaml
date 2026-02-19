@@ -73,6 +73,7 @@ services:
       homepage.group: "Home Automation"
       homepage.name: "Music Assistant"
       homepage.href: "https://ma.${NOVA_DOMAIN}"
+      homepage.icon: "music-assistant.svg"
       homepage.description: "Music Player"
       wud.watch: "true"
       wud.watch.digest: "true"

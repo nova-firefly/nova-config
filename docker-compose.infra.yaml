@@ -243,7 +243,7 @@ services:
       traefik.http.services.wud.loadbalancer.server.port: "3000"
       homepage.group: "Infrastructure"
       homepage.name: "WUD"
-      homepage.icon: "whatsupdocker.png"
+      homepage.icon: "whats-up-docker.png"
       homepage.href: "http://wud${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Container Update Notifications"
       wud.watch: "false"
