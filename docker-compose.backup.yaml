@@ -1,6 +1,12 @@
-# Backup Stack - Backrest and Duplicati
+# Backup Stack - Backrest with SFTP remote
 # Usage: docker compose -f docker-compose.backup.yaml up -d
-# Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
+# Requires .env file for: SFTP_HOST, SFTP_USER, SFTP_PORT, SFTP_PATH,
+#                         UPLOAD_LOCATION, DB_DATA_LOCATION, DB_USERNAME, DB_DATABASE_NAME,
+#                         NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
+#
+# SSH key setup (one-time, before first run):
+#   ssh-keygen -t ed25519 -f ./backrest/ssh/id_ed25519 -N "" -C "backrest@nova"
+#   # Then add the public key to ~/.ssh/authorized_keys on your SFTP server
 
 networks:
   backrest_default:
@@ -47,9 +53,39 @@ services:
       - "/data3:/hd3:ro"
       - "/home/koonan:/home:ro"
       - "/var/lib/docker/volumes:/volumes:ro"
+      # Plex config (the irreplaceable part - not media files)
+      - "/data1/plex_config/plex_config/_data:/backup/plex-config:ro"
+      # Immich photo library and postgres data
+      - "${UPLOAD_LOCATION}:/backup/immich-photos:ro"
+      - "${DB_DATA_LOCATION}:/backup/immich-db:ro"
+      # Immich postgres dump output (written by backup-runner, read by backrest)
+      - "backrest_immich_dump:/backup/immich-db-dump"
+      # SSH key for SFTP remote
+      - "./backrest/ssh:/root/.ssh:ro"
       - "backrest_backrest_cache:/cache"
       - "backrest_backrest_config:/config"
       - "backrest_backrest_data:/data"
+
+  backup-runner:
+    container_name: "backup-runner"
+    build:
+      context: "./backup-runner"
+    environment:
+      - "TZ=${TZ}"
+      - "SFTP_HOST=${SFTP_HOST}"
+      - "SFTP_PORT=${SFTP_PORT:-22}"
+      - "BACKREST_URL=http://backrest:9898"
+      - "DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}"
+    networks:
+      - "backrest_default"
+    restart: "unless-stopped"
+    volumes:
+      # Needs docker socket to run pg_dumpall inside the immich_postgres container
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      # Dump output directory shared with backrest
+      - "backrest_immich_dump:/immich-db-dump"
+      # SSH key for connectivity test
+      - "./backrest/ssh:/root/.ssh:ro"
 
 volumes:
 
@@ -60,4 +96,7 @@ volumes:
     external: true
 
   backrest_backrest_data:
+    external: true
+
+  backrest_immich_dump:
     external: true

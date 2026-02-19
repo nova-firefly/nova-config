@@ -24,3 +24,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Backrest SSH keys (private key must never be committed)
+backrest/ssh/id_*
+backrest/ssh/known_hosts

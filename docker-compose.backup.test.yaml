@@ -16,9 +16,23 @@ services:
       - "/data3:/hd3:ro"
       - "/home/koonan:/home:ro"
       - "/var/lib/docker/volumes:/volumes:ro"
+      - "/data1/plex_config/plex_config/_data:/backup/plex-config:ro"
+      - "${UPLOAD_LOCATION}:/backup/immich-photos:ro"
+      - "${DB_DATA_LOCATION}:/backup/immich-db:ro"
+      - "test_backrest_immich_dump:/backup/immich-db-dump"
+      - "./backrest/ssh:/root/.ssh:ro"
       - "test_backrest_backrest_cache:/cache"
       - "test_backrest_backrest_config:/config"
       - "test_backrest_backrest_data:/data"
+
+  backup-runner:
+    container_name: "test_backup-runner"
+    networks: !override
+      - "test_backrest_default"
+    volumes: !override
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "test_backrest_immich_dump:/immich-db-dump"
+      - "./backrest/ssh:/root/.ssh:ro"
 
 networks:
 
@@ -46,6 +60,9 @@ volumes:
   backrest_backrest_data:
     name: "backrest_backrest_data_unused"
 
+  backrest_immich_dump:
+    name: "backrest_immich_dump_unused"
+
   test_backrest_backrest_cache:
     name: "test_backrest_backrest_cache"
 
@@ -54,3 +71,6 @@ volumes:
 
   test_backrest_backrest_data:
     name: "test_backrest_backrest_data"
+
+  test_backrest_immich_dump:
+    name: "test_backrest_immich_dump"

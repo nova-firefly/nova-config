@@ -1,0 +1,67 @@
+{
+  "modno": 1,
+  "version": 2,
+  "repos": [
+    {
+      "id": "sftp-nova",
+      "uri": "sftp:${SFTP_USER}@${SFTP_HOST}:${SFTP_PATH}",
+      "password": "${RESTIC_PASSWORD}",
+      "env": [
+        "RESTIC_COMPRESSION=max"
+      ],
+      "flags": [
+        "--sftp-port=${SFTP_PORT}"
+      ],
+      "prunePolicy": {
+        "schedule": {
+          "cron": "0 5 * * 1"
+        },
+        "keepWeekly": 4,
+        "keepMonthly": 2
+      },
+      "checkPolicy": {
+        "schedule": {
+          "cron": "0 6 1 * *"
+        }
+      }
+    }
+  ],
+  "plans": [
+    {
+      "id": "plex-config",
+      "repo": "sftp-nova",
+      "paths": [
+        "/backup/plex-config"
+      ],
+      "excludes": [
+        "Logs",
+        "Cache",
+        "Codecs",
+        "Crash Reports"
+      ],
+      "schedule": {
+        "disabled": true
+      },
+      "retention": {
+        "keepWeekly": 4,
+        "keepMonthly": 2
+      }
+    },
+    {
+      "id": "immich-data",
+      "repo": "sftp-nova",
+      "paths": [
+        "/backup/immich-photos",
+        "/backup/immich-db-dump"
+      ],
+      "excludes": [],
+      "schedule": {
+        "disabled": true
+      },
+      "retention": {
+        "keepWeekly": 4,
+        "keepMonthly": 2
+      }
+    }
+  ]
+}
