@@ -65,10 +65,13 @@ services:
       - "vibe-kanban-claude:/root/.claude"
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
+      - "ha_config:/ha-config"
 
 volumes:
 
   vibe-kanban-repos:
+    external: true
+  ha_config:
     external: true
 
   vibe-kanban-claude:
