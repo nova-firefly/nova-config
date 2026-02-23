@@ -65,6 +65,7 @@ services:
       - "vibe-kanban-repos:/repos"
       - "vibe-kanban-cache:/root/.npm/_npx"
       - "vibe-kanban-claude:/root/.claude"
+      - "vibe-kanban-data:/root/.local/share/vibe-kanban"
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
       - "ha_config:/ha-config"
@@ -79,3 +80,5 @@ volumes:
   vibe-kanban-claude:
 
   vibe-kanban-cache:
+
+  vibe-kanban-data:
