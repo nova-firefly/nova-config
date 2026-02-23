@@ -14,6 +14,7 @@ services:
       - "test_vibe-kanban-repos:/repos"
       - "test_vibe-kanban-cache:/root/.npm/_npx"
       - "test_vibe-kanban-claude:/root/.claude"
+      - "test_vibe-kanban-data:/root/.local/share/vibe-kanban"
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 
@@ -37,6 +38,9 @@ volumes:
   vibe-kanban-cache:
     name: "vibe-kanban-cache_unused"
 
+  vibe-kanban-data:
+    name: "vibe-kanban-data_unused"
+
   test_vibe-kanban-repos:
     name: "test_vibe-kanban-repos"
 
@@ -45,3 +49,6 @@ volumes:
 
   test_vibe-kanban-cache:
     name: "test_vibe-kanban-cache"
+
+  test_vibe-kanban-data:
+    name: "test_vibe-kanban-data"
