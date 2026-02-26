@@ -34,9 +34,9 @@ services:
       - "8080:8080/tcp"
     restart: "unless-stopped"
     volumes:
-      - "stirling-pdf_configs:/configs"
+      - "stirling_config:/configs"
 
 volumes:
 
-  stirling-pdf_configs:
+  stirling_config:
     external: true
