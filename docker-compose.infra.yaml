@@ -244,6 +244,7 @@ services:
       # Discord notification trigger (notify-only for sensitive containers)
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
+      - "WUD_TRIGGER_DISCORD_NOTIFY_SIMPLEBODY=Container $${name} can be updated from $${local} to $${remote}\nhttps://wud.${NOVA_DOMAIN}"
       # HTTP install trigger - adds "Install" button in WUD UI for manual approval
       - "WUD_TRIGGER_HTTP_INSTALL_URL=http://wud-update-dispatcher:9000/hooks/wud-install"
       - "WUD_TRIGGER_HTTP_INSTALL_METHOD=POST"
