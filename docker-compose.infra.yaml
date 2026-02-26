@@ -218,10 +218,11 @@ services:
     container_name: "wud"
     environment:
       - "WUD_LOG_FORMAT=text"
-      # Watcher - check for updates at 4am daily
-      - "WUD_WATCHER_DOCKER_LOCAL_CRON=0 4 * * *"
-      - "WUD_WATCHER_DOCKER_LOCAL_WATCHBYDEFAULT=false"
-      # Docker Compose triggers - one per stack file
+      # Watcher - check for updates at 4am daily, scan on startup too
+      - "WUD_WATCHER_LOCAL_CRON=0 4 * * *"
+      - "WUD_WATCHER_LOCAL_WATCHBYDEFAULT=false"
+      - "WUD_WATCHER_LOCAL_WATCHATSTART=true"
+      # Docker Compose triggers - one per stack file (auto-update)
       - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_FILE=/compose/docker-compose.infra.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_PRUNE=true"
@@ -231,7 +232,16 @@ services:
       - "WUD_TRIGGER_DOCKERCOMPOSE_BACKUP_FILE=/compose/docker-compose.backup.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_BACKUP_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_BACKUP_PRUNE=true"
-      # Discord notification trigger
+      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_FILE=/compose/docker-compose.home.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_FILE=/compose/docker-compose.gaming.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_FILE=/compose/docker-compose.tools.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_PRUNE=true"
+      # Discord notification trigger (notify-only for sensitive containers)
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
     image: "getwud/wud"
@@ -247,11 +257,14 @@ services:
       homepage.href: "http://wud${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Container Update Notifications"
       wud.watch: "false"
+    group_add:
+      - "${DOCKER_GID:-999}"
     networks:
       - "wud_default"
       - "traefik_default"
     ports:
       - "3003:3000/tcp"
+    restart: "unless-stopped"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "${NOVA_CONFIG_PATH:-.}:/compose:ro"
