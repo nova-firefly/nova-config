@@ -51,7 +51,7 @@ services:
       homepage.href: "https://ha.${NOVA_DOMAIN}"
       homepage.description: "Smart Home Control"
       wud.watch: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "discord.notify,http.install"
     networks:
       - "traefik_default"
     privileged: true
@@ -77,7 +77,7 @@ services:
       homepage.description: "Music Player"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "discord.notify,http.install"
     network_mode: "host"
     restart: "unless-stopped"
     security_opt:
@@ -108,7 +108,7 @@ services:
       homepage.description: "Z-Wave Device Management"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "discord.notify,http.install"
     networks:
       - "traefik_default"
     restart: "always"

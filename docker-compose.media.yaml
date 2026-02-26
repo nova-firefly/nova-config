@@ -149,7 +149,7 @@ services:
       homepage.description: "Media Server"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "discord.notify,http.install"
     ports:
       - "32400:32400/tcp"
     restart: "unless-stopped"

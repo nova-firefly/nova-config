@@ -51,7 +51,7 @@ services:
       homepage.href: "http://immich${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       homepage.description: "Photo Management"
       wud.watch: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "discord.notify,http.install"
     networks:
       - immich_default
       - traefik_default
@@ -63,7 +63,7 @@ services:
     image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
     labels:
       wud.watch: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "discord.notify,http.install"
     # extends: # uncomment this section for hardware acceleration - see https://immich.app/docs/features/ml-hardware-acceleration
     #   file: hwaccel.ml.yml
     #   service: cpu # set to one of [armnn, cuda, rocm, openvino, openvino-wsl, rknn] for accelerated inference - use the `-wsl` version for WSL2 where applicable

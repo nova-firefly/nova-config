@@ -1,0 +1,40 @@
+[
+  {
+    "id": "wud-install",
+    "execute-command": "/scripts/dispatch-update.sh",
+    "command-working-directory": "/scripts",
+    "response-message": "Update dispatched",
+    "pass-environment-to-command": [
+      {
+        "source": "payload",
+        "envname": "CONTAINER_NAME",
+        "name": "name"
+      },
+      {
+        "source": "payload",
+        "envname": "IMAGE_NAME",
+        "name": "image.name"
+      },
+      {
+        "source": "payload",
+        "envname": "CURRENT_TAG",
+        "name": "image.tag.value"
+      },
+      {
+        "source": "payload",
+        "envname": "LATEST_TAG",
+        "name": "result.tag"
+      }
+    ],
+    "trigger-rule": {
+      "match": {
+        "type": "value",
+        "value": "${WEBHOOK_SECRET}",
+        "parameter": {
+          "source": "header",
+          "name": "X-Wud-Secret"
+        }
+      }
+    }
+  }
+]
