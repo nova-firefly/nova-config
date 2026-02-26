@@ -1,0 +1,30 @@
+# Tools Stack - Test environment overrides
+# Remaps ports (+10000 offset), uses test-prefixed volumes and networks
+
+services:
+
+  stirling-pdf:
+    container_name: "test_stirling-pdf"
+    networks: !override
+      - "test_traefik_default"
+    ports: !override
+      - "18080:8080/tcp"
+    volumes: !override
+      - "test_stirling-pdf_configs:/configs"
+
+networks:
+
+  traefik_default:
+    name: "traefik_default_unused"
+
+  test_traefik_default:
+    external: true
+    name: "test_traefik_default"
+
+volumes:
+
+  stirling-pdf_configs:
+    name: "stirling-pdf_configs_unused"
+
+  test_stirling-pdf_configs:
+    name: "test_stirling-pdf_configs"
