@@ -1,0 +1,11 @@
+---
+- search:
+    provider: google
+    target: _blank
+- resources:
+    label: Disk Space
+    expanded: true
+    disk:
+      - /data1
+      - /data2
+      - /data3

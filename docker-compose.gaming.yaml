@@ -1,0 +1,53 @@
+# Gaming Stack - Minecraft Server
+# Usage: docker compose -f docker-compose.gaming.yaml up -d
+
+services:
+
+  minecraft:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "minecraft"
+    environment:
+      - "EULA=TRUE"
+      - "TYPE=VANILLA"
+      - "VERSION=LATEST"
+      - "UID=${PUID}"
+      - "GID=${PGID}"
+    image: "itzg/minecraft-server:latest"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    ports:
+      - "25565:25565/tcp"
+    stdin_open: true
+    tty: true
+    volumes:
+      - "minecraft_data:/data"
+
+volumes:
+
+  minecraft_data:
+    external: true

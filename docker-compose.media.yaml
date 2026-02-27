@@ -1,0 +1,470 @@
+# Media Stack - Plex, *arr apps, Gluetun + Transmission, Tautulli, Overseerr
+# Usage: docker compose -f docker-compose.media.yaml up -d
+# Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*, NOVA_DOMAIN
+
+networks:
+  media:
+    external: true
+    name: "media"
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  bazarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "bazarr"
+    environment:
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "TZ=${TZ}"
+    image: "lscr.io/linuxserver/bazarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.bazarr.rule: "Host(`bazarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.bazarr.entrypoints: "websecure"
+      traefik.http.routers.bazarr.tls: "true"
+      traefik.http.services.bazarr.loadbalancer.server.port: "6767"
+      homepage.group: "Downloads"
+      homepage.name: "Bazarr"
+      homepage.icon: "bazarr.svg"
+      homepage.href: "http://bazarr.${NOVA_DOMAIN}"
+      homepage.description: "Subtitle Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "6767:6767/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/movies:/plex_movies_1"
+      - "/data1/plex_data_1/_data/tv:/plex_tv_1"
+      - "/data2/movies:/plex_movies_2"
+      - "/data2/tv:/plex_tv_2"
+      - "/data3/movies:/plex_movies_3"
+      - "/data3/tv:/plex_tv_3"
+      - "/opt/subcleaner:/opt/subcleaner"
+      - "bazarr_config:/config"
+
+  overseerr:
+    container_name: "overseerr"
+    environment:
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "TZ=${TZ}"
+      - "LOG_LEVEL=debug"
+    image: "lscr.io/linuxserver/overseerr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.overseerr.rule: "Host(`overseerr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.overseerr.entrypoints: "websecure"
+      traefik.http.routers.overseerr.tls: "true"
+      traefik.http.services.overseerr.loadbalancer.server.port: "5055"
+      homepage.group: "Media"
+      homepage.name: "Overseerr"
+      homepage.icon: "overseerr.svg"
+      homepage.href: "http://overseerr.${NOVA_DOMAIN}"
+      homepage.description: "Media Requests"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "5055:5055/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "overseerr_config:/config"
+
+  plex:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "plex"
+    environment:
+      - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
+      - "PGID=${PGID}"
+      - "PLEX_CLAIM=${PLEX_CLAIM_TOKEN}"
+      - "PUID=${PUID}"
+      - "VERSION=docker"
+    hostname: "${NOVA_HOSTNAME}"
+    image: "ghcr.io/linuxserver/plex:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.plex.rule: "Host(`plex.${NOVA_DOMAIN}`)"
+      traefik.http.routers.plex.entrypoints: "websecure"
+      traefik.http.routers.plex.tls: "false"
+      traefik.http.services.plex.loadbalancer.server.port: "32400"
+      homepage.group: "Media"
+      homepage.name: "Plex"
+      homepage.icon: "plex.svg"
+      homepage.href: "http://plex.${NOVA_DOMAIN}"
+      homepage.description: "Media Server"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    ports:
+      - "32400:32400/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_config/plex_config/_data:/config"
+      - "/data1/plex_data_1/_data:/library1"
+      - "/data2:/library2"
+      - "/data3/movies:/library3/movies"
+      - "/data3/tv:/library3/tv"
+
+  prowlarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "prowlarr"
+    environment:
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+    image: "lscr.io/linuxserver/prowlarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.prowlarr.rule: "Host(`prowlarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.prowlarr.entrypoints: "websecure"
+      traefik.http.routers.prowlarr.tls: "true"
+      traefik.http.services.prowlarr.loadbalancer.server.port: "9696"
+      homepage.group: "Downloads"
+      homepage.name: "Prowlarr"
+      homepage.icon: "prowlarr.svg"
+      homepage.href: "http://prowlarr.${NOVA_DOMAIN}"
+      homepage.description: "Indexer Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "media"
+      - "traefik_default"
+    ports:
+      - "9696:9696/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/path/to/prowlarr/data:/config"
+
+  radarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "radarr"
+    environment:
+      - "PGID=${PGID}"
+      - "PUID=${PUID}"
+      - "TZ=${TZ}"
+    image: "ghcr.io/linuxserver/radarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.radarr.rule: "Host(`radarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.radarr.entrypoints: "websecure"
+      traefik.http.routers.radarr.tls: "true"
+      traefik.http.services.radarr.loadbalancer.server.port: "7878"
+      homepage.group: "Downloads"
+      homepage.name: "Radarr"
+      homepage.icon: "radarr.svg"
+      homepage.href: "http://radarr.${NOVA_DOMAIN}"
+      homepage.description: "Movie Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "media"
+      - "traefik_default"
+    ports:
+      - "7878:7878/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/movies:/plex_movies_1"
+      - "/data2/movies:/plex_movies_2"
+      - "/data3/movies:/plex_movies_3"
+      - "radarr_config:/config"
+      - "transmission_data:/downloads"
+
+  sonarr:
+    cap_drop:
+      - "CAP_AUDIT_CONTROL"
+      - "CAP_BLOCK_SUSPEND"
+      - "CAP_DAC_READ_SEARCH"
+      - "CAP_IPC_LOCK"
+      - "CAP_IPC_OWNER"
+      - "CAP_LEASE"
+      - "CAP_LINUX_IMMUTABLE"
+      - "CAP_MAC_ADMIN"
+      - "CAP_MAC_OVERRIDE"
+      - "CAP_NET_ADMIN"
+      - "CAP_NET_BROADCAST"
+      - "CAP_SYSLOG"
+      - "CAP_SYS_ADMIN"
+      - "CAP_SYS_BOOT"
+      - "CAP_SYS_MODULE"
+      - "CAP_SYS_NICE"
+      - "CAP_SYS_PACCT"
+      - "CAP_SYS_PTRACE"
+      - "CAP_SYS_RAWIO"
+      - "CAP_SYS_RESOURCE"
+      - "CAP_SYS_TIME"
+      - "CAP_SYS_TTY_CONFIG"
+      - "CAP_WAKE_ALARM"
+    container_name: "sonarr"
+    environment:
+      - "PGID=${PGID}"
+      - "PUID=${PUID}"
+      - "TZ=${TZ}"
+    image: "ghcr.io/linuxserver/sonarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.sonarr.rule: "Host(`sonarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.sonarr.entrypoints: "websecure"
+      traefik.http.routers.sonarr.tls: "true"
+      traefik.http.services.sonarr.loadbalancer.server.port: "8989"
+      homepage.group: "Downloads"
+      homepage.name: "Sonarr"
+      homepage.icon: "sonarr.svg"
+      homepage.href: "http://sonarr.${NOVA_DOMAIN}"
+      homepage.description: "TV Show Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "media"
+      - "traefik_default"
+    ports:
+      - "8989:8989/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/tv:/plex_tv_1"
+      - "/data2/tv:/plex_tv_2"
+      - "/data3/tv:/plex_tv_3"
+      - "sonarr_config:/config"
+      - "transmission_data:/downloads"
+
+  tautulli:
+    container_name: "tautulli"
+    environment:
+      - "PGID=${PGID}"
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+    image: "ghcr.io/tautulli/tautulli:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.tautulli.rule: "Host(`tautulli.${NOVA_DOMAIN}`)"
+      traefik.http.routers.tautulli.entrypoints: "websecure"
+      traefik.http.routers.tautulli.tls: "true"
+      traefik.http.services.tautulli.loadbalancer.server.port: "8181"
+      homepage.group: "Media"
+      homepage.name: "Tautulli"
+      homepage.icon: "tautulli.svg"
+      homepage.href: "http://tautulli.${NOVA_DOMAIN}"
+      homepage.description: "Plex Monitoring"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "8181:8181/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "tautulli_config:/config"
+
+  gluetun:
+    cap_add:
+      - "NET_ADMIN"
+    container_name: "gluetun"
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    environment:
+      - "FIREWALL_VPN_INPUT_PORTS=${MULLVAD_WIREGUARD_PORT_FORWARD:-}"
+      - "SERVER_COUNTRIES=${MULLVAD_SERVER_COUNTRY:-Sweden}"
+      - "TZ=${TZ}"
+      - "VPN_SERVICE_PROVIDER=mullvad"
+      - "VPN_TYPE=wireguard"
+      - "WIREGUARD_ADDRESSES=${MULLVAD_WIREGUARD_ADDRESSES}"
+      - "WIREGUARD_PRIVATE_KEY=${MULLVAD_WIREGUARD_PRIVATE_KEY}"
+    image: "qmcgaw/gluetun:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.transmission.rule: "Host(`transmission.${NOVA_DOMAIN}`)"
+      traefik.http.routers.transmission.entrypoints: "websecure"
+      traefik.http.routers.transmission.tls: "true"
+      traefik.http.services.transmission.loadbalancer.server.port: "9091"
+      homepage.group: "Downloads"
+      homepage.name: "Transmission"
+      homepage.icon: "transmission.svg"
+      homepage.href: "http://transmission.${NOVA_DOMAIN}"
+      homepage.description: "Torrent Client"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+    networks:
+      - "media"
+      - "traefik_default"
+    ports:
+      - "9094:9091/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "gluetun_data:/gluetun"
+
+  transmission:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "transmission"
+    environment:
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "USER=${TRANSMISSION_USER}"
+      - "PASS=${TRANSMISSION_PASS}"
+      - "TZ=${TZ}"
+    image: "lscr.io/linuxserver/transmission:latest"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    network_mode: "service:gluetun"
+    restart: "unless-stopped"
+    volumes:
+      - "transmission_config:/config"
+      - "transmission_data:/downloads"
+
+volumes:
+
+  bazarr_config:
+    external: true
+
+  gluetun_data:
+    external: true
+
+  overseerr_config:
+    external: true
+
+  radarr_config:
+    external: true
+
+  sonarr_config:
+    external: true
+
+  tautulli_config:
+    external: true
+
+  transmission_config:
+    external: true
+
+  transmission_data:
+    external: true

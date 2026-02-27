@@ -1,0 +1,63 @@
+# Backup Stack - Backrest and Duplicati
+# Usage: docker compose -f docker-compose.backup.yaml up -d
+# Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY, NOVA_DOMAIN
+
+networks:
+  backrest_default:
+    external: true
+    name: "backrest_default"
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  backrest:
+    container_name: "backrest"
+    environment:
+      - "TZ=${TZ}"
+      - "XDG_CACHE_HOME=/cache"
+      - "BACKREST_DATA=/data"
+      - "BACKREST_CONFIG=/config/config.json"
+    hostname: "backrest"
+    image: "garethgeorge/backrest:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.backrest.rule: "Host(`backrest.${NOVA_DOMAIN}`)"
+      traefik.http.routers.backrest.entrypoints: "websecure"
+      traefik.http.routers.backrest.tls: "true"
+      traefik.http.services.backrest.loadbalancer.server.port: "9898"
+      homepage.group: "Infrastructure"
+      homepage.name: "Backrest"
+      homepage.icon: "backrest.png"
+      homepage.href: "http://backrest.${NOVA_DOMAIN}"
+      homepage.description: "Backup Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.backup,discord.notify"
+    networks:
+      - "backrest_default"
+      - "traefik_default"
+    ports:
+      - "9898:9898/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1:/hd1:ro"
+      - "/data2:/hd2:ro"
+      - "/data3:/hd3:ro"
+      - "/home/koonan:/home:ro"
+      - "/var/lib/docker/volumes:/volumes:ro"
+      - "backrest_backrest_cache:/cache"
+      - "backrest_backrest_config:/config"
+      - "backrest_backrest_data:/data"
+
+volumes:
+
+  backrest_backrest_cache:
+    external: true
+
+  backrest_backrest_config:
+    external: true
+
+  backrest_backrest_data:
+    external: true

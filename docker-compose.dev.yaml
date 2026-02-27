@@ -1,0 +1,79 @@
+# Dev/Utility Stack - Vibe Kanban
+# Usage: docker compose -f docker-compose.dev.yaml up -d
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  vibe-kanban:
+    build: "./vibe-kanban"
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "vibe-kanban"
+    environment:
+      - "GH_TOKEN=${GH_TOKEN}"
+      - "PORT=4000"
+      - "TZ=${TZ}"
+      - "IS_SANDBOX=1"
+    hostname: "${NOVA_HOSTNAME}"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.vibe-kanban.rule: "Host(`kanban.${NOVA_DOMAIN}`)"
+      traefik.http.routers.vibe-kanban.entrypoints: "websecure"
+      traefik.http.routers.vibe-kanban.tls: "true"
+      traefik.http.services.vibe-kanban.loadbalancer.server.port: "4000"
+      homepage.group: "Development"
+      homepage.name: "Vibe Kanban"
+      homepage.icon: "https://www.google.com/s2/favicons?domain=vibekanban.com/&sz=128"
+      homepage.href: "http://kanban.${NOVA_DOMAIN}"
+      homepage.description: "Project Management"
+      wud.watch: "false"
+    networks:
+      - "traefik_default"
+    ports:
+      - "4000:4000/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "vibe-kanban-repos:/repos"
+      - "vibe-kanban-cache:/root/.npm/_npx"
+      - "vibe-kanban-claude:/root/.claude"
+      - "/home/koonan/.ssh:/root/.ssh:ro"
+      - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
+      - "ha_config:/ha-config"
+
+volumes:
+
+  vibe-kanban-repos:
+    external: true
+  ha_config:
+    external: true
+
+  vibe-kanban-claude:
+
+  vibe-kanban-cache:

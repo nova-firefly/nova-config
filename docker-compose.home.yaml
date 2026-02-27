@@ -1,0 +1,125 @@
+# Home Automation Stack - Home Assistant, Z-Wave, Music Assistant
+# Usage: docker compose -f docker-compose.home.yaml up -d
+# Requires .env file for: ZWAVE_SESSION_SECRET, NOVA_DOMAIN
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  homeassistant:
+    cap_drop:
+      - "CAP_AUDIT_CONTROL"
+      - "CAP_BLOCK_SUSPEND"
+      - "CAP_DAC_READ_SEARCH"
+      - "CAP_IPC_LOCK"
+      - "CAP_IPC_OWNER"
+      - "CAP_LEASE"
+      - "CAP_LINUX_IMMUTABLE"
+      - "CAP_MAC_ADMIN"
+      - "CAP_MAC_OVERRIDE"
+      - "CAP_NET_ADMIN"
+      - "CAP_NET_BROADCAST"
+      - "CAP_SYSLOG"
+      - "CAP_SYS_ADMIN"
+      - "CAP_SYS_BOOT"
+      - "CAP_SYS_MODULE"
+      - "CAP_SYS_NICE"
+      - "CAP_SYS_PACCT"
+      - "CAP_SYS_PTRACE"
+      - "CAP_SYS_RAWIO"
+      - "CAP_SYS_RESOURCE"
+      - "CAP_SYS_TIME"
+      - "CAP_SYS_TTY_CONFIG"
+      - "CAP_WAKE_ALARM"
+    container_name: "homeassistant"
+    environment:
+      - "TZ=${TZ}"
+    hostname: "${NOVA_HOSTNAME}"
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.ha.rule: "Host(`ha.${NOVA_DOMAIN}`)"
+      traefik.http.routers.ha.entrypoints: "websecure"
+      traefik.http.routers.ha.tls: "true"
+      traefik.http.services.ha.loadbalancer.server.port: "8123"
+      homepage.group: "Home Automation"
+      homepage.name: "Home Assistant"
+      homepage.icon: "home-assistant.svg"
+      homepage.href: "https://ha.${NOVA_DOMAIN}"
+      homepage.description: "Smart Home Control"
+      wud.watch: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
+    privileged: true
+    restart: "unless-stopped"
+    ports:
+      - "8123:8123/tcp"
+    security_opt:
+      - "label=disable"
+    volumes:
+      - "ha_config:/config"
+
+  music-assistant-server:
+    container_name: "music-assistant-server"
+    environment:
+      - "LOG_LEVEL=info"
+    hostname: "${NOVA_HOSTNAME}"
+    image: "ghcr.io/music-assistant/server:latest"
+    labels:
+      homepage.group: "Home Automation"
+      homepage.name: "Music Assistant"
+      homepage.href: "https://ma.${NOVA_DOMAIN}"
+      homepage.icon: "music-assistant.svg"
+      homepage.description: "Music Player"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    network_mode: "host"
+    restart: "unless-stopped"
+    security_opt:
+      - "apparmor:unconfined"
+    volumes:
+      - "/home/koonan/docker/music-assistant-server/data:/data"
+
+  zwave-js-ui:
+    container_name: "zwave-js-ui"
+    devices:
+      - "/dev/serial/by-id/usb-Zooz_800_Z-Wave_Stick_533D004242-if00:/dev/zwave"
+    environment:
+      - "ZWAVEJS_EXTERNAL_CONFIG=/usr/src/app/store/.config-db"
+      - "TZ=${TZ}"
+      - "SESSION_SECRET=${ZWAVE_SESSION_SECRET}"
+      - "NODE_ENV=production"
+    image: "zwavejs/zwave-js-ui:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.zwave.rule: "Host(`zwave.${NOVA_DOMAIN}`)"
+      traefik.http.routers.zwave.entrypoints: "websecure"
+      traefik.http.routers.zwave.tls: "true"
+      traefik.http.services.zwave.loadbalancer.server.port: "8091"
+      homepage.group: "Home Automation"
+      homepage.name: "Z-Wave JS UI"
+      homepage.icon: "z-wave-js-ui.png"
+      homepage.href: "http://zwave.${NOVA_DOMAIN}"
+      homepage.description: "Z-Wave Device Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "always"
+    tty: true
+    volumes:
+      - "zwave-js-ui:/usr/src/app/store"
+
+volumes:
+
+  ha_config:
+    external: true
+
+  zwave-js-ui:
+    external: true
