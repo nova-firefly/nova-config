@@ -43,6 +43,8 @@ services:
       VIKUNJA_SERVICE_PUBLICURL: "https://vikunja${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
       VIKUNJA_SERVICE_JWTSECRET: ${VIKUNJA_TOKEN}
       VIKUNJA_DATABASE_PATH: /db/vikunja.db
+    networks:
+      - "traefik_default"
     volumes:
       - vikunja_files:/app/vikunja/files
       - vikunja_db:/db
