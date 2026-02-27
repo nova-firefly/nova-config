@@ -24,3 +24,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+homepage/proxmox.yaml
+homepage/custom.js
+homepage/custom.css
+homepage/kubernetes.yaml

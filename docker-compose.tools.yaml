@@ -36,7 +36,36 @@ services:
     volumes:
       - "stirling_config:/configs"
 
+  vikunja:
+    image: vikunja/vikunja:latest
+    container_name: vikunja
+    environment:
+      VIKUNJA_SERVICE_PUBLICURL: "https://vikunja${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      VIKUNJA_SERVICE_JWTSECRET: ${VIKUNJA_TOKEN}
+      VIKUNJA_DATABASE_PATH: /db/vikunja.db
+    volumes:
+      - vikunja_files:/app/vikunja/files
+      - vikunja_db:/db
+    restart: unless-stopped
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.vikunja.rule: "Host(`vikunja${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.vikunja.entrypoints: "websecure"
+      traefik.http.routers.vikunja.tls: "true"
+      traefik.http.services.vikunja.loadbalancer.server.port: "3456"
+      homepage.group: "Tools"
+      homepage.name: "Vikunja"
+      homepage.icon: "vikunja.svg"
+      homepage.href: "http://vikunja${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.description: "Task Management"
+
 volumes:
+
+  vikunja_db:
+    external: true
+
+  vikunja_files:
+    external: true  
 
   stirling_config:
     external: true

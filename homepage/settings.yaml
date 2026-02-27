@@ -6,18 +6,22 @@ background:
   image: https://images.unsplash.com/photo-1506318137071-a8e063b4bec0
 cardBlur: xs
 layout:
-  Infrastructure:
+  Tools:
+    style: row
+    columns: 3
+  Development:
     style: row
     columns: 3
   Media:
     style: row
     columns: 3
-  Downloads:
-    style: row
-    columns: 3
   Home Automation:
     style: row
     columns: 2
-  Development:
+  Infrastructure:
     style: row
-    columns: 1
+    columns: 3
+  Downloads:
+    style: row
+    columns: 3
+  
