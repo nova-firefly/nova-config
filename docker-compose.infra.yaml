@@ -15,8 +15,8 @@ networks:
 
 services:
 
-  dockge-dockge-1:
-    container_name: "dockge-dockge-1"
+  dockge:
+    container_name: "dockge"
     environment:
       - "DOCKGE_STACKS_DIR=/opt/stacks"
     image: "louislam/dockge:1"
@@ -112,7 +112,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "portainer_data:/data"
 
-  traefik-traefik-1:
+  traefik:
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedByDefault=false"
@@ -131,7 +131,7 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       - "--api.dashboard=true"
-    container_name: "traefik-traefik-1"
+    container_name: "traefik"
     environment:
       - "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}"
       - "NOVA_DOMAIN=${NOVA_DOMAIN}"
