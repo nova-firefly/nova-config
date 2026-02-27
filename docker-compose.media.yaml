@@ -151,6 +151,8 @@ services:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
     ports:
       - "32400:32400/tcp"
     restart: "unless-stopped"
