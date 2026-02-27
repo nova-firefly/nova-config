@@ -1,6 +1,6 @@
 # Backup Stack - Backrest and Duplicati
 # Usage: docker compose -f docker-compose.backup.yaml up -d
-# Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
+# Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY, NOVA_DOMAIN
 
 networks:
   backrest_default:
@@ -23,14 +23,14 @@ services:
     image: "garethgeorge/backrest:latest"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.backrest.rule: "Host(`backrest${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.backrest.rule: "Host(`backrest.${NOVA_DOMAIN}`)"
       traefik.http.routers.backrest.entrypoints: "websecure"
       traefik.http.routers.backrest.tls: "true"
       traefik.http.services.backrest.loadbalancer.server.port: "9898"
       homepage.group: "Infrastructure"
       homepage.name: "Backrest"
       homepage.icon: "backrest.png"
-      homepage.href: "http://backrest${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.href: "http://backrest.${NOVA_DOMAIN}"
       homepage.description: "Backup Management"
       wud.watch: "true"
       wud.watch.digest: "true"

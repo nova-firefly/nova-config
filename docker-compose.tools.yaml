@@ -1,6 +1,6 @@
 # Tools Stack - Stirling PDF
 # Usage: docker compose -f docker-compose.tools.yaml up -d
-# Requires .env file for: NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
+# Requires .env file for: NOVA_DOMAIN
 
 networks:
   traefik_default:
@@ -16,14 +16,14 @@ services:
     image: "stirlingtools/stirling-pdf:latest"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.stirling-pdf.rule: "Host(`stirling-pdf${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.stirling-pdf.rule: "Host(`stirling-pdf.${NOVA_DOMAIN}`)"
       traefik.http.routers.stirling-pdf.entrypoints: "websecure"
       traefik.http.routers.stirling-pdf.tls: "true"
       traefik.http.services.stirling-pdf.loadbalancer.server.port: "8080"
       homepage.group: "Tools"
       homepage.name: "Stirling PDF"
       homepage.icon: "stirling-pdf.svg"
-      homepage.href: "http://stirling-pdf${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.href: "http://stirling-pdf.${NOVA_DOMAIN}"
       homepage.description: "PDF Manipulation"
       wud.watch: "true"
       wud.watch.digest: "true"
@@ -40,7 +40,7 @@ services:
     image: vikunja/vikunja:latest
     container_name: vikunja
     environment:
-      VIKUNJA_SERVICE_PUBLICURL: "https://vikunja${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      VIKUNJA_SERVICE_PUBLICURL: "https://vikunja.${NOVA_DOMAIN}"
       VIKUNJA_SERVICE_JWTSECRET: ${VIKUNJA_TOKEN}
       VIKUNJA_DATABASE_PATH: /db/vikunja.db
     networks:
@@ -51,14 +51,14 @@ services:
     restart: unless-stopped
     labels:
       traefik.enable: "true"
-      traefik.http.routers.vikunja.rule: "Host(`vikunja${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.vikunja.rule: "Host(`vikunja.${NOVA_DOMAIN}`)"
       traefik.http.routers.vikunja.entrypoints: "websecure"
       traefik.http.routers.vikunja.tls: "true"
       traefik.http.services.vikunja.loadbalancer.server.port: "3456"
       homepage.group: "Tools"
       homepage.name: "Vikunja"
       homepage.icon: "vikunja.svg"
-      homepage.href: "http://vikunja${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.href: "http://vikunja.${NOVA_DOMAIN}"
       homepage.description: "Task Management"
 
 volumes:

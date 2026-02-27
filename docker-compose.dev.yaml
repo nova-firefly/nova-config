@@ -43,14 +43,14 @@ services:
     hostname: "${NOVA_HOSTNAME}"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.vibe-kanban.rule: "Host(`kanban${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.vibe-kanban.rule: "Host(`kanban.${NOVA_DOMAIN}`)"
       traefik.http.routers.vibe-kanban.entrypoints: "websecure"
       traefik.http.routers.vibe-kanban.tls: "true"
       traefik.http.services.vibe-kanban.loadbalancer.server.port: "4000"
       homepage.group: "Development"
       homepage.name: "Vibe Kanban"
       homepage.icon: "https://www.google.com/s2/favicons?domain=vibekanban.com/&sz=128"
-      homepage.href: "http://kanban${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.href: "http://kanban.${NOVA_DOMAIN}"
       homepage.description: "Project Management"
       wud.watch: "false"
     networks:
