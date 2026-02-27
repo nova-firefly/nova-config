@@ -1,6 +1,6 @@
 # Immich Stack - Photo management with ML, Postgres, and Redis
 # Usage: docker compose -f docker-compose.immich.yaml up -d
-# Requires .env file for: IMMICH_DB_PASSWORD, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
+# Requires .env file for: IMMICH_DB_PASSWORD, NOVA_DOMAIN
 
 networks:
   traefik_default:
@@ -41,14 +41,14 @@ services:
       disable: true
     labels:
       traefik.enable: "true"
-      traefik.http.routers.immich.rule: "Host(`immich${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.immich.rule: "Host(`immich.${NOVA_DOMAIN}`)"
       traefik.http.routers.immich.entrypoints: "websecure"
       traefik.http.routers.immich.tls: "true"
       traefik.http.services.immich.loadbalancer.server.port: "2283"
       homepage.group: "Media"
       homepage.name: "Immich"
       homepage.icon: "immich.svg"
-      homepage.href: "http://immich${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.href: "http://immich.${NOVA_DOMAIN}"
       homepage.description: "Photo Management"
       wud.watch: "true"
       wud.trigger.include: "discord.notify"

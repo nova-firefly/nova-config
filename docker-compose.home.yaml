@@ -1,6 +1,6 @@
 # Home Automation Stack - Home Assistant, Z-Wave, Music Assistant
 # Usage: docker compose -f docker-compose.home.yaml up -d
-# Requires .env file for: ZWAVE_SESSION_SECRET, NOVA_DOMAIN, NOVA_TRAEFIK_SUFFIX
+# Requires .env file for: ZWAVE_SESSION_SECRET, NOVA_DOMAIN
 
 networks:
   traefik_default:
@@ -41,7 +41,7 @@ services:
     image: "ghcr.io/home-assistant/home-assistant:stable"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.ha.rule: "Host(`ha${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.ha.rule: "Host(`ha.${NOVA_DOMAIN}`)"
       traefik.http.routers.ha.entrypoints: "websecure"
       traefik.http.routers.ha.tls: "true"
       traefik.http.services.ha.loadbalancer.server.port: "8123"
@@ -97,14 +97,14 @@ services:
     image: "zwavejs/zwave-js-ui:latest"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.zwave.rule: "Host(`zwave${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}`)"
+      traefik.http.routers.zwave.rule: "Host(`zwave.${NOVA_DOMAIN}`)"
       traefik.http.routers.zwave.entrypoints: "websecure"
       traefik.http.routers.zwave.tls: "true"
       traefik.http.services.zwave.loadbalancer.server.port: "8091"
       homepage.group: "Home Automation"
       homepage.name: "Z-Wave JS UI"
       homepage.icon: "z-wave-js-ui.png"
-      homepage.href: "http://zwave${NOVA_TRAEFIK_SUFFIX}.${NOVA_DOMAIN}"
+      homepage.href: "http://zwave.${NOVA_DOMAIN}"
       homepage.description: "Z-Wave Device Management"
       wud.watch: "true"
       wud.watch.digest: "true"

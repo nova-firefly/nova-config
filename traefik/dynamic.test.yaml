@@ -1,5 +1,0 @@
-# Traefik File Provider - Test Environment
-# Host-network services are excluded from test (prod-only profile)
-# This file is intentionally empty
-
-http: {}
