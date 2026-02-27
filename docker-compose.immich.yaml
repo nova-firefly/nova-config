@@ -2,6 +2,8 @@
 # Usage: docker compose -f docker-compose.immich.yaml up -d
 # Requires .env file for: IMMICH_DB_PASSWORD, NOVA_DOMAIN
 
+name: immich
+
 networks:
   traefik_default:
     external: true

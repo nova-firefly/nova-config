@@ -1,6 +1,8 @@
 # Dev/Utility Stack - Vibe Kanban
 # Usage: docker compose -f docker-compose.dev.yaml up -d
 
+name: dev
+
 networks:
   traefik_default:
     external: true

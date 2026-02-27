@@ -2,6 +2,8 @@
 # Usage: docker compose -f docker-compose.infra.yaml up -d
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN
 
+name: infra
+
 networks:
   dockge_default:
     external: true
