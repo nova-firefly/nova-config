@@ -1,13 +1,10 @@
-# Infrastructure Stack - Traefik, Arcane, Dockge, WUD, DuckDNS, Homepage, Glances, Volume Sharer
+# Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer
 # Usage: docker compose -f docker-compose.infra.yaml up -d
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN
 
 name: infra
 
 networks:
-  dockge_default:
-    external: true
-    name: "dockge_default"
   traefik_default:
     external: true
     name: "traefik_default"
@@ -16,34 +13,6 @@ networks:
     name: "wud_default"
 
 services:
-
-  dockge:
-    container_name: "dockge"
-    environment:
-      - "DOCKGE_STACKS_DIR=/opt/stacks"
-    image: "louislam/dockge:1"
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.dockge.rule: "Host(`dockge.${NOVA_DOMAIN}`)"
-      traefik.http.routers.dockge.entrypoints: "websecure"
-      traefik.http.routers.dockge.tls: "true"
-      traefik.http.services.dockge.loadbalancer.server.port: "5001"
-      homepage.group: "Infrastructure"
-      homepage.name: "Dockge"
-      homepage.icon: "dockge.png"
-      homepage.href: "http://dockge.${NOVA_DOMAIN}"
-      homepage.description: "Docker Compose Manager"
-      wud.watch: "false"
-    networks:
-      - "dockge_default"
-      - "traefik_default"
-    ports:
-      - "5001:5001/tcp"
-    restart: "unless-stopped"
-    volumes:
-      - "/opt/dockge/data:/app/data"
-      - "/opt/stacks:/opt/stacks"
-      - "/var/run/docker.sock:/var/run/docker.sock"
 
   duckdns:
     container_name: "duckdns"
