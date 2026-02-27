@@ -1,6 +1,8 @@
 # Gaming Stack - Minecraft Server
 # Usage: docker compose -f docker-compose.gaming.yaml up -d
 
+name: gaming
+
 services:
 
   minecraft:

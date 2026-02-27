@@ -2,6 +2,8 @@
 # Usage: docker compose -f docker-compose.backup.yaml up -d
 # Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY, NOVA_DOMAIN
 
+name: backup
+
 networks:
   backrest_default:
     external: true

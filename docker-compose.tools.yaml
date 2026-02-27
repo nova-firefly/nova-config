@@ -2,6 +2,8 @@
 # Usage: docker compose -f docker-compose.tools.yaml up -d
 # Requires .env file for: NOVA_DOMAIN
 
+name: tools
+
 networks:
   traefik_default:
     external: true
