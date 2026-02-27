@@ -1,13 +1,10 @@
-# Infrastructure Stack - Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Glances, Volume Sharer
+# Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer
 # Usage: docker compose -f docker-compose.infra.yaml up -d
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN
 
 name: infra
 
 networks:
-  dockge_default:
-    external: true
-    name: "dockge_default"
   traefik_default:
     external: true
     name: "traefik_default"
@@ -16,34 +13,6 @@ networks:
     name: "wud_default"
 
 services:
-
-  dockge:
-    container_name: "dockge"
-    environment:
-      - "DOCKGE_STACKS_DIR=/opt/stacks"
-    image: "louislam/dockge:1"
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.dockge.rule: "Host(`dockge.${NOVA_DOMAIN}`)"
-      traefik.http.routers.dockge.entrypoints: "websecure"
-      traefik.http.routers.dockge.tls: "true"
-      traefik.http.services.dockge.loadbalancer.server.port: "5001"
-      homepage.group: "Infrastructure"
-      homepage.name: "Dockge"
-      homepage.icon: "dockge.png"
-      homepage.href: "http://dockge.${NOVA_DOMAIN}"
-      homepage.description: "Docker Compose Manager"
-      wud.watch: "false"
-    networks:
-      - "dockge_default"
-      - "traefik_default"
-    ports:
-      - "5001:5001/tcp"
-    restart: "unless-stopped"
-    volumes:
-      - "/opt/dockge/data:/app/data"
-      - "/opt/stacks:/opt/stacks"
-      - "/var/run/docker.sock:/var/run/docker.sock"
 
   duckdns:
     container_name: "duckdns"
@@ -86,20 +55,30 @@ services:
       - "/data2:/data2:ro"
       - "/data3:/data3:ro"
 
-  portainer:
-    container_name: "portainer"
-    image: "portainer/portainer-ce:latest"
+  arcane:
+    container_name: "arcane"
+    image: "ghcr.io/getarcaneapp/arcane:latest"
+    cgroup: host
+    environment:
+      - "ENCRYPTION_KEY=${ARCANE_ENCRYPTION_KEY}"
+      - "JWT_SECRET=${ARCANE_JWT_SECRET}"
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
     labels:
-      io.portainer.server: "true"
       traefik.enable: "true"
-      traefik.http.routers.portainer.rule: "Host(`portainer.${NOVA_DOMAIN}`)"
-      traefik.http.routers.portainer.entrypoints: "websecure"
-      traefik.http.routers.portainer.tls: "true"
-      traefik.http.services.portainer.loadbalancer.server.port: "9000"
+      traefik.http.routers.arcane.rule: "Host(`arcane.${NOVA_DOMAIN}`)"
+      traefik.http.routers.arcane.entrypoints: "websecure"
+      traefik.http.routers.arcane.tls: "true"
+      traefik.http.services.arcane.loadbalancer.server.port: "3552"
       homepage.group: "Infrastructure"
-      homepage.name: "Portainer"
-      homepage.icon: "portainer.svg"
-      homepage.href: "http://portainer.${NOVA_DOMAIN}"
+      homepage.name: "Arcane"
+      homepage.icon: "arcane.svg"
+      homepage.href: "https://arcane.${NOVA_DOMAIN}"
       homepage.description: "Container Management"
       wud.watch: "true"
       wud.watch.digest: "true"
@@ -107,12 +86,11 @@ services:
     networks:
       - "traefik_default"
     ports:
-      - "9000:9000/tcp"
-      - "9443:9443/tcp"
-    restart: "always"
+      - "3552:3552/tcp"
+    restart: "unless-stopped"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "portainer_data:/data"
+      - "arcane_data:/app/data"
 
   traefik:
     command:
@@ -267,5 +245,4 @@ volumes:
     external: true
     name: "d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12"
 
-  portainer_data:
-    external: true
+  arcane_data:
