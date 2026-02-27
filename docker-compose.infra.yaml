@@ -108,7 +108,7 @@ services:
       traefik.http.services.arcane.loadbalancer.server.port: "3552"
       homepage.group: "Infrastructure"
       homepage.name: "Arcane"
-      homepage.icon: "docker.svg"
+      homepage.icon: "arcane.svg"
       homepage.href: "https://arcane.${NOVA_DOMAIN}"
       homepage.description: "Container Management"
       wud.watch: "true"
