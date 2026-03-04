@@ -42,6 +42,12 @@ services:
       - "PUID=${PUID}"
       - "PGID=${PGID}"
       - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:6767/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     image: "lscr.io/linuxserver/bazarr:latest"
     labels:
       traefik.enable: "true"
@@ -79,6 +85,12 @@ services:
       - "PGID=${PGID}"
       - "TZ=${TZ}"
       - "LOG_LEVEL=debug"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5055/api/v1/status >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     image: "lscr.io/linuxserver/overseerr:latest"
     labels:
       traefik.enable: "true"
@@ -135,6 +147,12 @@ services:
       - "PUID=${PUID}"
       - "VERSION=docker"
     hostname: "${NOVA_HOSTNAME}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:32400/identity >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
     image: "ghcr.io/linuxserver/plex:latest"
     labels:
       traefik.enable: "true"
@@ -193,6 +211,12 @@ services:
       - "TZ=${TZ}"
       - "PUID=${PUID}"
       - "PGID=${PGID}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9696/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     image: "lscr.io/linuxserver/prowlarr:latest"
     labels:
       traefik.enable: "true"
@@ -247,6 +271,12 @@ services:
       - "PGID=${PGID}"
       - "PUID=${PUID}"
       - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7878/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     image: "ghcr.io/linuxserver/radarr:latest"
     labels:
       traefik.enable: "true"
@@ -305,6 +335,12 @@ services:
       - "PGID=${PGID}"
       - "PUID=${PUID}"
       - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8989/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     image: "ghcr.io/linuxserver/sonarr:latest"
     labels:
       traefik.enable: "true"
@@ -339,6 +375,12 @@ services:
       - "PGID=${PGID}"
       - "TZ=${TZ}"
       - "PUID=${PUID}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8181/status >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     image: "ghcr.io/tautulli/tautulli:latest"
     labels:
       traefik.enable: "true"
@@ -376,6 +418,12 @@ services:
       - "VPN_TYPE=wireguard"
       - "WIREGUARD_ADDRESSES=${MULLVAD_WIREGUARD_ADDRESSES}"
       - "WIREGUARD_PRIVATE_KEY=${MULLVAD_WIREGUARD_PRIVATE_KEY}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/v1/openvpn/status >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     image: "qmcgaw/gluetun:latest"
     labels:
       traefik.enable: "true"
@@ -435,6 +483,12 @@ services:
       - "USER=${TRANSMISSION_USER}"
       - "PASS=${TRANSMISSION_PASS}"
       - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -so /dev/null -w '%{http_code}' http://localhost:9091/transmission/web/ | grep -qE '^(200|401)$' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: "lscr.io/linuxserver/transmission:latest"
     labels:
       wud.watch: "true"

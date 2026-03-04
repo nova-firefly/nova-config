@@ -40,7 +40,11 @@ services:
       - database
     restart: always
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "curl -fsS http://localhost:2283/api/server/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
     labels:
       traefik.enable: "true"
       traefik.http.routers.immich.rule: "Host(`immich.${NOVA_DOMAIN}`)"
