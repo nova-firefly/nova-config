@@ -1,0 +1,30 @@
+# Decluttarr Configuration
+# Marks stalled downloads as failed after 24 hours of no progress.
+#
+# Strategy: timer=30min * max_strikes=48 = 1,440min = 24 hours
+# A download must be caught stalled on 48 consecutive checks (each 30min apart)
+# before it is marked as failed. Any progress resets the counter.
+
+general:
+  log_level: INFO
+  test_run: false
+  # Check queues every 30 minutes
+  timer: 30
+  ssl_verification: true
+
+instances:
+  sonarr:
+    - base_url: "http://sonarr:8989"
+      api_key: !ENV SONARR_API_KEY
+  radarr:
+    - base_url: "http://radarr:7878"
+      api_key: !ENV RADARR_API_KEY
+
+jobs:
+  # Mark stalled downloads (no peer connections / no progress) as failed
+  # after 48 strikes × 30min = 24 hours of inactivity
+  remove_stalled:
+    max_strikes: 48
+
+  # Also clean up items already marked as failed in the *arr queue
+  remove_failed_downloads: true
