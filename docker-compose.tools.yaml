@@ -15,6 +15,12 @@ services:
     container_name: "stirling-pdf"
     environment:
       - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/info >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     image: "stirlingtools/stirling-pdf:latest"
     labels:
       traefik.enable: "true"
@@ -39,6 +45,12 @@ services:
       - "stirling_config:/configs"
 
   vikunja:
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3456/api/v1/info >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     image: vikunja/vikunja:latest
     container_name: vikunja
     environment:

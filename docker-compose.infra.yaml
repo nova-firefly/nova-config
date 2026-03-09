@@ -30,6 +30,12 @@ services:
     container_name: "homepage"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     image: "ghcr.io/gethomepage/homepage:latest"
     environment:
       - "TZ=${TZ}"
@@ -111,12 +117,19 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       - "--api.dashboard=true"
+      - "--ping=true"
     container_name: "traefik"
     environment:
       - "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}"
       - "NOVA_DOMAIN=${NOVA_DOMAIN}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     image: "traefik:v3.6"
     labels:
       traefik.enable: "true"
@@ -158,6 +171,12 @@ services:
     environment:
       - "TZ=${TZ}"
       - "GLANCES_OPT=-w"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:61208/api/4/uptime >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     image: "nicolargo/glances:latest-full"
     labels:
       homepage.group: "Infrastructure"
@@ -214,6 +233,12 @@ services:
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     image: "getwud/wud"
     labels:
       traefik.enable: "true"
