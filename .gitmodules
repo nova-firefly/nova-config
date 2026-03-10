@@ -1,0 +1,3 @@
+[submodule "vibe-kanban-tools"]
+	path = vibe-kanban-tools
+	url = git@github.com:kjsb25/vibe-kanban-tools.git

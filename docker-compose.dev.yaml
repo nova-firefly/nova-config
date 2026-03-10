@@ -77,7 +77,7 @@ services:
       - "ha_config:/ha-config"
 
   vibe-kanban-tools:
-    image: "ghcr.io/kjsb25/vibe-kanban-tools:latest"
+    build: "./vibe-kanban-tools"
     container_name: "vibe-kanban-tools"
     environment:
       - "VIBE_KANBAN_URL=http://vibe-kanban:4000"
