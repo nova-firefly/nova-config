@@ -67,7 +67,10 @@ services:
       - "4000:4000/tcp"
     restart: "unless-stopped"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      # Docker socket mounted read-only so Claude can inspect container state,
+      # logs, and resource usage for debugging — without being able to start,
+      # stop, or modify containers.
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "vibe-kanban-repos:/repos"
       - "vibe-kanban-cache:/root/.npm/_npx"
       - "vibe-kanban-claude:/root/.claude"

@@ -11,7 +11,7 @@
 #   ps        List running containers
 #   config    Validate compose files
 #
-# Stack names: infra, media, immich, home, backup, gaming, dev, tools
+# Stack names: infra, media, immich, home, backup, gaming, dev, tools, movienight
 # Omit stack name to apply to all stacks.
 #
 # Examples:
@@ -24,7 +24,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-ALL_STACKS=(infra media immich home backup gaming dev tools)
+ALL_STACKS=(infra media immich home backup gaming dev tools movienight)
 
 # --- Ensure traefik network exists ---
 
