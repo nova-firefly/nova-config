@@ -1,3 +1,3 @@
 [submodule "movienight"]
 	path = movienight
-	url = https://github.com/kjsb25/movienight.git
+	url = git@github.com:kjsb25/movienight.git
