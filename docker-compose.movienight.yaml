@@ -78,7 +78,7 @@ services:
       traefik.http.services.movienight.loadbalancer.server.port: "80"
       homepage.group: "Tools"
       homepage.name: "MovieNight"
-      homepage.icon: "mdi-movie-open"
+      homepage.icon: "https://raw.githubusercontent.com/kjsb25/movienight/master/public/logo192.png"
       homepage.href: "https://movienight.${NOVA_DOMAIN}/movienight/"
       homepage.description: "Movie Suggestion App"
       wud.watch: "true"
