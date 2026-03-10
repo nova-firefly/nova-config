@@ -99,7 +99,7 @@ services:
       homepage.group: "Development"
       homepage.name: "Vibe Kanban Tools"
       homepage.icon: "https://www.google.com/s2/favicons?domain=vibekanban.com/&sz=128"
-      homepage.href: "https://kanban-tools.${NOVA_DOMAIN}"
+      homepage.href: "http://kanban-tools.${NOVA_DOMAIN}"
       homepage.description: "Quick-capture tasks for Vibe Kanban"
       wud.watch: "true"
       wud.watch.digest: "true"
