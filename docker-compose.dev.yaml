@@ -1,4 +1,4 @@
-# Dev/Utility Stack - Vibe Kanban
+# Dev/Utility Stack - Vibe Kanban, Vibe Kanban Tools
 # Usage: docker compose -f docker-compose.dev.yaml up -d
 
 name: dev
@@ -78,6 +78,40 @@ services:
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
       - "ha_config:/ha-config"
+
+  vibe-kanban-tools:
+    build: "./vibe-kanban-tools"
+    container_name: "vibe-kanban-tools"
+    environment:
+      - "VIBE_KANBAN_URL=http://vibe-kanban:4000"
+      - "VIBE_KANBAN_API_KEY=${VIBE_KANBAN_API_KEY:-}"
+      - "SUBMIT_TOKEN=${VIBE_KANBAN_TOOLS_SUBMIT_TOKEN:-}"
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.vibe-kanban-tools.rule: "Host(`kanban-tools.${NOVA_DOMAIN}`)"
+      traefik.http.routers.vibe-kanban-tools.entrypoints: "websecure"
+      traefik.http.routers.vibe-kanban-tools.tls: "true"
+      traefik.http.services.vibe-kanban-tools.loadbalancer.server.port: "3000"
+      homepage.group: "Development"
+      homepage.name: "Vibe Kanban Tools"
+      homepage.icon: "https://www.google.com/s2/favicons?domain=vibekanban.com/&sz=128"
+      homepage.href: "http://kanban-tools.${NOVA_DOMAIN}"
+      homepage.description: "Quick-capture tasks for Vibe Kanban"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.dev,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "3001:3000/tcp"
+    restart: "unless-stopped"
 
 volumes:
 
