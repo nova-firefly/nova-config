@@ -1,0 +1,3 @@
+[submodule "movienight"]
+	path = movienight
+	url = git@github.com:kjsb25/movienight.git

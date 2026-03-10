@@ -1,0 +1,94 @@
+# MovieNight Stack - Movie suggestion app
+# Usage: docker compose -f docker-compose.movienight.yaml up -d
+# Requires .env file for: NOVA_DOMAIN, MOVIENIGHT_DB_PASSWORD
+# Note: movienight submodule must be initialized (git submodule update --init)
+
+name: movienight
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+  movienight_internal:
+    internal: true
+
+services:
+
+  movienight-db:
+    container_name: "movienight-db"
+    environment:
+      - "POSTGRES_DB=movienight"
+      - "POSTGRES_USER=movienight_user"
+      - "POSTGRES_PASSWORD=${MOVIENIGHT_DB_PASSWORD}"
+    healthcheck:
+      interval: 10s
+      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U movienight_user -d movienight"]
+      timeout: 5s
+    image: "postgres:15-alpine"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.movienight,discord.notify"
+    networks:
+      - "movienight_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "movienight_db:/var/lib/postgresql/data"
+
+  movienight-backend:
+    build:
+      context: "./movienight/backend"
+      dockerfile: "Dockerfile"
+    container_name: "movienight-backend"
+    depends_on:
+      movienight-db:
+        condition: service_healthy
+    environment:
+      - "DB_HOST=movienight-db"
+      - "DB_PORT=5432"
+      - "DB_NAME=movienight"
+      - "DB_USER=movienight_user"
+      - "DB_PASSWORD=${MOVIENIGHT_DB_PASSWORD}"
+      - "PORT=4000"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.movienight-api.rule: "Host(`movienight.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
+      traefik.http.routers.movienight-api.entrypoints: "websecure"
+      traefik.http.routers.movienight-api.tls: "true"
+      traefik.http.services.movienight-api.loadbalancer.server.port: "4000"
+      wud.watch: "false"
+    networks:
+      - "traefik_default"
+      - "movienight_internal"
+    restart: "unless-stopped"
+
+  movienight-frontend:
+    container_name: "movienight-frontend"
+    image: "ghcr.io/kjsb25/movienight:latest"
+    depends_on:
+      - "movienight-backend"
+    healthcheck:
+      disable: true
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.movienight.rule: "Host(`movienight.${NOVA_DOMAIN}`)"
+      traefik.http.routers.movienight.entrypoints: "websecure"
+      traefik.http.routers.movienight.tls: "true"
+      traefik.http.services.movienight.loadbalancer.server.port: "80"
+      homepage.group: "Tools"
+      homepage.name: "MovieNight"
+      homepage.icon: "emoji-🍿"
+      homepage.href: "https://movienight.${NOVA_DOMAIN}/movienight/"
+      homepage.description: "Movie Suggestion App"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.movienight,discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+
+volumes:
+
+  movienight_db:
+    external: true
