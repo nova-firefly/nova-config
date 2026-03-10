@@ -82,7 +82,6 @@ services:
     environment:
       - "VIBE_KANBAN_URL=http://vibe-kanban:4000"
       - "VIBE_KANBAN_API_KEY=${VIBE_KANBAN_API_KEY:-}"
-      - "VIBE_KANBAN_DB_PATH=/vibe-kanban-data/db.v2.sqlite"
       - "SUBMIT_TOKEN=${VIBE_KANBAN_TOOLS_SUBMIT_TOKEN:-}"
       - "TZ=${TZ}"
     healthcheck:
@@ -110,8 +109,6 @@ services:
     ports:
       - "3001:3000/tcp"
     restart: "unless-stopped"
-    volumes:
-      - "vibe-kanban-data:/vibe-kanban-data:ro"
 
 volumes:
 
