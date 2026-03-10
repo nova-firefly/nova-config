@@ -68,6 +68,8 @@ services:
     image: "ghcr.io/kjsb25/movienight:latest"
     depends_on:
       - "movienight-backend"
+    healthcheck:
+      disable: true
     labels:
       traefik.enable: "true"
       traefik.http.routers.movienight.rule: "Host(`movienight.${NOVA_DOMAIN}`)"
