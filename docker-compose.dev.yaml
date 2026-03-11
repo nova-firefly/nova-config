@@ -7,6 +7,9 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
+  socket_proxy:
+    external: true
+    name: "socket_proxy"
 
 services:
 
@@ -48,6 +51,7 @@ services:
       - "PORT=4000"
       - "TZ=${TZ}"
       - "IS_SANDBOX=1"
+      - "DOCKER_HOST=tcp://socket-proxy:2375"
     hostname: "${NOVA_HOSTNAME}"
     labels:
       traefik.enable: "true"
@@ -63,14 +67,11 @@ services:
       wud.watch: "false"
     networks:
       - "traefik_default"
+      - "socket_proxy"
     ports:
       - "4000:4000/tcp"
     restart: "unless-stopped"
     volumes:
-      # Docker socket mounted read-only so Claude can inspect container state,
-      # logs, and resource usage for debugging — without being able to start,
-      # stop, or modify containers.
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "vibe-kanban-repos:/repos"
       - "vibe-kanban-cache:/root/.npm/_npx"
       - "vibe-kanban-claude:/root/.claude"

@@ -7,6 +7,7 @@
 #   down      Stop stack(s)
 #   pull      Pull latest images
 #   update    Pull + restart stack(s)
+#   recreate  Full down, rebuild images, then up — guarantees all changes applied
 #   logs      View logs (-f to follow)
 #   ps        List running containers
 #   config    Validate compose files
@@ -20,16 +21,21 @@
 #   ./nova.sh logs media -f         # Follow media stack logs
 #   ./nova.sh down                  # Stop all stacks
 #   ./nova.sh update infra          # Pull + restart infra stack
+#   ./nova.sh recreate dev          # Full rebuild and restart dev stack
 
 set -euo pipefail
 cd "$(dirname "$0")"
 
 ALL_STACKS=(infra media immich home backup gaming dev tools movienight)
 
-# --- Ensure traefik network exists ---
+# --- Ensure shared networks exist ---
 
 ensure_traefik_network() {
   docker network create traefik_default 2>/dev/null || true
+}
+
+ensure_socket_proxy_network() {
+  docker network create socket_proxy 2>/dev/null || true
 }
 
 # --- Compose file builder ---
@@ -89,14 +95,15 @@ case "$CMD" in
 
   up)
     ensure_traefik_network
+    ensure_socket_proxy_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
-        run_compose "$CMD" "$s" "$@"
+        run_compose "$CMD" "$s" "$@" -d
       done
     else
       echo "==> $STACK"
-      run_compose "$CMD" "$STACK" "$@"
+      run_compose "$CMD" "$STACK" "$@" -d
     fi
     ;;
 
@@ -114,6 +121,7 @@ case "$CMD" in
 
   update)
     ensure_traefik_network
+    ensure_socket_proxy_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -123,6 +131,28 @@ case "$CMD" in
     else
       echo "==> $STACK"
       run_compose pull "$STACK" "$@"
+      run_compose up "$STACK" -d "$@"
+    fi
+    ;;
+
+  recreate)
+    ensure_traefik_network
+    ensure_socket_proxy_network
+    if [[ -z "$STACK" ]]; then
+      for s in "${ALL_STACKS[@]}"; do
+        echo "==> $s: down"
+        run_compose down "$s"
+        echo "==> $s: build"
+        run_compose build "$s" --pull "$@"
+        echo "==> $s: up"
+        run_compose up "$s" -d "$@"
+      done
+    else
+      echo "==> $STACK: down"
+      run_compose down "$STACK"
+      echo "==> $STACK: build"
+      run_compose build "$STACK" --pull "$@"
+      echo "==> $STACK: up"
       run_compose up "$STACK" -d "$@"
     fi
     ;;
