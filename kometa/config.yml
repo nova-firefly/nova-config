@@ -40,6 +40,7 @@ radarr:
 sonarr:
   url: http://sonarr:8989
   token: <<sonarrkey>>
+  root_folder_path: <<sonarrfolder>>
   add_missing: false
   add_existing: false
 

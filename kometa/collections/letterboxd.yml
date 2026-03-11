@@ -4,8 +4,8 @@
 collections:
 
   Letterboxd Watchlist:
-    # Letterboxd list: https://boxd.it/T91IC
-    letterboxd_list: https://boxd.it/T91IC
+    # Letterboxd list: https://boxd.it/T91IC → resolved full URL required by Kometa
+    letterboxd_list: https://letterboxd.com/qwerty997/list/bk/
     # Preserve the exact order from the Letterboxd list in Plex
     collection_order: custom
     # Add movies from the list that aren't in Plex to Radarr for downloading
