@@ -1,0 +1,42 @@
+## Kometa Configuration
+## Docs: https://kometa.wiki/en/latest/config/configuration/
+##
+## Sensitive values are passed via environment variables using <<env(VAR_NAME)>> syntax.
+## Required env vars (set in .env):
+##   PLEX_TOKEN, RADARR_API_KEY, SONARR_API_KEY,
+##   RADARR_ROOT_FOLDER, RADARR_QUALITY_PROFILE
+
+plex:
+  url: http://plex:32400
+  token: <<env(PLEX_TOKEN)>>
+  timeout: 60
+  db_cache: 40
+  clean_bundles: true
+  empty_trash: true
+  optimize: false
+
+radarr:
+  url: http://radarr:7878
+  token: <<env(RADARR_API_KEY)>>
+  # Root folder must match a configured root folder path in Radarr
+  # (e.g. /plex_movies_1, /plex_movies_2, /plex_movies_3)
+  root_folder_path: <<env(RADARR_ROOT_FOLDER)>>
+  quality_profile: <<env(RADARR_QUALITY_PROFILE)>>
+  monitor: true
+  availability: announced
+  search: false       # search is controlled per-collection with radarr_search
+  add_missing: false  # controlled per-collection with radarr_add_missing
+  add_existing: false
+  upgrade_existing: false
+
+sonarr:
+  url: http://sonarr:8989
+  token: <<env(SONARR_API_KEY)>>
+  add_missing: false
+  add_existing: false
+
+libraries:
+  # Must match your Plex library name exactly (case-sensitive)
+  Movies:
+    collection_files:
+      - file: config/collections/letterboxd.yml

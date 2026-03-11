@@ -406,6 +406,58 @@ services:
     volumes:
       - "tautulli_config:/config"
 
+  kometa:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "kometa"
+    environment:
+      - "TZ=${TZ}"
+      - "PLEX_TOKEN=${PLEX_TOKEN}"
+      - "RADARR_API_KEY=${RADARR_API_KEY}"
+      - "SONARR_API_KEY=${SONARR_API_KEY}"
+      - "RADARR_ROOT_FOLDER=${RADARR_ROOT_FOLDER}"
+      - "RADARR_QUALITY_PROFILE=${RADARR_QUALITY_PROFILE}"
+      - "KOMETA_TIME=${KOMETA_TIME:-05:00}"
+    healthcheck:
+      disable: true
+    image: "kometateam/kometa:latest"
+    labels:
+      homepage.group: "Media"
+      homepage.name: "Kometa"
+      homepage.icon: "kometa.png"
+      homepage.href: "https://kometa.wiki"
+      homepage.description: "Plex Collection Manager"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "./kometa:/config"
+
   gluetun:
     cap_add:
       - "NET_ADMIN"

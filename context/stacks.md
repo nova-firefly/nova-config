@@ -7,7 +7,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | Stack | File | Services |
 |-------|------|----------|
 | infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wud |
-| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, overseerr, gluetun, transmission |
+| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, overseerr, kometa, gluetun, transmission |
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
@@ -53,6 +53,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | prowlarr | lscr.io/linuxserver/prowlarr | 9696 | prowlarr.NOVA_DOMAIN | Indexer aggregator; on `media` network |
 | tautulli | ghcr.io/tautulli/tautulli | 8181 | tautulli.NOVA_DOMAIN | Plex stats/monitoring |
 | overseerr | lscr.io/linuxserver/overseerr | 5055 | overseerr.NOVA_DOMAIN | Media request management |
+| kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00; config in `./kometa/`; no web UI |
 | gluetun | qmcgaw/gluetun | 9094→9091, 6789 | transmission.NOVA_DOMAIN, nzbget.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes transmission + nzbget through it |
 | transmission | lscr.io/linuxserver/transmission | (via gluetun) | — | Torrent client; `network_mode: service:gluetun` |
 | nzbget | ghcr.io/nzbgetcom/nzbget | (via gluetun) | nzbget.NOVA_DOMAIN | Usenet downloader; `network_mode: service:gluetun` |
@@ -63,7 +64,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **External volumes:** `bazarr_config`, `gluetun_data`, `nzbget_config`, `nzbget_data`, `overseerr_config`, `radarr_config`, `sonarr_config`, `tautulli_config`, `transmission_config`, `transmission_data`
 
-**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `TRANSMISSION_USER`, `TRANSMISSION_PASS`, `NZBGET_USER`, `NZBGET_PASS`
+**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `TRANSMISSION_USER`, `TRANSMISSION_PASS`, `NZBGET_USER`, `NZBGET_PASS`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`
 
 ---
 

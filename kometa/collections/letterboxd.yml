@@ -1,0 +1,18 @@
+## Letterboxd Collections
+## Docs: https://kometa.wiki/en/latest/files/builders/letterboxd/
+
+collections:
+
+  Letterboxd Watchlist:
+    # Letterboxd list: https://boxd.it/T91IC
+    letterboxd_list: https://boxd.it/T91IC
+    # Preserve the exact order from the Letterboxd list in Plex
+    collection_order: custom
+    # Add movies from the list that aren't in Plex to Radarr for downloading
+    radarr_add_missing: true
+    # Trigger a search in Radarr immediately after adding
+    radarr_search: true
+    # Show in Plex home and on the shared Plex home
+    visible_home: true
+    visible_shared: true
+    summary: "Movies from a curated Letterboxd watchlist, maintained in list order."
