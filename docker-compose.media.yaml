@@ -490,7 +490,7 @@ services:
       - "NZBGET_USER=${NZBGET_USER}"
       - "NZBGET_PASS=${NZBGET_PASS}"
     healthcheck:
-      test: ["CMD-SHELL", "nc -zw1 localhost 6789 || exit 1"]
+      test: ["CMD-SHELL", "python3 -c 'import socket; s=socket.socket(); s.settimeout(1); s.connect((\"localhost\",6789)); s.close()'"]
       interval: 30s
       timeout: 5s
       retries: 3
