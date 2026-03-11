@@ -17,6 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && npm install -g @anthropic-ai/claude-code
 
+# Pre-bake claude-skills so they can be installed into the ~/.claude volume on first run
+RUN git clone --depth=1 https://github.com/Jeffallan/claude-skills /opt/claude-skills-staging \
+    && rm -rf /opt/claude-skills-staging/.git
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 WORKDIR /repos
 
 ENV HOST=0.0.0.0
@@ -24,4 +31,5 @@ ENV PORT=4000
 
 EXPOSE 4000 4001
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["npx", "-y", "vibe-kanban"]

@@ -17,6 +17,7 @@ nova-config/
 
 See `context/stacks.md` for full stack/service inventory and ports.
 See `context/patterns.md` for conventions to follow when editing compose files.
+See `context/claude-skills.md` for which Claude expert skill to use for each task type.
 
 ## Key Conventions
 
@@ -57,9 +58,27 @@ Shared across stacks: `TZ`, `PUID`, `PGID`, `NOVA_HOSTNAME`, `NOVA_DOMAIN`
 
 Stack-specific vars documented in `.env.example` and `context/stacks.md`.
 
+## Claude Skills
+
+Claude expert skills (from Jeffallan/claude-skills) are installed in the vibe-kanban container
+at `~/.claude/skills/`. They are pre-baked into the Docker image and copied to the volume on
+first container start via `vibe-kanban/entrypoint.sh`.
+
+See `context/claude-skills.md` for a task → skill mapping guide.
+
+Quick reference for common tasks:
+- Docker/compose work → `devops-engineer`
+- Debugging → `debugging-wizard`
+- Security review → `security-reviewer` + `secure-code-guardian`
+- PostgreSQL → `postgres-pro`
+- Movienight frontend → `react-expert`
+- Movienight backend → `graphql-architect`
+- Architecture decisions → `architecture-designer`
+
 ## Keeping Context Up To Date
 
 When making changes, update the relevant context file:
 - New/removed service → update `context/stacks.md`
 - New convention or pattern → update `context/patterns.md`
+- New skill guidance → update `context/claude-skills.md`
 - Structural change → update this file (`CLAUDE.md`)
