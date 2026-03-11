@@ -13,4 +13,9 @@ if [ ! -f "$MARKER" ]; then
   echo "[entrypoint] claude-skills installed."
 fi
 
+# Write global CLAUDE.md with auto-skill activation instructions.
+# Always overwrite so updates to the image are picked up on restart.
+mkdir -p /root/.claude
+cp /opt/global-claude.md /root/.claude/CLAUDE.md
+
 exec "$@"
