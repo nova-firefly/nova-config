@@ -53,16 +53,17 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | prowlarr | lscr.io/linuxserver/prowlarr | 9696 | prowlarr.NOVA_DOMAIN | Indexer aggregator; on `media` network |
 | tautulli | ghcr.io/tautulli/tautulli | 8181 | tautulli.NOVA_DOMAIN | Plex stats/monitoring |
 | overseerr | lscr.io/linuxserver/overseerr | 5055 | overseerr.NOVA_DOMAIN | Media request management |
-| gluetun | qmcgaw/gluetun | 9094→9091 | transmission.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes transmission through it |
+| gluetun | qmcgaw/gluetun | 9094→9091, 6789 | transmission.NOVA_DOMAIN, nzbget.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes transmission + nzbget through it |
 | transmission | lscr.io/linuxserver/transmission | (via gluetun) | — | Torrent client; `network_mode: service:gluetun` |
+| nzbget | ghcr.io/nzbgetcom/nzbget | (via gluetun) | nzbget.NOVA_DOMAIN | Usenet downloader; `network_mode: service:gluetun` |
 
-**Key:** transmission runs inside gluetun's network namespace (`network_mode: service:gluetun`). Traefik labels are on gluetun, not transmission.
+**Key:** transmission and nzbget run inside gluetun's network namespace (`network_mode: service:gluetun`). Traefik labels are on gluetun, not the sidecars.
 
 **Media paths:** `/data1`, `/data2`, `/data3` — mounted directly (not volumes) for media libraries
 
-**External volumes:** `bazarr_config`, `gluetun_data`, `overseerr_config`, `radarr_config`, `sonarr_config`, `tautulli_config`, `transmission_config`, `transmission_data`
+**External volumes:** `bazarr_config`, `gluetun_data`, `nzbget_config`, `nzbget_data`, `overseerr_config`, `radarr_config`, `sonarr_config`, `tautulli_config`, `transmission_config`, `transmission_data`
 
-**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `TRANSMISSION_USER`, `TRANSMISSION_PASS`
+**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `TRANSMISSION_USER`, `TRANSMISSION_PASS`, `NZBGET_USER`, `NZBGET_PASS`
 
 ---
 

@@ -302,6 +302,7 @@ services:
       - "/data1/plex_data_1/_data/movies:/plex_movies_1"
       - "/data2/movies:/plex_movies_2"
       - "/data3/movies:/plex_movies_3"
+      - "nzbget_data:/downloads-nzbget"
       - "radarr_config:/config"
       - "transmission_data:/downloads"
 
@@ -366,6 +367,7 @@ services:
       - "/data1/plex_data_1/_data/tv:/plex_tv_1"
       - "/data2/tv:/plex_tv_2"
       - "/data3/tv:/plex_tv_3"
+      - "nzbget_data:/downloads-nzbget"
       - "sonarr_config:/config"
       - "transmission_data:/downloads"
 
@@ -430,7 +432,13 @@ services:
       traefik.http.routers.transmission.rule: "Host(`transmission.${NOVA_DOMAIN}`)"
       traefik.http.routers.transmission.entrypoints: "websecure"
       traefik.http.routers.transmission.tls: "true"
+      traefik.http.routers.transmission.service: "transmission"
       traefik.http.services.transmission.loadbalancer.server.port: "9091"
+      traefik.http.routers.nzbget.rule: "Host(`nzbget.${NOVA_DOMAIN}`)"
+      traefik.http.routers.nzbget.entrypoints: "websecure"
+      traefik.http.routers.nzbget.tls: "true"
+      traefik.http.routers.nzbget.service: "nzbget"
+      traefik.http.services.nzbget.loadbalancer.server.port: "6789"
       homepage.group: "Downloads"
       homepage.name: "Transmission"
       homepage.icon: "transmission.svg"
@@ -448,9 +456,64 @@ services:
       - "traefik_default"
     ports:
       - "9094:9091/tcp"
+      - "6789:6789/tcp"
     restart: "unless-stopped"
     volumes:
       - "gluetun_data:/gluetun"
+
+  nzbget:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "nzbget"
+    environment:
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "TZ=${TZ}"
+      - "NZBGET_USER=${NZBGET_USER}"
+      - "NZBGET_PASS=${NZBGET_PASS}"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import socket; s=socket.socket(); s.settimeout(1); s.connect((\"localhost\",6789)); s.close()'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/nzbgetcom/nzbget:latest"
+    labels:
+      homepage.group: "Downloads"
+      homepage.name: "NZBGet"
+      homepage.icon: "nzbget.svg"
+      homepage.href: "https://nzbget.${NOVA_DOMAIN}"
+      homepage.description: "Usenet Downloader"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    network_mode: "service:gluetun"
+    restart: "unless-stopped"
+    volumes:
+      - "nzbget_config:/config"
+      - "nzbget_data:/downloads"
 
   transmission:
     cap_drop:
@@ -503,6 +566,12 @@ services:
 volumes:
 
   bazarr_config:
+    external: true
+
+  nzbget_config:
+    external: true
+
+  nzbget_data:
     external: true
 
   gluetun_data:
