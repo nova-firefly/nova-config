@@ -1,3 +1,4 @@
 ---
 my-docker:
-  url: http://socket-proxy:2375
+  host: socket-proxy
+  port: 2375

@@ -12,7 +12,6 @@ networks:
     external: true
     name: "wud_default"
   socket_proxy:
-    internal: true
 
 services:
 
