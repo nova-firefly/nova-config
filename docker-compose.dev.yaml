@@ -7,8 +7,26 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
+  socket_proxy:
+    internal: true
 
 services:
+
+  socket-proxy:
+    container_name: "dev-socket-proxy"
+    environment:
+      # Allow read-only access to container state, events, logs, and system info.
+      # POST and DELETE are blocked by default — no write operations possible.
+      - "CONTAINERS=1"
+      - "EVENTS=1"
+      - "INFO=1"
+      - "VERSION=1"
+    image: "tecnativa/docker-socket-proxy"
+    networks:
+      - "socket_proxy"
+    restart: "unless-stopped"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   vibe-kanban:
     build: "./vibe-kanban"
@@ -43,11 +61,14 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    depends_on:
+      - "socket-proxy"
     environment:
       - "GH_TOKEN=${GH_TOKEN}"
       - "PORT=4000"
       - "TZ=${TZ}"
       - "IS_SANDBOX=1"
+      - "DOCKER_HOST=tcp://socket-proxy:2375"
     hostname: "${NOVA_HOSTNAME}"
     labels:
       traefik.enable: "true"
@@ -63,14 +84,11 @@ services:
       wud.watch: "false"
     networks:
       - "traefik_default"
+      - "socket_proxy"
     ports:
       - "4000:4000/tcp"
     restart: "unless-stopped"
     volumes:
-      # Docker socket mounted read-only so Claude can inspect container state,
-      # logs, and resource usage for debugging — without being able to start,
-      # stop, or modify containers.
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "vibe-kanban-repos:/repos"
       - "vibe-kanban-cache:/root/.npm/_npx"
       - "vibe-kanban-claude:/root/.claude"

@@ -11,8 +11,31 @@ networks:
   wud_default:
     external: true
     name: "wud_default"
+  socket_proxy:
+    internal: true
 
 services:
+
+  socket-proxy:
+    container_name: "infra-socket-proxy"
+    environment:
+      # Read-only access for dashboard label discovery, route discovery, stats, and volume listing.
+      # POST and DELETE are blocked by default — no write operations possible.
+      - "CONTAINERS=1"
+      - "EVENTS=1"
+      - "INFO=1"
+      - "NETWORKS=1"
+      - "VOLUMES=1"
+    image: "tecnativa/docker-socket-proxy"
+    networks:
+      - "socket_proxy"
+    ports:
+      # Expose on loopback only for host-networked services (glances, volume-sharer).
+      - "127.0.0.1:2375:2375"
+    restart: "unless-stopped"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
 
   duckdns:
     container_name: "duckdns"
@@ -28,6 +51,8 @@ services:
 
   homepage:
     container_name: "homepage"
+    depends_on:
+      - "socket-proxy"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -51,12 +76,12 @@ services:
       wud.trigger.include: "dockercompose.infra,discord.notify"
     networks:
       - "traefik_default"
+      - "socket_proxy"
     ports:
       - "3000:3000/tcp"
     restart: "unless-stopped"
     volumes:
       - "./homepage:/app/config"
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "/data1:/data1:ro"
       - "/data2:/data2:ro"
       - "/data3:/data3:ro"
@@ -101,6 +126,7 @@ services:
   traefik:
     command:
       - "--providers.docker=true"
+      - "--providers.docker.endpoint=tcp://socket-proxy:2375"
       - "--providers.docker.exposedByDefault=false"
       - "--providers.docker.network=traefik_default"
       - "--providers.file.filename=/etc/traefik/dynamic.yaml"
@@ -119,6 +145,8 @@ services:
       - "--api.dashboard=true"
       - "--ping=true"
     container_name: "traefik"
+    depends_on:
+      - "socket-proxy"
     environment:
       - "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}"
       - "NOVA_DOMAIN=${NOVA_DOMAIN}"
@@ -157,20 +185,23 @@ services:
       wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
+      - "socket_proxy"
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
     restart: "unless-stopped"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
       - "./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml:ro"
       - "traefik_acme:/letsencrypt"
 
   glances:
     container_name: "glances"
+    depends_on:
+      - "socket-proxy"
     environment:
       - "TZ=${TZ}"
       - "GLANCES_OPT=-w"
+      - "DOCKER_HOST=tcp://127.0.0.1:2375"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:61208/api/4/uptime >/dev/null || exit 1"]
       interval: 30s
@@ -192,13 +223,15 @@ services:
     restart: "unless-stopped"
     volumes:
       - "/:/rootfs:ro"
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   volume-sharer:
     container_name: "volume-sharer"
+    depends_on:
+      - "socket-proxy"
     environment:
       - "USERID=0"
       - "GROUPID=0"
+      - "DOCKER_HOST=tcp://127.0.0.1:2375"
     hostname: "${NOVA_HOSTNAME}"
     image: "gdiepen/volume-sharer"
     labels:
@@ -210,7 +243,6 @@ services:
     restart: "unless-stopped"
     volumes:
       - "/var/lib/docker/volumes:/docker_volumes"
-      - "/var/run/docker.sock:/var/run/docker.sock"
       - "volume_sharer_samba_config:/etc/samba"
 
   wud:
