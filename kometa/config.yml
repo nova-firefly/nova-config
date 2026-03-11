@@ -4,7 +4,7 @@
 ## Sensitive values are passed via environment variables using <<env(VAR_NAME)>> syntax.
 ## Required env vars (set in .env):
 ##   PLEX_TOKEN, RADARR_API_KEY, SONARR_API_KEY,
-##   RADARR_ROOT_FOLDER, RADARR_QUALITY_PROFILE
+##   RADARR_ROOT_FOLDER, RADARR_QUALITY_PROFILE, MDBLIST_API_KEY
 
 plex:
   url: http://plex:32400
@@ -35,6 +35,12 @@ sonarr:
   add_missing: false
   add_existing: false
 
+mdblist:
+  # MdbList aggregates ratings including Rotten Tomatoes
+  # Free API key at: https://mdblist.com/preferences/#api
+  apikey: <<env(MDBLIST_API_KEY)>>
+  cache_expiration: 60
+
 libraries:
   # Must match your Plex library name exactly (case-sensitive)
   Movies:
@@ -49,3 +55,12 @@ libraries:
       - default: decade       # Decade collections (2000s, 2010s, etc.)
       # Custom collections
       - file: config/collections/letterboxd.yml
+      - file: config/collections/4k.yml
+    overlay_files:
+      # Docs: https://kometa.wiki/en/latest/defaults/overlays/ratings/
+      - default: ratings
+        template_variables:
+          rating1: imdb
+          rating1_image: imdb
+          rating2: rt_score
+          rating2_image: rt_score

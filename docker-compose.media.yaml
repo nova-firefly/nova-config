@@ -439,6 +439,7 @@ services:
       - "SONARR_API_KEY=${SONARR_API_KEY}"
       - "RADARR_ROOT_FOLDER=${RADARR_ROOT_FOLDER}"
       - "RADARR_QUALITY_PROFILE=${RADARR_QUALITY_PROFILE}"
+      - "MDBLIST_API_KEY=${MDBLIST_API_KEY}"
       - "KOMETA_TIME=${KOMETA_TIME:-05:00}"
     healthcheck:
       disable: true

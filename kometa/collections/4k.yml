@@ -1,0 +1,12 @@
+## 4K Collections
+
+collections:
+
+  4K Movies:
+    plex_search:
+      all:
+        resolution: 4K
+    collection_order: alpha
+    visible_home: true
+    visible_shared: true
+    summary: "All 4K (2160p) content in the library."
