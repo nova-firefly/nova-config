@@ -27,3 +27,6 @@ homepage/proxmox.yaml
 homepage/custom.js
 homepage/custom.css
 homepage/kubernetes.yaml
+kometa/UUID
+kometa/config.cache
+kometa/overlays
