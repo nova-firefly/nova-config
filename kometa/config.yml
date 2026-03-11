@@ -39,4 +39,13 @@ libraries:
   # Must match your Plex library name exactly (case-sensitive)
   Movies:
     collection_files:
+      # Kometa default collections
+      # Docs: https://kometa.wiki/en/latest/defaults/collections/
+      - default: cannes       # Cannes Film Festival winners & selections
+      - default: genre        # Genre collections (Action, Comedy, Drama, etc.)
+      - default: franchise    # Franchise groupings (Mission Impossible, etc.)
+      - default: universe     # Cinematic universes (MCU, DCU, etc.)
+      - default: director     # Director filmography collections
+      - default: decade       # Decade collections (2000s, 2010s, etc.)
+      # Custom collections
       - file: config/collections/letterboxd.yml
