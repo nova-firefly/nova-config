@@ -302,6 +302,7 @@ services:
       - "/data1/plex_data_1/_data/movies:/plex_movies_1"
       - "/data2/movies:/plex_movies_2"
       - "/data3/movies:/plex_movies_3"
+      - "nzbget_data:/downloads-nzbget"
       - "radarr_config:/config"
       - "transmission_data:/downloads"
 
@@ -366,6 +367,7 @@ services:
       - "/data1/plex_data_1/_data/tv:/plex_tv_1"
       - "/data2/tv:/plex_tv_2"
       - "/data3/tv:/plex_tv_3"
+      - "nzbget_data:/downloads-nzbget"
       - "sonarr_config:/config"
       - "transmission_data:/downloads"
 
