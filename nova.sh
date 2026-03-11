@@ -99,11 +99,11 @@ case "$CMD" in
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
-        run_compose "$CMD" "$s" "$@"
+        run_compose "$CMD" "$s" "$@" -d
       done
     else
       echo "==> $STACK"
-      run_compose "$CMD" "$STACK" "$@"
+      run_compose "$CMD" "$STACK" "$@" -d
     fi
     ;;
 
