@@ -28,10 +28,14 @@ cd "$(dirname "$0")"
 
 ALL_STACKS=(infra media immich home backup gaming dev tools movienight)
 
-# --- Ensure traefik network exists ---
+# --- Ensure shared networks exist ---
 
 ensure_traefik_network() {
   docker network create traefik_default 2>/dev/null || true
+}
+
+ensure_socket_proxy_network() {
+  docker network create socket_proxy 2>/dev/null || true
 }
 
 # --- Compose file builder ---
@@ -91,6 +95,7 @@ case "$CMD" in
 
   up)
     ensure_traefik_network
+    ensure_socket_proxy_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -116,6 +121,7 @@ case "$CMD" in
 
   update)
     ensure_traefik_network
+    ensure_socket_proxy_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -131,6 +137,7 @@ case "$CMD" in
 
   recreate)
     ensure_traefik_network
+    ensure_socket_proxy_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s: down"

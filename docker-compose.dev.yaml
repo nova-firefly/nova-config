@@ -8,25 +8,10 @@ networks:
     external: true
     name: "traefik_default"
   socket_proxy:
-    internal: true
+    external: true
+    name: "socket_proxy"
 
 services:
-
-  socket-proxy:
-    container_name: "dev-socket-proxy"
-    environment:
-      # Allow read-only access to container state, events, logs, and system info.
-      # POST and DELETE are blocked by default — no write operations possible.
-      - "CONTAINERS=1"
-      - "EVENTS=1"
-      - "INFO=1"
-      - "VERSION=1"
-    image: "tecnativa/docker-socket-proxy"
-    networks:
-      - "socket_proxy"
-    restart: "unless-stopped"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   vibe-kanban:
     build: "./vibe-kanban"
@@ -61,8 +46,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    depends_on:
-      - "socket-proxy"
     environment:
       - "GH_TOKEN=${GH_TOKEN}"
       - "PORT=4000"

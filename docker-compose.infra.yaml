@@ -12,18 +12,19 @@ networks:
     external: true
     name: "wud_default"
   socket_proxy:
+    name: "socket_proxy"
 
 services:
 
   socket-proxy:
-    container_name: "infra-socket-proxy"
+    container_name: "socket-proxy"
     environment:
-      # Read-only access for dashboard label discovery, route discovery, stats, and volume listing.
-      # POST and DELETE are blocked by default — no write operations possible.
+      # Shared read-only proxy for all stacks. POST and DELETE blocked by default.
       - "CONTAINERS=1"
       - "EVENTS=1"
       - "INFO=1"
       - "NETWORKS=1"
+      - "VERSION=1"
       - "VOLUMES=1"
     image: "tecnativa/docker-socket-proxy"
     networks:
