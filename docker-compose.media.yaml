@@ -434,13 +434,15 @@ services:
     container_name: "kometa"
     environment:
       - "TZ=${TZ}"
-      - "TMDB_API_KEY=${TMDB_API_KEY}"
-      - "PLEX_TOKEN=${PLEX_TOKEN}"
-      - "RADARR_API_KEY=${RADARR_API_KEY}"
-      - "SONARR_API_KEY=${SONARR_API_KEY}"
-      - "RADARR_ROOT_FOLDER=${RADARR_ROOT_FOLDER}"
-      - "RADARR_QUALITY_PROFILE=${RADARR_QUALITY_PROFILE}"
-      - "MDBLIST_API_KEY=${MDBLIST_API_KEY}"
+      # Kometa secrets: KOMETA_<name> vars are injected as <<name>> in config.yml
+      # Note: no underscores allowed in secret names
+      - "KOMETA_TMDBKEY=${TMDB_API_KEY}"
+      - "KOMETA_PLEXTOKEN=${PLEX_TOKEN}"
+      - "KOMETA_RADARRKEY=${RADARR_API_KEY}"
+      - "KOMETA_SONARRKEY=${SONARR_API_KEY}"
+      - "KOMETA_RADARRFOLDER=${RADARR_ROOT_FOLDER}"
+      - "KOMETA_RADARRPROFILE=${RADARR_QUALITY_PROFILE}"
+      - "KOMETA_MDBLISTKEY=${MDBLIST_API_KEY}"
       - "KOMETA_TIME=${KOMETA_TIME:-05:00}"
     healthcheck:
       disable: true
