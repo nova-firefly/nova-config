@@ -23,6 +23,7 @@ plex:
   empty_trash: true
   optimize: false
 
+  verify_ssl:
 radarr:
   url: http://radarr:7878
   token: <<radarrkey>>
@@ -37,6 +38,11 @@ radarr:
   add_existing: false
   upgrade_existing: false
 
+  monitor_existing: false
+  ignore_cache: false
+  tag:
+  radarr_path:
+  plex_path:
 sonarr:
   url: http://sonarr:8989
   token: <<sonarrkey>>
@@ -44,6 +50,19 @@ sonarr:
   add_missing: false
   add_existing: false
 
+  upgrade_existing: false
+  monitor_existing: false
+  ignore_cache: false
+  monitor: all
+  quality_profile:
+  language_profile:
+  series_type: standard
+  season_folder: true
+  tag:
+  search: false
+  cutoff_search: false
+  sonarr_path:
+  plex_path:
 mdblist:
   # MdbList aggregates ratings including Rotten Tomatoes
   # Free API key at: https://mdblist.com/preferences/#api
@@ -56,20 +75,64 @@ libraries:
     collection_files:
       # Kometa default collections
       # Docs: https://kometa.wiki/en/latest/defaults/collections/
-      - default: cannes       # Cannes Film Festival winners & selections
-      - default: genre        # Genre collections (Action, Comedy, Drama, etc.)
-      - default: franchise    # Franchise groupings (Mission Impossible, etc.)
-      - default: universe     # Cinematic universes (MCU, DCU, etc.)
-      - default: director     # Director filmography collections
-      - default: decade       # Decade collections (2000s, 2010s, etc.)
+    - default: cannes         # Cannes Film Festival winners & selections
+    - default: genre          # Genre collections (Action, Comedy, Drama, etc.)
+    - default: franchise      # Franchise groupings (Mission Impossible, etc.)
+    - default: universe       # Cinematic universes (MCU, DCU, etc.)
+    - default: director       # Director filmography collections
+    - default: decade         # Decade collections (2000s, 2010s, etc.)
       # Custom collections
-      - file: config/collections/letterboxd.yml
-      - file: config/collections/4k.yml
+    - file: config/collections/letterboxd.yml
+    - file: config/collections/4k.yml
     overlay_files:
       # Docs: https://kometa.wiki/en/latest/defaults/overlays/ratings/
-      - default: ratings
-        template_variables:
-          rating1: imdb
-          rating1_image: imdb
-          rating2: rt_score
-          rating2_image: rt_score
+    - default: ratings
+      template_variables:
+        rating1: imdb
+        rating1_image: imdb
+        rating2: rt_score
+        rating2_image: rt_score
+settings:
+  run_order:
+  - operations
+  - metadata
+  - collections
+  - overlays
+  cache: true
+  cache_expiration: 60
+  asset_directory:
+  asset_folders: true
+  asset_depth: 0
+  create_asset_folders: false
+  prioritize_assets: false
+  dimensional_asset_rename: false
+  download_url_assets: false
+  show_missing_assets: true
+  show_missing_season_assets: false
+  show_missing_episode_assets: false
+  show_asset_not_needed: true
+  sync_mode: append
+  default_collection_order:
+  minimum_items: 1
+  item_refresh_delay: 0
+  delete_below_minimum: false
+  delete_not_scheduled: false
+  run_again_delay: 0
+  missing_only_released: false
+  only_filter_missing: false
+  show_unmanaged: true
+  show_unconfigured: true
+  show_filtered: false
+  show_unfiltered: false
+  show_options: false
+  show_missing: true
+  save_report: false
+  tvdb_language: default
+  ignore_ids:
+  ignore_imdb_ids:
+  playlist_sync_to_users:
+  playlist_exclude_users:
+  playlist_report: true
+  custom_repo:
+  overlay_artwork_filetype: webp_lossy
+  overlay_artwork_quality: 90
