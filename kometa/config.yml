@@ -118,7 +118,7 @@ settings:
   show_asset_not_needed: true
   sync_mode: append
   default_collection_order:
-  minimum_items: 1
+  minimum_items: 2
   item_refresh_delay: 0
   delete_below_minimum: false
   delete_not_scheduled: false
