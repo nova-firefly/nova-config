@@ -91,6 +91,7 @@ libraries:
       - default: universe     # Cinematic universes (MCU, DCU, etc.)
       - default: director     # Director filmography collections
       - default: decade       # Decade collections (2000s, 2010s, etc.)
+      - default: seasonal     # Seasonal collections (Christmas, Halloween, etc.)
       # Custom collections
       - file: config/collections/letterboxd.yml
       - file: config/collections/4k.yml
@@ -121,11 +122,11 @@ settings:
   show_missing_season_assets: false
   show_missing_episode_assets: false
   show_asset_not_needed: true
-  sync_mode: append
+  sync_mode: sync
   default_collection_order:
   minimum_items: 2
   item_refresh_delay: 0
-  delete_below_minimum: false
+  delete_below_minimum: true
   delete_not_scheduled: false
   run_again_delay: 0
   missing_only_released: false
