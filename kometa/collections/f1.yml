@@ -1,0 +1,17 @@
+## Formula 1 Collection
+## Adds the current F1 season to Sonarr for monitoring and download.
+## TMDb show ID 300959 = FIA Formula One World Championship
+
+collections:
+
+  Formula 1:
+    tmdb_show: 300959
+    collection_order: release
+    # Add to Sonarr and search immediately if not already monitored
+    sonarr_add_missing: true
+    sonarr_search: true
+    # Monitor only the latest/current season
+    sonarr_monitor: latest
+    visible_home: true
+    visible_shared: true
+    summary: "Formula 1 World Championship — current season."

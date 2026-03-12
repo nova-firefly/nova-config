@@ -1,0 +1,149 @@
+## Kometa Configuration
+## Docs: https://kometa.wiki/en/latest/config/configuration/
+##
+## Sensitive values are injected via KOMETA_* environment variables.
+## Kometa reads KOMETA_<name> vars and injects them as <<name>> in this file.
+## Note: no underscores allowed in secret names.
+## Required env vars (set in .env): PLEX_TOKEN, TMDB_API_KEY, RADARR_API_KEY,
+##   SONARR_API_KEY, RADARR_ROOT_FOLDER, RADARR_QUALITY_PROFILE, MDBLIST_API_KEY
+
+tmdb:
+  # Required — free API key at: https://www.themoviedb.org/settings/api
+  apikey: <<tmdbkey>>
+  language: en
+  region: US
+  cache_expiration: 60
+
+plex:
+  url: http://plex:32400
+  token: <<plextoken>>
+  timeout: 60
+  db_cache: 40
+  clean_bundles: true
+  empty_trash: true
+  optimize: false
+
+  verify_ssl:
+radarr:
+  url: http://radarr:7878
+  token: <<radarrkey>>
+  # Root folder must match a configured root folder path in Radarr
+  # (e.g. /plex_movies_1, /plex_movies_2, /plex_movies_3)
+  root_folder_path: <<radarrfolder>>
+  quality_profile: <<radarrprofile>>
+  monitor: true
+  availability: announced
+  search: false       # search is controlled per-collection with radarr_search
+  add_missing: false  # controlled per-collection with radarr_add_missing
+  add_existing: false
+  upgrade_existing: false
+
+  monitor_existing: false
+  ignore_cache: false
+  tag:
+  radarr_path:
+  plex_path:
+sonarr:
+  url: http://sonarr:8989
+  token: <<sonarrkey>>
+  root_folder_path: <<sonarrfolder>>
+  quality_profile: <<sonarrprofile>>
+  add_missing: false
+  add_existing: false
+
+  upgrade_existing: false
+  monitor_existing: false
+  ignore_cache: false
+  monitor: all
+  language_profile:
+  series_type: standard
+  season_folder: true
+  tag:
+  search: false
+  cutoff_search: false
+  sonarr_path:
+  plex_path:
+mdblist:
+  # MdbList aggregates ratings including Rotten Tomatoes
+  # Free API key at: https://mdblist.com/preferences/#api
+  apikey: <<mdblistkey>>
+  cache_expiration: 60
+
+libraries:
+  # Must match your Plex library name exactly (case-sensitive)
+  TV Shows:
+    collection_files:
+      - file: config/collections/f1.yml
+      - file: config/collections/whoniverse.yml
+
+  Movies:
+    collection_files:
+      # Kometa default collections
+      # Docs: https://kometa.wiki/en/latest/defaults/collections/
+      - default: cannes       # Cannes Film Festival winners & selections
+        template_variables:
+          use_year_collections: false
+          radarr_add_missing: true
+          radarr_search: true
+          visible_home: true
+      - default: genre        # Genre collections (Action, Comedy, Drama, etc.)
+      - default: franchise    # Franchise groupings (Mission Impossible, etc.)
+      - default: universe     # Cinematic universes (MCU, DCU, etc.)
+      - default: director     # Director filmography collections
+      - default: decade       # Decade collections (2000s, 2010s, etc.)
+      - default: seasonal     # Seasonal collections (Christmas, Halloween, etc.)
+      # Custom collections
+      - file: config/collections/letterboxd.yml
+      - file: config/collections/4k.yml
+    overlay_files:
+      # Docs: https://kometa.wiki/en/latest/defaults/overlays/ratings/
+      - default: ratings
+        template_variables:
+          rating1: imdb
+          rating1_image: imdb
+          rating2: rt_score
+          rating2_image: rt_score
+settings:
+  run_order:
+  - operations
+  - metadata
+  - collections
+  - overlays
+  cache: true
+  cache_expiration: 60
+  asset_directory:
+  asset_folders: true
+  asset_depth: 0
+  create_asset_folders: false
+  prioritize_assets: false
+  dimensional_asset_rename: false
+  download_url_assets: false
+  show_missing_assets: true
+  show_missing_season_assets: false
+  show_missing_episode_assets: false
+  show_asset_not_needed: true
+  sync_mode: sync
+  default_collection_order:
+  minimum_items: 2
+  item_refresh_delay: 0
+  delete_below_minimum: true
+  delete_not_scheduled: false
+  run_again_delay: 0
+  missing_only_released: false
+  only_filter_missing: false
+  show_unmanaged: true
+  show_unconfigured: true
+  show_filtered: false
+  show_unfiltered: false
+  show_options: false
+  show_missing: true
+  save_report: false
+  tvdb_language: default
+  ignore_ids:
+  ignore_imdb_ids:
+  playlist_sync_to_users:
+  playlist_exclude_users:
+  playlist_report: true
+  custom_repo:
+  overlay_artwork_filetype: webp_lossy
+  overlay_artwork_quality: 90
