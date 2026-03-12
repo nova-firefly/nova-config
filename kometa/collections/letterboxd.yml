@@ -16,3 +16,11 @@ collections:
     visible_home: true
     visible_shared: true
     summary: "Ordered list for Bailey and Keenan's movie nights. Updated regularly with new picks!"
+  Watchlist:
+    letterboxd_list: https://letterboxd.com/qwerty997/watchlist/
+    collection_order: custom
+    radarr_add_missing: true
+    radarr_search: true
+    visible_home: true
+    visible_shared: false
+    summary: "Keenan's Letterboxed Watchlist."

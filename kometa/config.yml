@@ -82,8 +82,10 @@ libraries:
       # Docs: https://kometa.wiki/en/latest/defaults/collections/
       - default: cannes       # Cannes Film Festival winners & selections
         template_variables:
+          use_year_collections: false
           radarr_add_missing: true
           radarr_search: true
+          visible_home: true
       - default: genre        # Genre collections (Action, Comedy, Drama, etc.)
       - default: franchise    # Franchise groupings (Mission Impossible, etc.)
       - default: universe     # Cinematic universes (MCU, DCU, etc.)
