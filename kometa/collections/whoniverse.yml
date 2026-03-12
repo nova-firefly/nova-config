@@ -1,0 +1,11 @@
+## Whoniverse Collection
+## Source: https://mdblist.com/lists/fantasticlax/whoniverse-tv
+
+collections:
+
+  Whoniverse:
+    mdblist_list: https://mdblist.com/lists/fantasticlax/whoniverse-tv
+    collection_order: release
+    visible_home: true
+    visible_shared: true
+    summary: "The Whoniverse — Doctor Who and all related series."
