@@ -7,6 +7,6 @@ collections:
       all:
         resolution: 4K
     collection_order: alpha
-    visible_home: true
-    visible_shared: true
+    visible_home: false
+    visible_shared: false
     summary: "All 4K (2160p) content in the library."

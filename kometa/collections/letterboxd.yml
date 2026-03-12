@@ -3,7 +3,7 @@
 
 collections:
 
-  Letterboxd Watchlist:
+  Bailey + Keenan:
     # Letterboxd list: https://boxd.it/T91IC → resolved full URL required by Kometa
     letterboxd_list: https://letterboxd.com/qwerty997/list/bk/
     # Preserve the exact order from the Letterboxd list in Plex
@@ -15,4 +15,4 @@ collections:
     # Show in Plex home and on the shared Plex home
     visible_home: true
     visible_shared: true
-    summary: "Movies from a curated Letterboxd watchlist, maintained in list order."
+    summary: "Ordered list for Bailey and Keenan's movie nights. Updated regularly with new picks!"
