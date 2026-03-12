@@ -52,6 +52,10 @@ mdblist:
 
 libraries:
   # Must match your Plex library name exactly (case-sensitive)
+  TV Shows:
+    collection_files:
+      - file: config/collections/f1.yml
+
   Movies:
     collection_files:
       # Kometa default collections
