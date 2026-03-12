@@ -145,6 +145,8 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       - "--api.dashboard=true"
       - "--ping=true"
+      - "--ping.entrypoint=ping"
+      - "--entrypoints.ping.address=:8082"
     container_name: "traefik"
     depends_on:
       - "socket-proxy"
@@ -154,7 +156,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ping >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/ping >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
