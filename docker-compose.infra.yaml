@@ -307,7 +307,7 @@ services:
       - "3003:3000/tcp"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "${NOVA_CONFIG_PATH:-.}:/compose:ro"
+      - "${NOVA_CONFIG_PATH:-.}:/compose"
 
   scrutiny:
     container_name: "scrutiny"
