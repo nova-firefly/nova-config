@@ -55,7 +55,6 @@ sonarr:
   monitor_existing: false
   ignore_cache: false
   monitor: all
-  quality_profile:
   language_profile:
   series_type: standard
   season_folder: true
@@ -81,23 +80,23 @@ libraries:
     collection_files:
       # Kometa default collections
       # Docs: https://kometa.wiki/en/latest/defaults/collections/
-    - default: cannes         # Cannes Film Festival winners & selections
-    - default: genre          # Genre collections (Action, Comedy, Drama, etc.)
-    - default: franchise      # Franchise groupings (Mission Impossible, etc.)
-    - default: universe       # Cinematic universes (MCU, DCU, etc.)
-    - default: director       # Director filmography collections
-    - default: decade         # Decade collections (2000s, 2010s, etc.)
+      - default: cannes       # Cannes Film Festival winners & selections
+      - default: genre        # Genre collections (Action, Comedy, Drama, etc.)
+      - default: franchise    # Franchise groupings (Mission Impossible, etc.)
+      - default: universe     # Cinematic universes (MCU, DCU, etc.)
+      - default: director     # Director filmography collections
+      - default: decade       # Decade collections (2000s, 2010s, etc.)
       # Custom collections
-    - file: config/collections/letterboxd.yml
-    - file: config/collections/4k.yml
+      - file: config/collections/letterboxd.yml
+      - file: config/collections/4k.yml
     overlay_files:
       # Docs: https://kometa.wiki/en/latest/defaults/overlays/ratings/
-    - default: ratings
-      template_variables:
-        rating1: imdb
-        rating1_image: imdb
-        rating2: rt_score
-        rating2_image: rt_score
+      - default: ratings
+        template_variables:
+          rating1: imdb
+          rating1_image: imdb
+          rating2: rt_score
+          rating2_image: rt_score
 settings:
   run_order:
   - operations
