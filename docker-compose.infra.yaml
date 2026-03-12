@@ -251,9 +251,9 @@ services:
     container_name: "wud"
     environment:
       - "WUD_LOG_FORMAT=text"
-      # Watcher - check for updates at 4am daily
-      - "WUD_WATCHER_DOCKER_LOCAL_CRON=0 4 * * *"
-      - "WUD_WATCHER_DOCKER_LOCAL_WATCHBYDEFAULT=false"
+      # Watcher - check for updates at 4am daily ("local" is a reserved name, must use another)
+      - "WUD_WATCHER_DOCKER_NOVA_CRON=0 4 * * *"
+      - "WUD_WATCHER_DOCKER_NOVA_WATCHBYDEFAULT=false"
       # Docker Compose triggers - one per stack file
       - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_FILE=/compose/docker-compose.infra.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_BACKUP=true"
@@ -267,6 +267,9 @@ services:
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_FILE=/compose/docker-compose.movienight.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_FILE=/compose/docker-compose.tools.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_PRUNE=true"
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
@@ -296,7 +299,7 @@ services:
       - "3003:3000/tcp"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "${NOVA_CONFIG_PATH:-.}:/compose:ro"
+      - "${NOVA_CONFIG_PATH:-.}:/compose"
 
 volumes:
 
