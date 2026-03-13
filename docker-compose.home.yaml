@@ -70,6 +70,7 @@ services:
       - "label=disable"
     volumes:
       - "ha_config:/config"
+      - "/run/dbus:/run/dbus:ro"
 
   music-assistant-server:
     container_name: "music-assistant-server"
