@@ -30,3 +30,8 @@ homepage/kubernetes.yaml
 kometa/UUID
 kometa/config.cache
 kometa/overlays
+kometa/flask_session/*
+kometa/.schema/*
+kometa/plex_test_libraries/*
+kometa/.secret_key
+kometa/quickstart.sqlite
