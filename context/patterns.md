@@ -216,6 +216,21 @@ Each compose file begins with a comment block:
 4. Add env vars to `.env.example` with `# Stack: name` annotation
 5. Update `context/stacks.md`
 
+## Docker Debugging from vibe-kanban Container
+
+Docker is accessible via TCP socket proxy at `tcp://socket-proxy:2375`. Available commands:
+
+| Command | Works? |
+|---|---|
+| `docker ps` | ✅ |
+| `docker logs <container>` | ✅ |
+| `docker inspect <container>` | ✅ |
+| `docker images` | ✅ |
+| `docker exec` | ❌ blocked (403) |
+| `docker run` | ❌ blocked (403) |
+
+Use `docker logs` and `docker inspect` for debugging running containers.
+
 ## Adding a Host-Mode Service to Traefik
 
 Edit `traefik/dynamic.yaml`:
