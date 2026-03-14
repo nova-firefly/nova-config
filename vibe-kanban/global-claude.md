@@ -28,3 +28,18 @@ When a task spans multiple domains (e.g. adding a new service securely), chain t
 skills in sequence. State which skill(s) you are applying at the start of your response.
 
 If the task is ambiguous, default to `devops-engineer` since this is a Docker Compose homelab.
+
+## Docker Access Inside This Container
+
+`DOCKER_HOST` points to a **read-only socket proxy** (`tecnativa/docker-socket-proxy`).
+Only GET operations on containers, logs, events, networks, and volumes are permitted.
+All write operations are blocked at the proxy.
+
+**Works:** `docker ps`, `docker logs`, `docker inspect`, `docker events`, `docker info`,
+`docker network ls`, `docker volume ls`, `docker compose ps`, `docker compose logs`
+
+**Blocked:** `docker run/start/stop/restart/kill/rm/exec`, `docker pull/build/push`,
+`docker compose up/down/pull/restart`, all network/volume create or remove commands
+
+To manage stacks (up/down/pull), commands must be run on the **host** via `nova.sh`, not
+from inside this container. Full access details: `nova-config/context/docker-access.md`
