@@ -220,6 +220,7 @@ docker compose -f <stack>/docker-compose.yml \   # upstream (owned by the submod
 - Per-stack `STACK_PROFILES[<stack>]` in nova.sh activates the right upstream profile (e.g. `production`)
 - Docker Compose deep-merges the files: scalar fields (image, restart) are replaced; mappings (labels, environment) are merged; sequences (ports, volumes) are **appended by default**
 - Use `!reset` YAML tag to **replace** (not append) an inherited sequence. E.g. to clear upstream port bindings so only Traefik routes traffic: `ports: !reset []`
+- **`.env` lookup** uses the **project directory**, which defaults to the first `-f` file's directory. For submodule stacks this would be the submodule dir (missing nova's `.env`). `nova.sh` always passes `--project-directory .` to anchor it to `nova-config/`
 - **All paths** (including those in the nova override file) are resolved relative to the **first** `-f` file's directory (the submodule root). E.g. if the submodule is at `movienight/`, a build context of `./backend` in the override resolves to `movienight/backend/` ✓ — not `./movienight/backend` which would double-up to `movienight/movienight/backend` ✗
 
 **Adding a new submodule stack:**

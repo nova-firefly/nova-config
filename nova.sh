@@ -90,8 +90,11 @@ run_compose() {
     profile_args="--profile ${STACK_PROFILES[$stack]}"
   fi
 
+  # --project-directory ensures .env is always loaded from nova-config/ regardless
+  # of which compose file is first (submodule stacks would otherwise default to the
+  # submodule directory, missing the .env file entirely).
   # shellcheck disable=SC2086
-  docker compose $compose_args $profile_args "$cmd" "$@"
+  docker compose --project-directory . $compose_args $profile_args "$cmd" "$@"
 }
 
 # --- Show usage if no args ---
