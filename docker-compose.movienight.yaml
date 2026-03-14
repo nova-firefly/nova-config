@@ -10,8 +10,8 @@
 # Requires .env file for: NOVA_DOMAIN, MOVIENIGHT_DB_PASSWORD
 # Note: movienight submodule must be initialized (git submodule update --init)
 #
-# Port note: upstream exposes 8080:80 on the frontend; compose merge cannot remove
-# inherited ports, so 8080 remains accessible on the LAN alongside Traefik routing.
+# Ports: upstream exposes 8080:80; the override uses `!reset []` (Compose spec) to
+# clear inherited port bindings so only Traefik routing is active.
 
 name: movienight
 
@@ -32,6 +32,9 @@ services:
     depends_on:
       movienight-backend:
         condition: service_started
+    # Clear upstream's port bindings — Traefik handles all routing.
+    # !reset replaces (not appends) the inherited ports sequence.
+    ports: !reset []
     networks:
       - "traefik_default"
     restart: "unless-stopped"
