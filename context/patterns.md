@@ -219,6 +219,7 @@ docker compose -f <stack>/docker-compose.yml \   # upstream (owned by the submod
 - The nova override file adds only what nova owns: Traefik/Homepage/WUD labels, nova networks, and any nova-managed services absent from the upstream production profile
 - Per-stack `STACK_PROFILES[<stack>]` in nova.sh activates the right upstream profile (e.g. `production`)
 - Docker Compose deep-merges the files: scalar fields (image, restart) are replaced; mappings (labels, environment) are merged; sequences (ports, volumes) are appended — meaning upstream ports **cannot be removed** by the override
+- **All paths** (including those in the nova override file) are resolved relative to the **first** `-f` file's directory (the submodule root). E.g. if the submodule is at `movienight/`, a build context of `./backend` in the override resolves to `movienight/backend/` ✓ — not `./movienight/backend` which would double-up to `movienight/movienight/backend` ✗
 
 **Adding a new submodule stack:**
 1. Initialize the submodule: `git submodule add <repo> <stack>`
