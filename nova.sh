@@ -28,6 +28,12 @@ cd "$(dirname "$0")"
 
 ALL_STACKS=(infra media immich home backup gaming dev tools movienight)
 
+# --- Per-stack Docker Compose profile activation ---
+# Stacks listed here will pass --profile <value> to every compose invocation.
+# Used for submodule stacks whose upstream compose uses profiles to gate services.
+declare -A STACK_PROFILES
+STACK_PROFILES[movienight]="production"
+
 # --- Ensure shared networks exist ---
 
 ensure_traefik_network() {
@@ -49,7 +55,23 @@ get_compose_args() {
     return 1
   fi
 
-  echo "-f $base_file"
+  # If a submodule directory exists with its own compose file, prepend it.
+  # The nova override file ($base_file) then deep-merges on top, adding only
+  # nova-specific labels and any services absent from the upstream file.
+  local submodule_compose=""
+  if [[ -d "$stack" ]]; then
+    if [[ -f "${stack}/docker-compose.yaml" ]]; then
+      submodule_compose="${stack}/docker-compose.yaml"
+    elif [[ -f "${stack}/docker-compose.yml" ]]; then
+      submodule_compose="${stack}/docker-compose.yml"
+    fi
+  fi
+
+  if [[ -n "$submodule_compose" ]]; then
+    echo "-f $submodule_compose -f $base_file"
+  else
+    echo "-f $base_file"
+  fi
 }
 
 # --- Run compose command ---
@@ -62,8 +84,14 @@ run_compose() {
   local compose_args
   compose_args=$(get_compose_args "$stack") || return 1
 
+  # Activate a compose profile if one is configured for this stack
+  local profile_args=""
+  if [[ -n "${STACK_PROFILES[$stack]+x}" ]]; then
+    profile_args="--profile ${STACK_PROFILES[$stack]}"
+  fi
+
   # shellcheck disable=SC2086
-  docker compose $compose_args "$cmd" "$@"
+  docker compose $compose_args $profile_args "$cmd" "$@"
 }
 
 # --- Show usage if no args ---
