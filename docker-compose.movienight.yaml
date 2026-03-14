@@ -76,7 +76,9 @@ services:
 
   movienight-backend:
     build:
-      context: "./movienight/backend"
+      # Path is relative to the first -f file (movienight/docker-compose.yml),
+      # so ./backend resolves to movienight/backend/ as expected.
+      context: "./backend"
       dockerfile: "Dockerfile"
     container_name: "movienight-backend"
     depends_on:
