@@ -203,6 +203,31 @@ Each compose file begins with a comment block:
       disable: true
 ```
 
+## Submodule Stack Pattern
+
+When a stack has its own git submodule (e.g. `movienight/`), nova uses a base + override approach:
+
+```
+docker compose -f <stack>/docker-compose.yml \   # upstream (owned by the submodule)
+               -f docker-compose.<stack>.yaml \   # nova override (owned by nova-config)
+               --profile <profile> <cmd>
+```
+
+**How it works:**
+- `nova.sh` auto-detects the submodule by checking whether `<stack>/docker-compose.yml` (or `.yaml`) exists
+- The upstream file defines services, images, volumes, and healthchecks
+- The nova override file adds only what nova owns: Traefik/Homepage/WUD labels, nova networks, and any nova-managed services absent from the upstream production profile
+- Per-stack `STACK_PROFILES[<stack>]` in nova.sh activates the right upstream profile (e.g. `production`)
+- Docker Compose deep-merges the files: scalar fields (image, restart) are replaced; mappings (labels, environment) are merged; sequences (ports, volumes) are appended — meaning upstream ports **cannot be removed** by the override
+
+**Adding a new submodule stack:**
+1. Initialize the submodule: `git submodule add <repo> <stack>`
+2. Create `docker-compose.<stack>.yaml` with only nova overrides (labels, networks, nova-managed services)
+3. Add the stack name to `ALL_STACKS` in nova.sh
+4. If the upstream compose uses profiles, add `STACK_PROFILES[<stack>]="<profile>"` in nova.sh
+5. Add WUD trigger env vars to `docker-compose.infra.yaml`
+6. Update `context/stacks.md`
+
 ## Adding a New Stack
 
 1. Create `docker-compose.<name>.yaml` with the header comment block
