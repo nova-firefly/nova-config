@@ -1,20 +1,23 @@
 # Decluttarr Configuration
-# Marks stalled/slow downloads as failed after sustained inactivity or low speed.
+# Cleans up stalled, slow, failed, and unimportable downloads automatically.
 #
-# remove_stalled strategy: timer=30min * max_strikes=48 = 1,440min = 24 hours
-# A download must be caught stalled on 48 consecutive checks (each 30min apart)
-# before it is marked as failed. Any progress resets the counter.
+# Global default: max_strikes=3 (3 × 30min = 90min grace period)
+# Override per-job where a longer window is warranted (e.g. remove_stalled).
 #
-# remove_slow strategy: timer=30min * max_strikes=10 = 300min = 5 hours
-# A download must be below min_speed on 10 consecutive checks before removal.
-# Note: uses arr-reported speed (Transmission/nzbget lack direct API support).
+# remove_stalled strategy: timer=30min * max_strikes=48 = 24 hours
+# remove_slow strategy:    timer=30min * max_strikes=10 = 5 hours
+# all others:              timer=30min * max_strikes=3  = 90 minutes
 
 general:
-  log_level: DEBUG
+  log_level: INFO
   test_run: false
   # Check queues every 30 minutes
   timer: 30
   ssl_verification: true
+
+# Global defaults — individual jobs override these as needed
+job_defaults:
+  max_strikes: 3
 
 instances:
   sonarr:
@@ -26,18 +29,33 @@ instances:
 
 jobs:
   # Mark stalled downloads (no peer connections / no progress) as failed
-  # after 48 strikes × 30min = 24 hours of inactivity
+  # after 48 strikes × 30min = 24 hours. Any progress resets the counter.
   remove_stalled:
     max_strikes: 48
 
   # Remove downloads that stay below min_speed KB/s for 10 consecutive checks
   # (10 × 30min = 5 hours). Adjust min_speed to match your connection.
+  # Note: uses arr-reported speed (Transmission/nzbget lack direct client API).
   remove_slow:
     min_speed: 100
     max_strikes: 10
 
-  # Also clean up items already marked as failed in the *arr queue
+  # Remove items already marked as failed in the *arr queue
   remove_failed_downloads: true
+
+  # Remove completed downloads that repeatedly fail to import (e.g. fake
+  # releases disguised as .exe, corrupted files, wrong format). Uses global
+  # max_strikes (3 × 30min = 90 min) before giving up and removing.
+  remove_failed_imports: true
+
+  # Remove queue items whose source file no longer exists on disk — handles
+  # cases where the download client already cleaned up the file but *arr
+  # still shows the item as stuck.
+  remove_missing_files: true
+
+  # Remove downloads containing only non-media files (e.g. .exe, .nfo-only,
+  # password-protected archives) that can never be imported.
+  remove_bad_files: true
 
   # Disable detect_deletions — media volumes are not mounted in this container
   detect_deletions: false
