@@ -6,7 +6,7 @@
 # before it is marked as failed. Any progress resets the counter.
 
 general:
-  log_level: INFO
+  log_level: VERBOSE
   test_run: false
   # Check queues every 30 minutes
   timer: 30
@@ -28,3 +28,6 @@ jobs:
 
   # Also clean up items already marked as failed in the *arr queue
   remove_failed_downloads: true
+
+  # Disable detect_deletions — media volumes are not mounted in this container
+  detect_deletions: false
