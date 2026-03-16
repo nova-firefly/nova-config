@@ -1,4 +1,4 @@
-# Media Stack - Plex, *arr apps, Gluetun + Transmission, Tautulli, Overseerr
+# Media Stack - Plex, *arr apps, Gluetun + qBittorrent + SABnzbd, Tautulli, Overseerr
 # Usage: docker compose -f docker-compose.media.yaml up -d
 # Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*, NOVA_DOMAIN
 
@@ -304,9 +304,9 @@ services:
       - "/data1/plex_data_1/_data/movies:/plex_movies_1"
       - "/data2/movies:/plex_movies_2"
       - "/data3/movies:/plex_movies_3"
-      - "nzbget_data:/downloads-nzbget"
+      - "qbittorrent_data:/downloads"
       - "radarr_config:/config"
-      - "transmission_data:/downloads"
+      - "sabnzbd_data:/downloads-sabnzbd"
 
   sonarr:
     cap_drop:
@@ -369,9 +369,9 @@ services:
       - "/data1/plex_data_1/_data/tv:/plex_tv_1"
       - "/data2/tv:/plex_tv_2"
       - "/data3/tv:/plex_tv_3"
-      - "nzbget_data:/downloads-nzbget"
+      - "qbittorrent_data:/downloads"
+      - "sabnzbd_data:/downloads-sabnzbd"
       - "sonarr_config:/config"
-      - "transmission_data:/downloads"
 
   decluttarr:
     cap_drop:
@@ -405,6 +405,9 @@ services:
       - "PGID=${PGID}"
       - "SONARR_API_KEY=${SONARR_API_KEY}"
       - "RADARR_API_KEY=${RADARR_API_KEY}"
+      - "QBITTORRENT_USER=${QBITTORRENT_USER}"
+      - "QBITTORRENT_PASS=${QBITTORRENT_PASS}"
+      - "SABNZBD_API_KEY=${SABNZBD_API_KEY}"
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f decluttarr >/dev/null || exit 1"]
       interval: 60s
@@ -538,21 +541,29 @@ services:
     image: "qmcgaw/gluetun:latest"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.transmission.rule: "Host(`transmission.${NOVA_DOMAIN}`)"
-      traefik.http.routers.transmission.entrypoints: "websecure"
-      traefik.http.routers.transmission.tls: "true"
-      traefik.http.routers.transmission.service: "transmission"
-      traefik.http.services.transmission.loadbalancer.server.port: "9091"
-      traefik.http.routers.nzbget.rule: "Host(`nzbget.${NOVA_DOMAIN}`)"
-      traefik.http.routers.nzbget.entrypoints: "websecure"
-      traefik.http.routers.nzbget.tls: "true"
-      traefik.http.routers.nzbget.service: "nzbget"
-      traefik.http.services.nzbget.loadbalancer.server.port: "6789"
-      homepage.group: "Downloads"
-      homepage.name: "Transmission"
-      homepage.icon: "transmission.svg"
-      homepage.href: "http://transmission.${NOVA_DOMAIN}"
-      homepage.description: "Torrent Client"
+      # qBittorrent WebUI (port 8090 — set via WEBUI_PORT env in qbittorrent service)
+      traefik.http.routers.qbittorrent.rule: "Host(`qbittorrent.${NOVA_DOMAIN}`)"
+      traefik.http.routers.qbittorrent.entrypoints: "websecure"
+      traefik.http.routers.qbittorrent.tls: "true"
+      traefik.http.routers.qbittorrent.service: "qbittorrent"
+      traefik.http.services.qbittorrent.loadbalancer.server.port: "8090"
+      # SABnzbd WebUI (port 8080 — default linuxserver/sabnzbd port)
+      traefik.http.routers.sabnzbd.rule: "Host(`sabnzbd.${NOVA_DOMAIN}`)"
+      traefik.http.routers.sabnzbd.entrypoints: "websecure"
+      traefik.http.routers.sabnzbd.tls: "true"
+      traefik.http.routers.sabnzbd.service: "sabnzbd"
+      traefik.http.services.sabnzbd.loadbalancer.server.port: "8080"
+      # Homepage — numbered labels allow two entries from one container
+      homepage.1.group: "Downloads"
+      homepage.1.name: "qBittorrent"
+      homepage.1.icon: "qbittorrent.svg"
+      homepage.1.href: "http://qbittorrent.${NOVA_DOMAIN}"
+      homepage.1.description: "Torrent Client"
+      homepage.2.group: "Downloads"
+      homepage.2.name: "SABnzbd"
+      homepage.2.icon: "sabnzbd.svg"
+      homepage.2.href: "http://sabnzbd.${NOVA_DOMAIN}"
+      homepage.2.description: "Usenet Downloader"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
@@ -564,13 +575,13 @@ services:
       - "media"
       - "traefik_default"
     ports:
-      - "9094:9091/tcp"
-      - "6789:6789/tcp"
+      - "127.0.0.1:8080:8080/tcp"   # SABnzbd WebUI (localhost only — Traefik handles external)
+      - "127.0.0.1:8090:8090/tcp"   # qBittorrent WebUI (localhost only — Traefik handles external)
     restart: "unless-stopped"
     volumes:
       - "gluetun_data:/gluetun"
 
-  nzbget:
+  qbittorrent:
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -595,39 +606,34 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-    container_name: "nzbget"
+    container_name: "qbittorrent"
     environment:
       - "PUID=${PUID}"
       - "PGID=${PGID}"
       - "TZ=${TZ}"
-      - "NZBGET_USER=${NZBGET_USER}"
-      - "NZBGET_PASS=${NZBGET_PASS}"
+      - "WEBUI_PORT=8090"
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import socket; s=socket.socket(); s.settimeout(1); s.connect((\"localhost\",6789)); s.close()'"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8090/api/v2/app/version >/dev/null || exit 1"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 30s
-    image: "ghcr.io/nzbgetcom/nzbget:latest"
+      start_period: 60s
+    image: "lscr.io/linuxserver/qbittorrent:latest"
     labels:
-      homepage.group: "Downloads"
-      homepage.name: "NZBGet"
-      homepage.icon: "nzbget.svg"
-      homepage.href: "https://nzbget.${NOVA_DOMAIN}"
-      homepage.description: "Usenet Downloader"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "dockercompose.media,discord.notify"
     network_mode: "service:gluetun"
     restart: "unless-stopped"
     volumes:
-      - "nzbget_config:/config"
-      - "nzbget_data:/downloads"
+      - "qbittorrent_config:/config"
+      - "qbittorrent_data:/downloads"
 
-  transmission:
+  sabnzbd:
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
       - "IPC_LOCK"
       - "IPC_OWNER"
       - "LEASE"
@@ -648,20 +654,18 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-    container_name: "transmission"
+    container_name: "sabnzbd"
     environment:
       - "PUID=${PUID}"
       - "PGID=${PGID}"
-      - "USER=${TRANSMISSION_USER}"
-      - "PASS=${TRANSMISSION_PASS}"
       - "TZ=${TZ}"
     healthcheck:
-      test: ["CMD-SHELL", "curl -so /dev/null -w '%{http_code}' http://localhost:9091/transmission/web/ | grep -qE '^(200|401)$' || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api?mode=version&output=json >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: "lscr.io/linuxserver/transmission:latest"
+    image: "lscr.io/linuxserver/sabnzbd:latest"
     labels:
       wud.watch: "true"
       wud.watch.digest: "true"
@@ -669,8 +673,8 @@ services:
     network_mode: "service:gluetun"
     restart: "unless-stopped"
     volumes:
-      - "transmission_config:/config"
-      - "transmission_data:/downloads"
+      - "sabnzbd_config:/config"
+      - "sabnzbd_data:/downloads"
 
 volumes:
 
@@ -680,29 +684,29 @@ volumes:
   prowlarr_config:
     external: true
 
-  nzbget_config:
-    external: true
-
-  nzbget_data:
-    external: true
-
   gluetun_data:
     external: true
 
   overseerr_config:
     external: true
 
+  qbittorrent_config:
+    external: true
+
+  qbittorrent_data:
+    external: true
+
   radarr_config:
+    external: true
+
+  sabnzbd_config:
+    external: true
+
+  sabnzbd_data:
     external: true
 
   sonarr_config:
     external: true
 
   tautulli_config:
-    external: true
-
-  transmission_config:
-    external: true
-
-  transmission_data:
     external: true

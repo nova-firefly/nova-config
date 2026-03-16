@@ -7,7 +7,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | Stack | File | Services |
 |-------|------|----------|
 | infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wud |
-| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, overseerr, kometa, kometa-quickstart, gluetun, transmission |
+| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, overseerr, kometa, kometa-quickstart, gluetun, qbittorrent, sabnzbd |
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
@@ -57,17 +57,20 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | tautulli | ghcr.io/tautulli/tautulli | 8181 | tautulli.NOVA_DOMAIN | Plex stats/monitoring |
 | overseerr | lscr.io/linuxserver/overseerr | 5055 | overseerr.NOVA_DOMAIN | Media request management |
 | kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00; config in `./kometa/`; no web UI |
-| gluetun | qmcgaw/gluetun | 9094→9091, 6789 | transmission.NOVA_DOMAIN, nzbget.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes transmission + nzbget through it |
-| transmission | lscr.io/linuxserver/transmission | (via gluetun) | — | Torrent client; `network_mode: service:gluetun` |
-| nzbget | ghcr.io/nzbgetcom/nzbget | (via gluetun) | nzbget.NOVA_DOMAIN | Usenet downloader; `network_mode: service:gluetun` |
+| kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `./kometa/` bind-mount to write config.yml |
+| gluetun | qmcgaw/gluetun | 8080, 8090 | qbittorrent.NOVA_DOMAIN, sabnzbd.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes qBittorrent + SABnzbd through it |
+| qbittorrent | lscr.io/linuxserver/qbittorrent | (via gluetun) 8090 | qbittorrent.NOVA_DOMAIN | Torrent client; `network_mode: service:gluetun`; WebUI on 8090 (WEBUI_PORT=8090) |
+| sabnzbd | lscr.io/linuxserver/sabnzbd | (via gluetun) 8080 | sabnzbd.NOVA_DOMAIN | Usenet downloader; `network_mode: service:gluetun`; WebUI on 8080 (default) |
 
-**Key:** transmission and nzbget run inside gluetun's network namespace (`network_mode: service:gluetun`). Traefik labels are on gluetun, not the sidecars.
+**Key:** qbittorrent and sabnzbd run inside gluetun's network namespace (`network_mode: service:gluetun`). Traefik labels are on gluetun, not the sidecars. Two homepage entries use numbered label syntax (`homepage.1.*`, `homepage.2.*`).
 
 **Media paths:** `/data1`, `/data2`, `/data3` — mounted directly (not volumes) for media libraries
 
-**External volumes:** `bazarr_config`, `gluetun_data`, `nzbget_config`, `nzbget_data`, `overseerr_config`, `prowlarr_config`, `radarr_config`, `sonarr_config`, `tautulli_config`, `transmission_config`, `transmission_data`
+**Download paths in arr services:** torrents at `/downloads` (qbittorrent_data), usenet at `/downloads-sabnzbd` (sabnzbd_data)
 
-**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `TRANSMISSION_USER`, `TRANSMISSION_PASS`, `NZBGET_USER`, `NZBGET_PASS`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`
+**External volumes:** `bazarr_config`, `gluetun_data`, `overseerr_config`, `prowlarr_config`, `qbittorrent_config`, `qbittorrent_data`, `radarr_config`, `sabnzbd_config`, `sabnzbd_data`, `sonarr_config`, `tautulli_config`
+
+**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `QBITTORRENT_USER`, `QBITTORRENT_PASS`, `SABNZBD_API_KEY`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`
 
 ---
 

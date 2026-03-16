@@ -26,6 +26,16 @@ instances:
   radarr:
     - base_url: "http://radarr:7878"
       api_key: !ENV RADARR_API_KEY
+  # qBittorrent — enables real-time speed data for remove_slow
+  # Reachable via gluetun's hostname since qbittorrent uses network_mode: service:gluetun
+  qbittorrent:
+    - base_url: "http://gluetun:8090"
+      username: !ENV QBITTORRENT_USER
+      password: !ENV QBITTORRENT_PASS
+  # SABnzbd — enables real-time queue data for remove_slow on usenet downloads
+  sabnzbd:
+    - base_url: "http://gluetun:8080"
+      api_key: !ENV SABNZBD_API_KEY
 
 jobs:
   # Mark stalled downloads (no peer connections / no progress) as failed
@@ -35,7 +45,7 @@ jobs:
 
   # Remove downloads that stay below min_speed KB/s for 10 consecutive checks
   # (10 × 30min = 5 hours). Adjust min_speed to match your connection.
-  # Note: uses arr-reported speed (Transmission/nzbget lack direct client API).
+  # qBittorrent and SABnzbd are configured as instances above for real-time speed data.
   remove_slow:
     min_speed: 100
     max_strikes: 10
