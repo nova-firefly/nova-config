@@ -102,21 +102,17 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **Purpose:** Movie suggestion web app (custom-built)
 
-**Submodule stack** — uses base + override pattern (see `context/patterns.md`):
-- Base: `movienight/docker-compose.yml` (upstream repo, `--profile production`)
-- Override: `docker-compose.movienight.yaml` (nova labels + nova-managed services)
-
-| Service | Source | Image/Build | Notes |
-|---------|--------|-------------|-------|
-| movienight | upstream (production profile) | ghcr.io/kjsb25/movienight:latest | React frontend; all non-/graphql traffic |
-| movienight-backend | nova-managed | build: ./movienight/backend | GraphQL API on port 4000 |
-| movienight-db | nova-managed | postgres:15-alpine | Internal network only |
+| Service | Image/Build | Notes |
+|---------|-------------|-------|
+| movienight-frontend | ghcr.io/kjsb25/movienight:latest | React frontend; routes all non-/graphql traffic |
+| movienight-backend | build: ./movienight/backend | GraphQL API on port 4000; built from submodule source |
+| movienight-db | postgres:15-alpine | Internal network only |
 
 **Network:** `movienight_internal` (internal: true) isolates DB from Traefik
 
 **Routing:** Traefik routes `/graphql` to backend, everything else to frontend — both on `movienight.NOVA_DOMAIN`
 
-**Submodule:** Initialize with `git submodule update --init movienight`
+**Submodule:** `movienight/` provides backend source. Initialize: `git submodule update --init`. To pick up upstream backend changes: `git submodule update --remote` then `nova.sh recreate movienight`.
 
 **Required env:** `MOVIENIGHT_DB_PASSWORD`
 
