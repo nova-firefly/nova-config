@@ -1,9 +1,13 @@
 # Decluttarr Configuration
-# Marks stalled downloads as failed after 24 hours of no progress.
+# Marks stalled/slow downloads as failed after sustained inactivity or low speed.
 #
-# Strategy: timer=30min * max_strikes=48 = 1,440min = 24 hours
+# remove_stalled strategy: timer=30min * max_strikes=48 = 1,440min = 24 hours
 # A download must be caught stalled on 48 consecutive checks (each 30min apart)
 # before it is marked as failed. Any progress resets the counter.
+#
+# remove_slow strategy: timer=30min * max_strikes=10 = 300min = 5 hours
+# A download must be below min_speed on 10 consecutive checks before removal.
+# Note: uses arr-reported speed (Transmission/nzbget lack direct API support).
 
 general:
   log_level: DEBUG
@@ -25,6 +29,12 @@ jobs:
   # after 48 strikes × 30min = 24 hours of inactivity
   remove_stalled:
     max_strikes: 48
+
+  # Remove downloads that stay below min_speed KB/s for 10 consecutive checks
+  # (10 × 30min = 5 hours). Adjust min_speed to match your connection.
+  remove_slow:
+    min_speed: 100
+    max_strikes: 10
 
   # Also clean up items already marked as failed in the *arr queue
   remove_failed_downloads: true
