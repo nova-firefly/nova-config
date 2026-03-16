@@ -105,14 +105,14 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
 | movienight-frontend | ghcr.io/kjsb25/movienight:latest | React frontend; routes all non-/graphql traffic |
-| movienight-backend | build: ./movienight/backend | GraphQL API on port 4000 |
+| movienight-backend | build: ./movienight/backend | GraphQL API on port 4000; built from submodule source |
 | movienight-db | postgres:15-alpine | Internal network only |
 
 **Network:** `movienight_internal` (internal: true) isolates DB from Traefik
 
 **Routing:** Traefik routes `/graphql` to backend, everything else to frontend — both on `movienight.NOVA_DOMAIN`
 
-**Submodule:** `movienight/` directory is a git submodule. Initialize with `git submodule update --init`
+**Submodule:** `movienight/` provides backend source. Initialize: `git submodule update --init`. To pick up upstream backend changes: `git submodule update --remote` then `nova.sh recreate movienight`.
 
 **Required env:** `MOVIENIGHT_DB_PASSWORD`
 
