@@ -203,34 +203,6 @@ Each compose file begins with a comment block:
       disable: true
 ```
 
-## Submodule Stack Pattern
-
-When a stack has its own git submodule (e.g. `movienight/`), nova uses a base + override approach:
-
-```
-docker compose -f <stack>/docker-compose.yml \   # upstream (owned by the submodule)
-               -f docker-compose.<stack>.yaml \   # nova override (owned by nova-config)
-               --profile <profile> <cmd>
-```
-
-**How it works:**
-- `nova.sh` auto-detects the submodule by checking whether `<stack>/docker-compose.yml` (or `.yaml`) exists
-- The upstream file defines services, images, volumes, and healthchecks
-- The nova override file adds only what nova owns: Traefik/Homepage/WUD labels, nova networks, and any nova-managed services absent from the upstream production profile
-- Per-stack `STACK_PROFILES[<stack>]` in nova.sh activates the right upstream profile (e.g. `production`)
-- Docker Compose deep-merges the files: scalar fields (image, restart) are replaced; mappings (labels, environment) are merged; sequences (ports, volumes) are **appended by default**
-- Use `!reset` YAML tag to **replace** (not append) an inherited sequence. E.g. to clear upstream port bindings so only Traefik routes traffic: `ports: !reset []`
-- **`.env` lookup** uses the **project directory**, which defaults to the first `-f` file's directory. For submodule stacks this would be the submodule dir (missing nova's `.env`). `nova.sh` always passes `--project-directory .` to anchor it to `nova-config/`
-- **All paths** (including those in the nova override file) are resolved relative to the **first** `-f` file's directory (the submodule root). E.g. if the submodule is at `movienight/`, a build context of `./backend` in the override resolves to `movienight/backend/` ✓ — not `./movienight/backend` which would double-up to `movienight/movienight/backend` ✗
-
-**Adding a new submodule stack:**
-1. Initialize the submodule: `git submodule add <repo> <stack>`
-2. Create `docker-compose.<stack>.yaml` with only nova overrides (labels, networks, nova-managed services)
-3. Add the stack name to `ALL_STACKS` in nova.sh
-4. If the upstream compose uses profiles, add `STACK_PROFILES[<stack>]="<profile>"` in nova.sh
-5. Add WUD trigger env vars to `docker-compose.infra.yaml`
-6. Update `context/stacks.md`
-
 ## Adding a New Stack
 
 1. Create `docker-compose.<name>.yaml` with the header comment block
