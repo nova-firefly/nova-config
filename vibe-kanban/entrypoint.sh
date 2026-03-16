@@ -18,4 +18,20 @@ fi
 mkdir -p /root/.claude
 cp /opt/global-claude.md /root/.claude/CLAUDE.md
 
+# Configure vibe-kanban MCP server in ~/.claude.json.
+# Uses Node.js to merge into existing config without overwriting other settings.
+node -e "
+  const fs = require('fs');
+  const path = '/root/.claude.json';
+  let config = {};
+  try { config = JSON.parse(fs.readFileSync(path, 'utf8')); } catch(e) {}
+  config.mcpServers = config.mcpServers || {};
+  config.mcpServers.vibe_kanban = {
+    command: 'npx',
+    args: ['-y', 'vibe-kanban@latest', '--mcp']
+  };
+  fs.writeFileSync(path, JSON.stringify(config, null, 2));
+"
+echo "[entrypoint] Configured vibe_kanban MCP server in ~/.claude.json"
+
 exec "$@"
