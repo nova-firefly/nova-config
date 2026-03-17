@@ -143,10 +143,9 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 | Service | Notes |
 |---------|-------|
-| backrest | Restic-based backup manager |
-| duplicati | Backup with cloud support |
+| backrest | Restic-based backup manager (Restic-based; supports S3, B2, SFTP, and more) |
 
-**Required env:** `DUPLICATI_SETTINGS_ENCRYPTION_KEY`
+**External volumes:** `backrest_backrest_cache`, `backrest_backrest_config`, `backrest_backrest_data`
 
 ---
 
