@@ -33,7 +33,9 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; triggers per-stack docker-compose pull+up |
 | scrutiny | ghcr.io/analogj/scrutiny:master-omnibus | 8082→8080 | scrutiny.NOVA_DOMAIN | S.M.A.R.T. hard drive health monitoring; needs SYS_RAWIO + device passthrough |
 
-**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_config`, `scrutiny_influxdb`
+**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_influxdb`
+
+**Config files (bind-mounted):** `./scrutiny/scrutiny.yaml` — device labels and web config
 
 **External networks:** `traefik_default` (shared)
 

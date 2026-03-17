@@ -1,0 +1,24 @@
+version: 1
+
+# Scrutiny configuration for nova homelab.
+# Web UI and InfluxDB are bundled in the master-omnibus image.
+# Device labels are shown in the UI so you know which physical drive you're looking at.
+
+web:
+  listen:
+    port: 8080
+    host: 0.0.0.0
+  database:
+    location: /opt/scrutiny/influxdb
+
+# Device labels — update if drives are added, removed, or remounted.
+# Verify assignments with: lsblk -d -o NAME,TYPE,SIZE,MOUNTPOINT
+devices:
+  - device: /dev/sda
+    label: "SSD — 447G (no mount, OS/misc)"
+  - device: /dev/sdb
+    label: "HDD — 931G (/data2)"
+  - device: /dev/sdc
+    label: "HDD — 1.8T (/data1)"
+  - device: /dev/sdd
+    label: "HDD — 9.1T (/data3)"

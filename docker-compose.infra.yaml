@@ -307,14 +307,12 @@ services:
       - "SYS_RAWIO"       # Required to issue ATA/SCSI passthrough commands for SMART
       - "SYS_ADMIN"       # Required for NVMe SMART access on some kernels
     devices:
-      # Add any additional drives present on your system.
-      # Run: lsblk -d -o NAME,TYPE,SIZE to discover drive names.
       - "/dev/sda:/dev/sda"
       - "/dev/sdb:/dev/sdb"
       - "/dev/sdc:/dev/sdc"
+      - "/dev/sdd:/dev/sdd"
     environment:
       - "TZ=${TZ}"
-      - "SCRUTINY_WEB_INFLUXDB_HOST=localhost"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/health >/dev/null || exit 1"]
       interval: 30s
@@ -342,7 +340,7 @@ services:
       - "8082:8080/tcp"
     restart: "unless-stopped"
     volumes:
-      - "scrutiny_config:/opt/scrutiny/config"
+      - "./scrutiny/scrutiny.yaml:/opt/scrutiny/config/scrutiny.yaml:ro"
       - "scrutiny_influxdb:/opt/scrutiny/influxdb"
       - "/run/udev:/run/udev:ro"
 
@@ -352,9 +350,6 @@ volumes:
     external: true
 
   samba_config:
-    external: true
-
-  scrutiny_config:
     external: true
 
   scrutiny_influxdb:
