@@ -62,7 +62,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **Media paths:** `/data1`, `/data2`, `/data3` — mounted directly (not volumes) for media libraries
 
-**External volumes:** `bazarr_config`, `gluetun_data`, `nzbget_config`, `nzbget_data`, `overseerr_config`, `radarr_config`, `sonarr_config`, `tautulli_config`, `transmission_config`, `transmission_data`
+**External volumes:** `bazarr_config`, `gluetun_data`, `nzbget_config`, `nzbget_data`, `overseerr_config`, `prowlarr_config`, `radarr_config`, `sonarr_config`, `tautulli_config`, `transmission_config`, `transmission_data`
 
 **Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `TRANSMISSION_USER`, `TRANSMISSION_PASS`, `NZBGET_USER`, `NZBGET_PASS`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`
 

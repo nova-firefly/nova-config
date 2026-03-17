@@ -239,7 +239,7 @@ services:
       - "9696:9696/tcp"
     restart: "unless-stopped"
     volumes:
-      - "/path/to/prowlarr/data:/config"
+      - "prowlarr_config:/config"
 
   radarr:
     cap_drop:
@@ -673,6 +673,9 @@ services:
 volumes:
 
   bazarr_config:
+    external: true
+
+  prowlarr_config:
     external: true
 
   nzbget_config:
