@@ -341,7 +341,7 @@ services:
     restart: "unless-stopped"
     volumes:
       - "./scrutiny/scrutiny.yaml:/opt/scrutiny/config/scrutiny.yaml:ro"
-      - "scrutiny_influxdb:/opt/scrutiny/influxdb"
+      - "scrutiny_data:/opt/scrutiny/data"
       - "/run/udev:/run/udev:ro"
 
 volumes:
@@ -352,7 +352,7 @@ volumes:
   samba_config:
     external: true
 
-  scrutiny_influxdb:
+  scrutiny_data:
     external: true
 
   arcane_data:
