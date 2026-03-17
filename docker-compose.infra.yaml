@@ -268,6 +268,9 @@ services:
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_FILE=/compose/docker-compose.movienight.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_FILE=/compose/docker-compose.tools.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_PRUNE=true"
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"

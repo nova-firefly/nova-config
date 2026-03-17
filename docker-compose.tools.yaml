@@ -1,4 +1,4 @@
-# Tools Stack - Stirling PDF
+# Tools Stack - Stirling PDF, Vikunja, Uptime Kuma
 # Usage: docker compose -f docker-compose.tools.yaml up -d
 # Requires .env file for: NOVA_DOMAIN
 
@@ -75,13 +75,49 @@ services:
       homepage.href: "http://vikunja.${NOVA_DOMAIN}"
       homepage.description: "Task Management"
 
+  uptime-kuma:
+    container_name: "uptime-kuma"
+    environment:
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3001/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "louislam/uptime-kuma:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.uptime-kuma.rule: "Host(`status.${NOVA_DOMAIN}`)"
+      traefik.http.routers.uptime-kuma.entrypoints: "websecure"
+      traefik.http.routers.uptime-kuma.tls: "true"
+      traefik.http.services.uptime-kuma.loadbalancer.server.port: "3001"
+      homepage.group: "Infrastructure"
+      homepage.name: "Uptime Kuma"
+      homepage.icon: "uptime-kuma.svg"
+      homepage.href: "https://status.${NOVA_DOMAIN}"
+      homepage.description: "Service Uptime Monitoring"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.tools,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "3002:3001/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "uptime_kuma_data:/app/data"
+
 volumes:
+
+  uptime_kuma_data:
+    external: true
 
   vikunja_db:
     external: true
 
   vikunja_files:
-    external: true  
+    external: true
 
   stirling_config:
     external: true

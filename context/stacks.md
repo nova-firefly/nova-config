@@ -131,10 +131,13 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 ## tools stack (`docker-compose.tools.yaml`)
 
-| Service | Notes |
-|---------|-------|
-| stirling-pdf | PDF manipulation tool |
-| vikunja | Task management |
+| Service | Image | Port | URL | Notes |
+|---------|-------|------|-----|-------|
+| stirling-pdf | stirlingtools/stirling-pdf | 8080 | stirling-pdf.NOVA_DOMAIN | PDF manipulation tool |
+| vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management |
+| uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
+
+**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`
 
 ---
 
