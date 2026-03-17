@@ -13,6 +13,7 @@
 #   ps        List running containers
 #   health    Show containers not in a healthy state
 #   config    Validate compose files
+#   orphans   Find running containers not defined in any stack and offer to remove them
 #
 # Stack names: infra, media, immich, home, backup, gaming, dev, tools, movienight
 # Omit stack name to apply to all stacks.
@@ -26,6 +27,7 @@
 #   ./nova.sh update infra          # Pull + restart infra stack
 #   ./nova.sh recreate dev          # Full rebuild and restart dev stack
 #   ./nova.sh health                # Show unhealthy/starting containers
+#   ./nova.sh orphans               # Find and optionally remove containers no longer in config
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -53,6 +55,18 @@ get_external_volumes() {
     in_volumes && /^  [a-zA-Z_-]/ { gsub(/:/, "", $1); current=$1 }
     in_volumes && /external: true/ { print current }
   ' "$file"
+}
+
+# --- Collect all container_name values defined across every stack file ---
+# Returns one name per line. Relies on explicit container_name: labels (project convention).
+
+get_defined_containers() {
+  for s in "${ALL_STACKS[@]}"; do
+    local file="docker-compose.${s}.yaml"
+    [[ -f "$file" ]] || continue
+    grep 'container_name:' "$file" \
+      | sed 's/.*container_name: *"\?\([^"]*\)"\?.*/\1/'
+  done
 }
 
 # --- Compose file builder ---
@@ -221,6 +235,46 @@ case "$CMD" in
     [[ -n "$unhealthy" ]] && echo "UNHEALTHY: $unhealthy"
     [[ -n "$starting"  ]] && echo "STARTING:  $starting"
     [[ -z "$unhealthy" && -z "$starting" ]] && echo "All containers with healthchecks are healthy."
+    ;;
+
+  orphans)
+    echo "==> Scanning for running containers not defined in any stack..."
+    # Build lookup of defined container names
+    defined=$(get_defined_containers | sort)
+    running=$(docker ps --format "{{.Names}}" | sort)
+
+    orphan_list=()
+    while IFS= read -r name; do
+      if ! grep -qxF "$name" <(echo "$defined"); then
+        orphan_list+=("$name")
+      fi
+    done <<< "$running"
+
+    if [[ ${#orphan_list[@]} -eq 0 ]]; then
+      echo "No orphaned containers found."
+      exit 0
+    fi
+
+    echo ""
+    echo "Found ${#orphan_list[@]} container(s) not in any stack:"
+    for name in "${orphan_list[@]}"; do
+      image=$(docker inspect --format '{{.Config.Image}}' "$name" 2>/dev/null || echo "unknown")
+      printf "  %-35s  %s\n" "$name" "$image"
+    done
+    echo ""
+
+    read -rp "Stop and remove all of the above? [y/N] " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+      for name in "${orphan_list[@]}"; do
+        echo "  Stopping $name..."
+        docker stop "$name"
+        echo "  Removing $name..."
+        docker rm "$name"
+      done
+      echo "Done."
+    else
+      echo "Aborted — no containers removed."
+    fi
     ;;
 
   *)
