@@ -553,17 +553,6 @@ services:
       traefik.http.routers.sabnzbd.tls: "true"
       traefik.http.routers.sabnzbd.service: "sabnzbd"
       traefik.http.services.sabnzbd.loadbalancer.server.port: "8080"
-      # Homepage — numbered labels allow two entries from one container
-      homepage.1.group: "Downloads"
-      homepage.1.name: "qBittorrent"
-      homepage.1.icon: "qbittorrent.svg"
-      homepage.1.href: "http://qbittorrent.${NOVA_DOMAIN}"
-      homepage.1.description: "Torrent Client"
-      homepage.2.group: "Downloads"
-      homepage.2.name: "SABnzbd"
-      homepage.2.icon: "sabnzbd.svg"
-      homepage.2.href: "http://sabnzbd.${NOVA_DOMAIN}"
-      homepage.2.description: "Usenet Downloader"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
@@ -620,6 +609,11 @@ services:
       start_period: 60s
     image: "lscr.io/linuxserver/qbittorrent:latest"
     labels:
+      homepage.group: "Downloads"
+      homepage.name: "qBittorrent"
+      homepage.icon: "qbittorrent.svg"
+      homepage.href: "http://qbittorrent.${NOVA_DOMAIN}"
+      homepage.description: "Torrent Client"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "dockercompose.media,discord.notify"
@@ -667,6 +661,11 @@ services:
       start_period: 60s
     image: "lscr.io/linuxserver/sabnzbd:latest"
     labels:
+      homepage.group: "Downloads"
+      homepage.name: "SABnzbd"
+      homepage.icon: "sabnzbd.svg"
+      homepage.href: "http://sabnzbd.${NOVA_DOMAIN}"
+      homepage.description: "Usenet Downloader"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "dockercompose.media,discord.notify"
