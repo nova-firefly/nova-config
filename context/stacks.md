@@ -34,7 +34,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **External volumes:** `traefik_acme`, `volume_sharer_samba_config`, `arcane_data`
 
-**External networks:** `traefik_default` (shared), `wud_default`
+**External networks:** `traefik_default` (shared)
 
 **WUD triggers configured (in wud service env):** infra, media, backup, movienight stacks
 

@@ -8,9 +8,6 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
-  wud_default:
-    external: true
-    name: "wud_default"
   socket_proxy:
     external: true
     name: "socket_proxy"
@@ -290,7 +287,6 @@ services:
       homepage.description: "Container Update Notifications"
       wud.watch: "false"
     networks:
-      - "wud_default"
       - "traefik_default"
     ports:
       - "3003:3000/tcp"
