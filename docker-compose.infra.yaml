@@ -228,8 +228,12 @@ services:
     depends_on:
       - "socket-proxy"
     environment:
-      - "USERID=0"
-      - "GROUPID=0"
+      # USERID/GROUPID control the Samba user inside the container.
+      # Root (0) is required to read all volume contents regardless of ownership.
+      # Set to ${PUID}/${PGID} if all your volumes are user-owned and you want
+      # to restrict access, accepting that root-owned volumes will be unreadable.
+      - "USERID=${SAMBA_UID:-0}"
+      - "GROUPID=${SAMBA_GID:-0}"
       - "DOCKER_HOST=tcp://127.0.0.1:2375"
     hostname: "${NOVA_HOSTNAME}"
     image: "gdiepen/volume-sharer"
