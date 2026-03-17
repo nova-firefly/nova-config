@@ -39,7 +39,7 @@ services:
   duckdns:
     container_name: "duckdns"
     environment:
-      - "SUBDOMAINS=firefly-koonan"
+      - "SUBDOMAINS=${DUCKDNS_SUBDOMAIN}"
       - "TOKEN=${DUCKDNS_TOKEN}"
     image: "lscr.io/linuxserver/duckdns:latest"
     labels:

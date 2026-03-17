@@ -53,7 +53,7 @@ services:
       - "/data1:/hd1:ro"
       - "/data2:/hd2:ro"
       - "/data3:/hd3:ro"
-      - "/home/koonan:/home:ro"
+      - "${NOVA_USER_HOME}:/home:ro"
       - "/var/lib/docker/volumes:/volumes:ro"
       - "backrest_backrest_cache:/cache"
       - "backrest_backrest_config:/config"
