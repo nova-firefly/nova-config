@@ -1,4 +1,4 @@
-# Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer
+# Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer, Scrutiny
 # Usage: docker compose -f docker-compose.infra.yaml up -d
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN
 
@@ -8,9 +8,6 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
-  wud_default:
-    external: true
-    name: "wud_default"
   socket_proxy:
     external: true
     name: "socket_proxy"
@@ -42,7 +39,7 @@ services:
   duckdns:
     container_name: "duckdns"
     environment:
-      - "SUBDOMAINS=firefly-koonan"
+      - "SUBDOMAINS=${DUCKDNS_SUBDOMAIN}"
       - "TOKEN=${DUCKDNS_TOKEN}"
     image: "lscr.io/linuxserver/duckdns:latest"
     labels:
@@ -231,8 +228,12 @@ services:
     depends_on:
       - "socket-proxy"
     environment:
-      - "USERID=0"
-      - "GROUPID=0"
+      # USERID/GROUPID control the Samba user inside the container.
+      # Root (0) is required to read all volume contents regardless of ownership.
+      # Set to ${PUID}/${PGID} if all your volumes are user-owned and you want
+      # to restrict access, accepting that root-owned volumes will be unreadable.
+      - "USERID=${SAMBA_UID:-0}"
+      - "GROUPID=${SAMBA_GID:-0}"
       - "DOCKER_HOST=tcp://127.0.0.1:2375"
     hostname: "${NOVA_HOSTNAME}"
     image: "gdiepen/volume-sharer"
@@ -245,7 +246,7 @@ services:
     restart: "unless-stopped"
     volumes:
       - "/var/lib/docker/volumes:/docker_volumes"
-      - "volume_sharer_samba_config:/etc/samba"
+      - "samba_config:/etc/samba"
 
   wud:
     container_name: "wud"
@@ -267,6 +268,9 @@ services:
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_FILE=/compose/docker-compose.movienight.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_MOVIENIGHT_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_FILE=/compose/docker-compose.tools.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_PRUNE=true"
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
@@ -290,7 +294,6 @@ services:
       homepage.description: "Container Update Notifications"
       wud.watch: "false"
     networks:
-      - "wud_default"
       - "traefik_default"
     ports:
       - "3003:3000/tcp"
@@ -298,13 +301,58 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "${NOVA_CONFIG_PATH:-.}:/compose:ro"
 
+  scrutiny:
+    container_name: "scrutiny"
+    cap_add:
+      - "SYS_RAWIO"       # Required to issue ATA/SCSI passthrough commands for SMART
+      - "SYS_ADMIN"       # Required for NVMe SMART access on some kernels
+    devices:
+      - "/dev/sda:/dev/sda"
+      - "/dev/sdb:/dev/sdb"
+      - "/dev/sdc:/dev/sdc"
+      - "/dev/sdd:/dev/sdd"
+    environment:
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/analogj/scrutiny:master-omnibus"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.scrutiny.rule: "Host(`scrutiny.${NOVA_DOMAIN}`)"
+      traefik.http.routers.scrutiny.entrypoints: "websecure"
+      traefik.http.routers.scrutiny.tls: "true"
+      traefik.http.services.scrutiny.loadbalancer.server.port: "8080"
+      homepage.group: "Infrastructure"
+      homepage.name: "Scrutiny"
+      homepage.icon: "scrutiny.png"
+      homepage.href: "https://scrutiny.${NOVA_DOMAIN}"
+      homepage.description: "Hard Drive Health (S.M.A.R.T.)"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.infra,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "8082:8080/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "./scrutiny/scrutiny.yaml:/opt/scrutiny/config/scrutiny.yaml:ro"
+      - "scrutiny_data:/opt/scrutiny/data"
+      - "/run/udev:/run/udev:ro"
+
 volumes:
 
   traefik_acme:
     external: true
 
-  volume_sharer_samba_config:
+  samba_config:
     external: true
-    name: "d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12"
+
+  scrutiny_data:
+    external: true
 
   arcane_data:

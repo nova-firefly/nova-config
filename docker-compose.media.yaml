@@ -239,7 +239,7 @@ services:
       - "9696:9696/tcp"
     restart: "unless-stopped"
     volumes:
-      - "/path/to/prowlarr/data:/config"
+      - "prowlarr_config:/config"
 
   radarr:
     cap_drop:
@@ -308,29 +308,29 @@ services:
 
   sonarr:
     cap_drop:
-      - "CAP_AUDIT_CONTROL"
-      - "CAP_BLOCK_SUSPEND"
-      - "CAP_DAC_READ_SEARCH"
-      - "CAP_IPC_LOCK"
-      - "CAP_IPC_OWNER"
-      - "CAP_LEASE"
-      - "CAP_LINUX_IMMUTABLE"
-      - "CAP_MAC_ADMIN"
-      - "CAP_MAC_OVERRIDE"
-      - "CAP_NET_ADMIN"
-      - "CAP_NET_BROADCAST"
-      - "CAP_SYSLOG"
-      - "CAP_SYS_ADMIN"
-      - "CAP_SYS_BOOT"
-      - "CAP_SYS_MODULE"
-      - "CAP_SYS_NICE"
-      - "CAP_SYS_PACCT"
-      - "CAP_SYS_PTRACE"
-      - "CAP_SYS_RAWIO"
-      - "CAP_SYS_RESOURCE"
-      - "CAP_SYS_TIME"
-      - "CAP_SYS_TTY_CONFIG"
-      - "CAP_WAKE_ALARM"
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
     container_name: "sonarr"
     environment:
       - "PGID=${PGID}"
@@ -513,61 +513,6 @@ services:
     volumes:
       - "./kometa:/config"
 
-  kometa-quickstart:
-    cap_drop:
-      - "AUDIT_CONTROL"
-      - "BLOCK_SUSPEND"
-      - "DAC_READ_SEARCH"
-      - "IPC_LOCK"
-      - "IPC_OWNER"
-      - "LEASE"
-      - "LINUX_IMMUTABLE"
-      - "MAC_ADMIN"
-      - "MAC_OVERRIDE"
-      - "NET_ADMIN"
-      - "NET_BROADCAST"
-      - "SYSLOG"
-      - "SYS_ADMIN"
-      - "SYS_BOOT"
-      - "SYS_MODULE"
-      - "SYS_NICE"
-      - "SYS_PACCT"
-      - "SYS_PTRACE"
-      - "SYS_RAWIO"
-      - "SYS_RESOURCE"
-      - "SYS_TIME"
-      - "SYS_TTY_CONFIG"
-      - "WAKE_ALARM"
-    container_name: "kometa-quickstart"
-    environment:
-      - "TZ=${TZ}"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:7171/ >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    image: "kometateam/quickstart:develop"
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.kometa-quickstart.rule: "Host(`kometa-quickstart.${NOVA_DOMAIN}`)"
-      traefik.http.routers.kometa-quickstart.entrypoints: "websecure"
-      traefik.http.routers.kometa-quickstart.tls: "true"
-      traefik.http.services.kometa-quickstart.loadbalancer.server.port: "7171"
-      homepage.group: "Media"
-      homepage.name: "Kometa Quickstart"
-      homepage.icon: "kometa.png"
-      homepage.href: "https://kometa-quickstart.${NOVA_DOMAIN}"
-      homepage.description: "Kometa config generator"
-      wud.watch: "true"
-      wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
-    networks:
-      - "traefik_default"
-    restart: "unless-stopped"
-    volumes:
-      - "./kometa:/config"
-
   gluetun:
     cap_add:
       - "NET_ADMIN"
@@ -728,6 +673,9 @@ services:
 volumes:
 
   bazarr_config:
+    external: true
+
+  prowlarr_config:
     external: true
 
   nzbget_config:

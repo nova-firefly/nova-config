@@ -31,10 +31,13 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | glances | nicolargo/glances:latest-full | 61208 (host) | glances.NOVA_DOMAIN | System monitor; host network mode → routed via traefik/dynamic.yaml |
 | volume-sharer | gdiepen/volume-sharer | 139, 445 (host) | — | Samba share of Docker volumes |
 | wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; triggers per-stack docker-compose pull+up |
+| scrutiny | ghcr.io/analogj/scrutiny:master-omnibus | 8082→8080 | scrutiny.NOVA_DOMAIN | S.M.A.R.T. hard drive health monitoring; needs SYS_RAWIO + device passthrough |
 
-**External volumes:** `traefik_acme`, `volume_sharer_samba_config`, `arcane_data`
+**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_data`
 
-**External networks:** `traefik_default` (shared), `wud_default`
+**Config files (bind-mounted):** `./scrutiny/scrutiny.yaml` — device labels and web config
+
+**External networks:** `traefik_default` (shared)
 
 **WUD triggers configured (in wud service env):** infra, media, backup, movienight stacks
 
@@ -54,7 +57,6 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | tautulli | ghcr.io/tautulli/tautulli | 8181 | tautulli.NOVA_DOMAIN | Plex stats/monitoring |
 | overseerr | lscr.io/linuxserver/overseerr | 5055 | overseerr.NOVA_DOMAIN | Media request management |
 | kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00; config in `./kometa/`; no web UI |
-| kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `./kometa/` bind-mount to write config.yml |
 | gluetun | qmcgaw/gluetun | 9094→9091, 6789 | transmission.NOVA_DOMAIN, nzbget.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes transmission + nzbget through it |
 | transmission | lscr.io/linuxserver/transmission | (via gluetun) | — | Torrent client; `network_mode: service:gluetun` |
 | nzbget | ghcr.io/nzbgetcom/nzbget | (via gluetun) | nzbget.NOVA_DOMAIN | Usenet downloader; `network_mode: service:gluetun` |
@@ -63,7 +65,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **Media paths:** `/data1`, `/data2`, `/data3` — mounted directly (not volumes) for media libraries
 
-**External volumes:** `bazarr_config`, `gluetun_data`, `nzbget_config`, `nzbget_data`, `overseerr_config`, `radarr_config`, `sonarr_config`, `tautulli_config`, `transmission_config`, `transmission_data`
+**External volumes:** `bazarr_config`, `gluetun_data`, `nzbget_config`, `nzbget_data`, `overseerr_config`, `prowlarr_config`, `radarr_config`, `sonarr_config`, `tautulli_config`, `transmission_config`, `transmission_data`
 
 **Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `TRANSMISSION_USER`, `TRANSMISSION_PASS`, `NZBGET_USER`, `NZBGET_PASS`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`
 
@@ -132,10 +134,13 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 ## tools stack (`docker-compose.tools.yaml`)
 
-| Service | Notes |
-|---------|-------|
-| stirling-pdf | PDF manipulation tool |
-| vikunja | Task management |
+| Service | Image | Port | URL | Notes |
+|---------|-------|------|-----|-------|
+| stirling-pdf | stirlingtools/stirling-pdf | 8080 | stirling-pdf.NOVA_DOMAIN | PDF manipulation tool |
+| vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management |
+| uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
+
+**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`
 
 ---
 
@@ -143,10 +148,9 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 | Service | Notes |
 |---------|-------|
-| backrest | Restic-based backup manager |
-| duplicati | Backup with cloud support |
+| backrest | Restic-based backup manager (Restic-based; supports S3, B2, SFTP, and more) |
 
-**Required env:** `DUPLICATI_SETTINGS_ENCRYPTION_KEY`
+**External volumes:** `backrest_backrest_cache`, `backrest_backrest_config`, `backrest_backrest_data`
 
 ---
 
