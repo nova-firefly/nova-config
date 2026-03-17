@@ -32,7 +32,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | volume-sharer | gdiepen/volume-sharer | 139, 445 (host) | — | Samba share of Docker volumes |
 | wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; triggers per-stack docker-compose pull+up |
 
-**External volumes:** `traefik_acme`, `volume_sharer_samba_config`, `arcane_data`
+**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`
 
 **External networks:** `traefik_default` (shared)
 

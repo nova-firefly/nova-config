@@ -242,7 +242,7 @@ services:
     restart: "unless-stopped"
     volumes:
       - "/var/lib/docker/volumes:/docker_volumes"
-      - "volume_sharer_samba_config:/etc/samba"
+      - "samba_config:/etc/samba"
 
   wud:
     container_name: "wud"
@@ -299,8 +299,7 @@ volumes:
   traefik_acme:
     external: true
 
-  volume_sharer_samba_config:
+  samba_config:
     external: true
-    name: "d38249258c4c2870a526afa1ff60410a6ef5c618649a43f795388a9cd0d69b12"
 
   arcane_data:
