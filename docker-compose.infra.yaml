@@ -1,4 +1,4 @@
-# Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer
+# Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer, Scrutiny
 # Usage: docker compose -f docker-compose.infra.yaml up -d
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN
 
@@ -301,12 +301,63 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "${NOVA_CONFIG_PATH:-.}:/compose:ro"
 
+  scrutiny:
+    container_name: "scrutiny"
+    cap_add:
+      - "SYS_RAWIO"       # Required to issue ATA/SCSI passthrough commands for SMART
+      - "SYS_ADMIN"       # Required for NVMe SMART access on some kernels
+    devices:
+      # Add any additional drives present on your system.
+      # Run: lsblk -d -o NAME,TYPE,SIZE to discover drive names.
+      - "/dev/sda:/dev/sda"
+      - "/dev/sdb:/dev/sdb"
+      - "/dev/sdc:/dev/sdc"
+    environment:
+      - "TZ=${TZ}"
+      - "SCRUTINY_WEB_INFLUXDB_HOST=localhost"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/analogj/scrutiny:master-omnibus"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.scrutiny.rule: "Host(`scrutiny.${NOVA_DOMAIN}`)"
+      traefik.http.routers.scrutiny.entrypoints: "websecure"
+      traefik.http.routers.scrutiny.tls: "true"
+      traefik.http.services.scrutiny.loadbalancer.server.port: "8080"
+      homepage.group: "Infrastructure"
+      homepage.name: "Scrutiny"
+      homepage.icon: "scrutiny.png"
+      homepage.href: "https://scrutiny.${NOVA_DOMAIN}"
+      homepage.description: "Hard Drive Health (S.M.A.R.T.)"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.infra,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "8082:8080/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "scrutiny_config:/opt/scrutiny/config"
+      - "scrutiny_influxdb:/opt/scrutiny/influxdb"
+      - "/run/udev:/run/udev:ro"
+
 volumes:
 
   traefik_acme:
     external: true
 
   samba_config:
+    external: true
+
+  scrutiny_config:
+    external: true
+
+  scrutiny_influxdb:
     external: true
 
   arcane_data:

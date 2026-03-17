@@ -31,8 +31,9 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | glances | nicolargo/glances:latest-full | 61208 (host) | glances.NOVA_DOMAIN | System monitor; host network mode → routed via traefik/dynamic.yaml |
 | volume-sharer | gdiepen/volume-sharer | 139, 445 (host) | — | Samba share of Docker volumes |
 | wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; triggers per-stack docker-compose pull+up |
+| scrutiny | ghcr.io/analogj/scrutiny:master-omnibus | 8082→8080 | scrutiny.NOVA_DOMAIN | S.M.A.R.T. hard drive health monitoring; needs SYS_RAWIO + device passthrough |
 
-**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`
+**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_config`, `scrutiny_influxdb`
 
 **External networks:** `traefik_default` (shared)
 
