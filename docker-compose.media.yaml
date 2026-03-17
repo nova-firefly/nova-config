@@ -2,6 +2,8 @@
 # Usage: docker compose -f docker-compose.media.yaml up -d
 # Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*, NOVA_DOMAIN
 
+name: media
+
 networks:
   media:
     external: true
