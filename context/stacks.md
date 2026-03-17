@@ -58,7 +58,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | overseerr | lscr.io/linuxserver/overseerr | 5055 | overseerr.NOVA_DOMAIN | Media request management |
 | kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00; config in `./kometa/`; no web UI |
 | kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `./kometa/` bind-mount to write config.yml |
-| gluetun | qmcgaw/gluetun | 8080, 8090 | qbittorrent.NOVA_DOMAIN, sabnzbd.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes qBittorrent + SABnzbd through it |
+| gluetun | qmcgaw/gluetun | 9090→8080, 8090 | qbittorrent.NOVA_DOMAIN, sabnzbd.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes qBittorrent + SABnzbd through it |
 | qbittorrent | lscr.io/linuxserver/qbittorrent | (via gluetun) 8090 | qbittorrent.NOVA_DOMAIN | Torrent client; `network_mode: service:gluetun`; WebUI on 8090 (WEBUI_PORT=8090) |
 | sabnzbd | lscr.io/linuxserver/sabnzbd | (via gluetun) 8080 | sabnzbd.NOVA_DOMAIN | Usenet downloader; `network_mode: service:gluetun`; WebUI on 8080 (default) |
 
