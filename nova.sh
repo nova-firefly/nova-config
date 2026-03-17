@@ -8,7 +8,7 @@
 #   down      Stop stack(s)
 #   pull      Pull latest images
 #   update    Pull + restart stack(s)
-#   recreate  Full down, rebuild images, then up — guarantees all changes applied
+#   recreate  Full down, rebuild images, then up — targets whole stack or single service
 #   logs      View logs (-f to follow)
 #   ps        List running containers
 #   health    Show containers not in a healthy state
@@ -26,6 +26,7 @@
 #   ./nova.sh down                  # Stop all stacks
 #   ./nova.sh update infra          # Pull + restart infra stack
 #   ./nova.sh recreate dev          # Full rebuild and restart dev stack
+#   ./nova.sh recreate infra scrutiny  # Recreate only the scrutiny service in infra
 #   ./nova.sh health                # Show unhealthy/starting containers
 #   ./nova.sh orphans               # Find and optionally remove containers no longer in config
 
@@ -169,6 +170,12 @@ case "$CMD" in
   recreate)
     ensure_traefik_network
     ensure_socket_proxy_network
+    # Optional third argument: single service name within the stack
+    SERVICE=""
+    if [[ -n "${1:-}" && ! "${1:-}" =~ ^- ]]; then
+      SERVICE="$1"
+      shift
+    fi
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s: down"
@@ -178,6 +185,15 @@ case "$CMD" in
         echo "==> $s: up"
         run_compose up "$s" -d "$@"
       done
+    elif [[ -n "$SERVICE" ]]; then
+      echo "==> $STACK/$SERVICE: stop"
+      run_compose stop "$STACK" "$SERVICE"
+      echo "==> $STACK/$SERVICE: rm"
+      run_compose rm "$STACK" -f "$SERVICE"
+      echo "==> $STACK/$SERVICE: build"
+      run_compose build "$STACK" "$SERVICE" --pull "$@"
+      echo "==> $STACK/$SERVICE: up"
+      run_compose up "$STACK" -d "$SERVICE" "$@"
     else
       echo "==> $STACK: down"
       run_compose down "$STACK"
