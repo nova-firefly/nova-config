@@ -34,6 +34,7 @@ services:
       traefik.http.routers.backrest.rule: "Host(`backrest.${NOVA_DOMAIN}`)"
       traefik.http.routers.backrest.entrypoints: "websecure"
       traefik.http.routers.backrest.tls: "true"
+      traefik.http.routers.backrest.middlewares: "authelia@file"
       traefik.http.services.backrest.loadbalancer.server.port: "9898"
       homepage.group: "Infrastructure"
       homepage.name: "Backrest"
