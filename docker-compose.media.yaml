@@ -405,9 +405,7 @@ services:
       - "PGID=${PGID}"
       - "SONARR_API_KEY=${SONARR_API_KEY}"
       - "RADARR_API_KEY=${RADARR_API_KEY}"
-      - "QBITTORRENT_USER=${QBITTORRENT_USER}"
-      - "QBITTORRENT_PASS=${QBITTORRENT_PASS}"
-      - "SABNZBD_API_KEY=${SABNZBD_API_KEY}"
+      - "QBITTORRENT_API_KEY=${QBITTORRENT_API_KEY}"
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f decluttarr >/dev/null || exit 1"]
       interval: 60s
