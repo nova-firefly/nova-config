@@ -26,11 +26,16 @@ instances:
   radarr:
     - base_url: "http://radarr:7878"
       api_key: !ENV RADARR_API_KEY
-  # qBittorrent — enables real-time speed data for remove_slow
-  # Reachable via gluetun's hostname since qbittorrent uses network_mode: service:gluetun
+
+# Download clients — separate from arr instances.
+# Enables real-time speed data for remove_slow.
+# 'name' must match exactly what Sonarr/Radarr call this download client.
+download_clients:
   qbittorrent:
     - base_url: "http://gluetun:8090"
-      api_key: !ENV QBITTORRENT_API_KEY
+      username: !ENV QBITTORRENT_USER
+      password: !ENV QBITTORRENT_PASS
+      name: "qBittorrent"
 
 jobs:
   # Mark stalled downloads (no peer connections / no progress) as failed
