@@ -36,6 +36,9 @@ services:
       - "CAP_SYS_TIME"
       - "CAP_SYS_TTY_CONFIG"
       - "CAP_WAKE_ALARM"
+    cap_add:
+      - "NET_ADMIN"
+      - "NET_RAW"
     container_name: "homeassistant"
     environment:
       - "TZ=${TZ}"
