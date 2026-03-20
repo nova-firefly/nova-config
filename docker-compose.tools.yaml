@@ -75,6 +75,35 @@ services:
       homepage.href: "http://vikunja.${NOVA_DOMAIN}"
       homepage.description: "Task Management"
 
+  actual:
+    container_name: "actual"
+    healthcheck:
+      test: ["CMD-SHELL", "node src/scripts/health-check.js"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    image: "actualbudget/actual-server:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.actual.rule: "Host(`actual.${NOVA_DOMAIN}`)"
+      traefik.http.routers.actual.entrypoints: "websecure"
+      traefik.http.routers.actual.tls: "true"
+      traefik.http.services.actual.loadbalancer.server.port: "5006"
+      homepage.group: "Tools"
+      homepage.name: "Actual Budget"
+      homepage.icon: "actual-budget.svg"
+      homepage.href: "https://actual.${NOVA_DOMAIN}"
+      homepage.description: "Budgeting"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.tools,discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "actual_data:/data"
+
   uptime-kuma:
     container_name: "uptime-kuma"
     environment:
@@ -118,6 +147,8 @@ volumes:
 
   vikunja_files:
     external: true
+
+  actual_data: {}
 
   stirling_config:
     external: true
