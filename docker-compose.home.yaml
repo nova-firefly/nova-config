@@ -77,7 +77,7 @@ services:
       - "LOG_LEVEL=info"
     hostname: "${NOVA_HOSTNAME}"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8095/api/info >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8095/api/info')\" >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
