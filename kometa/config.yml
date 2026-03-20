@@ -103,6 +103,7 @@ libraries:
           rating1_image: imdb
           rating2: rt_score
           rating2_image: rt_score
+          plex_all: true
 settings:
   run_order:
   - operations
