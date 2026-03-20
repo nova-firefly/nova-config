@@ -55,7 +55,7 @@ Reference for consistent patterns when editing compose files or adding new servi
 ### Homepage Labels
 - `homepage.group` must match a group defined in `homepage/settings.yaml`
 - Icon format: `name.svg` or `name.png` (see https://gethomepage.dev/latest/configs/services/#icons)
-- Emoji icons: `emoji-🍿` format (used for movienight)
+- MDI icons: `mdi-iconname` (e.g. `mdi-popcorn`) — emoji icons (`emoji-🍿`) are NOT supported in homepage v1.10+
 - `homepage.href` should use `https://` for externally-facing URLs
 
 ### WUD Labels
