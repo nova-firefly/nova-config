@@ -152,7 +152,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- --no-check-certificate https://localhost:443/ping >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ping >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -275,7 +275,7 @@ services:
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/ >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
