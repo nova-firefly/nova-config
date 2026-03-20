@@ -16,7 +16,7 @@ services:
     environment:
       - "TZ=${TZ}"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/info >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -sS http://localhost:8080/api/v1/info >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -46,7 +46,7 @@ services:
 
   vikunja:
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3456/api/v1/info >/dev/null || exit 1"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3456/api/v1/info"]
       interval: 30s
       timeout: 5s
       retries: 3

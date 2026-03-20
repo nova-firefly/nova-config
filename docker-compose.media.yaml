@@ -1,4 +1,4 @@
-# Media Stack - Plex, *arr apps, Gluetun + qBittorrent + SABnzbd, Tautulli, Overseerr
+# Media Stack - Plex, *arr apps, Gluetun + qBittorrent + SABnzbd, Tautulli, Seerr
 # Usage: docker compose -f docker-compose.media.yaml up -d
 # Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*, NOVA_DOMAIN
 
@@ -45,7 +45,7 @@ services:
       - "PGID=${PGID}"
       - "TZ=${TZ}"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:6767/ >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -sS http://localhost:6767/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -80,30 +80,29 @@ services:
       - "/opt/subcleaner:/opt/subcleaner"
       - "bazarr_config:/config"
 
-  overseerr:
-    container_name: "overseerr"
+  seerr:
+    container_name: "seerr"
     environment:
-      - "PUID=${PUID}"
-      - "PGID=${PGID}"
       - "TZ=${TZ}"
       - "LOG_LEVEL=debug"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:5055/api/v1/status >/dev/null || exit 1"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5055/api/v1/status', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
-    image: "lscr.io/linuxserver/overseerr:latest"
+    image: "ghcr.io/seerr-team/seerr:latest"
+    init: true
     labels:
       traefik.enable: "true"
-      traefik.http.routers.overseerr.rule: "Host(`overseerr.${NOVA_DOMAIN}`)"
-      traefik.http.routers.overseerr.entrypoints: "websecure"
-      traefik.http.routers.overseerr.tls: "true"
-      traefik.http.services.overseerr.loadbalancer.server.port: "5055"
+      traefik.http.routers.seerr.rule: "Host(`seerr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.seerr.entrypoints: "websecure"
+      traefik.http.routers.seerr.tls: "true"
+      traefik.http.services.seerr.loadbalancer.server.port: "5055"
       homepage.group: "Media"
-      homepage.name: "Overseerr"
-      homepage.icon: "overseerr.svg"
-      homepage.href: "http://overseerr.${NOVA_DOMAIN}"
+      homepage.name: "Seerr"
+      homepage.icon: "seerr.svg"
+      homepage.href: "http://seerr.${NOVA_DOMAIN}"
       homepage.description: "Media Requests"
       wud.watch: "true"
       wud.watch.digest: "true"
@@ -114,7 +113,7 @@ services:
       - "5055:5055/tcp"
     restart: "unless-stopped"
     volumes:
-      - "overseerr_config:/config"
+      - "seerr_config:/app/config"
 
   plex:
     cap_drop:
@@ -685,8 +684,9 @@ volumes:
   gluetun_data:
     external: true
 
-  overseerr_config:
+  seerr_config:
     external: true
+    name: overseerr_config
 
   qbittorrent_config:
     external: true

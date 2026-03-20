@@ -6,7 +6,7 @@ Docker Compose configuration for managing self-hosted services, split into indep
 
 | Stack | File | Services |
 |-------|------|----------|
-| **Media** | `docker-compose.media.yaml` | Plex, Radarr, Sonarr, Bazarr, Prowlarr, Transmission (VPN), Tautulli, Overseerr |
+| **Media** | `docker-compose.media.yaml` | Plex, Radarr, Sonarr, Bazarr, Prowlarr, Transmission (VPN), Tautulli, Seerr |
 | **Immich** | `docker-compose.immich.yaml` | Immich Server, Machine Learning, Postgres, Redis |
 | **Home** | `docker-compose.home.yaml` | Home Assistant, Z-Wave JS UI, Music Assistant |
 | **Infra** | `docker-compose.infra.yaml` | Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Volume Sharer |
