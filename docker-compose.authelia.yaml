@@ -44,6 +44,7 @@ services:
         condition: service_healthy
     environment:
       - "TZ=${TZ}"
+      - "NOVA_DOMAIN=${NOVA_DOMAIN}"
       - "X_AUTHELIA_CONFIG_FILTERS=template"
       # Secrets injected via env — Authelia reads these to override config values
       - "AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET=${AUTHELIA_JWT_SECRET}"
@@ -75,7 +76,7 @@ services:
       - "traefik_default"
     restart: "unless-stopped"
     volumes:
-      - "./authelia/configuration.yml:/config/configuration.yml:ro"
+      - "./authelia/configuration.yml:/config/configuration.yml"
       - "./authelia/users_database.yml:/config/users_database.yml"
       - "authelia_data:/config/data"
 
