@@ -47,11 +47,7 @@ services:
 
   vikunja:
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3456/api/v1/info"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
+      disable: true  # distroless image has no shell, wget, or curl; app health confirmed via logs
     image: vikunja/vikunja:latest
     container_name: vikunja
     environment:
