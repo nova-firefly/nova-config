@@ -536,7 +536,7 @@ services:
       - "WIREGUARD_ADDRESSES=${MULLVAD_WIREGUARD_ADDRESSES}"
       - "WIREGUARD_PRIVATE_KEY=${MULLVAD_WIREGUARD_PRIVATE_KEY}"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9999/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
