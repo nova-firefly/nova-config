@@ -99,6 +99,7 @@ libraries:
       # Docs: https://kometa.wiki/en/latest/defaults/overlays/ratings/
       - default: ratings
         template_variables:
+          vertical_align: bottom
           rating1: audience
           rating1_image: rt_popcorn
           rating2: critic

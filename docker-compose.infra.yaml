@@ -154,7 +154,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- --no-check-certificate https://localhost:443/ping >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ping >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -255,9 +255,10 @@ services:
     container_name: "wud"
     environment:
       - "WUD_LOG_FORMAT=text"
-      # Watcher - check for updates at 4am daily
-      - "WUD_WATCHER_DOCKER_LOCAL_CRON=0 4 * * *"
-      - "WUD_WATCHER_DOCKER_LOCAL_WATCHBYDEFAULT=false"
+      # Watcher - WUD v8 format: WUD_WATCHER_{NAME}_{OPTION} (no DOCKER_ prefix; type inferred from SOCKET)
+      - "WUD_WATCHER_LOCAL_SOCKET=/var/run/docker.sock"
+      - "WUD_WATCHER_LOCAL_CRON=0 4 * * *"
+      - "WUD_WATCHER_LOCAL_WATCHBYDEFAULT=false"
       # Docker Compose triggers - one per stack file
       - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_FILE=/compose/docker-compose.infra.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_BACKUP=true"
