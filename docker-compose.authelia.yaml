@@ -1,0 +1,108 @@
+# Authelia Stack - Forward authentication for all protected services
+# Usage: docker compose -f docker-compose.authelia.yaml up -d
+# Requires .env file for: AUTHELIA_JWT_SECRET, AUTHELIA_SESSION_SECRET, AUTHELIA_STORAGE_ENCRYPTION_KEY
+
+name: authelia
+
+networks:
+  authelia_internal:
+    name: "authelia_internal"
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  authelia:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "authelia"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - "TZ=${TZ}"
+      - "NOVA_DOMAIN=${NOVA_DOMAIN}"
+      - "X_AUTHELIA_CONFIG_FILTERS=template"
+      # Secrets injected via env — Authelia reads these to override config values
+      - "AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET=${AUTHELIA_JWT_SECRET}"
+      - "AUTHELIA_SESSION_SECRET=${AUTHELIA_SESSION_SECRET}"
+      - "AUTHELIA_STORAGE_ENCRYPTION_KEY=${AUTHELIA_STORAGE_ENCRYPTION_KEY}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9091/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "authelia/authelia:4"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.authelia.rule: "Host(`auth.${NOVA_DOMAIN}`)"
+      traefik.http.routers.authelia.entrypoints: "websecure"
+      traefik.http.routers.authelia.tls: "true"
+      traefik.http.services.authelia.loadbalancer.server.port: "9091"
+      homepage.group: "Infrastructure"
+      homepage.name: "Authelia"
+      homepage.icon: "authelia.svg"
+      homepage.href: "https://auth.${NOVA_DOMAIN}"
+      homepage.description: "Authentication Portal"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.authelia,discord.notify"
+    networks:
+      - "authelia_internal"
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "./authelia/configuration.yml:/config/configuration.yml"
+      - "./authelia/users_database.yml:/config/users_database.yml"
+      - "authelia_data:/config/data"
+
+  redis:
+    container_name: "authelia-redis"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    image: "redis:7-alpine"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "false"
+      wud.trigger.include: "dockercompose.authelia,discord.notify"
+    networks:
+      - "authelia_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "authelia_redis:/data"
+
+volumes:
+
+  authelia_data:
+    external: true
+
+  authelia_redis:
+    external: true

@@ -1,0 +1,21 @@
+---
+# Authelia Users Database
+#
+# SETUP REQUIRED: Replace the password hash before first use.
+#
+# Generate a real argon2id hash:
+#   docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password 'YourPassword'
+#
+# Copy the full output (the line starting with $argon2id$) and replace the
+# placeholder value below.
+#
+# This file is writable — Authelia updates it automatically when users
+# change their password via the portal at https://auth.NOVA_DOMAIN
+
+users:
+  admin:
+    displayname: "Admin"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$smhsSsMbJfm3sns3vrKMMw$WsLLCmyXi1O1EdzCdYCRCIogGNmGhb3lTgrI+qHRzGk"
+    email: "admin@example.com"
+    groups:
+      - admins

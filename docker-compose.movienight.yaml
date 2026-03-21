@@ -56,6 +56,7 @@ services:
       traefik.http.routers.movienight-api.rule: "Host(`movienight.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
       traefik.http.routers.movienight-api.entrypoints: "websecure"
       traefik.http.routers.movienight-api.tls: "true"
+      traefik.http.routers.movienight-api.middlewares: "authelia@file"
       traefik.http.services.movienight-api.loadbalancer.server.port: "4000"
       wud.watch: "false"
     networks:
@@ -75,6 +76,7 @@ services:
       traefik.http.routers.movienight.rule: "Host(`movienight.${NOVA_DOMAIN}`)"
       traefik.http.routers.movienight.entrypoints: "websecure"
       traefik.http.routers.movienight.tls: "true"
+      traefik.http.routers.movienight.middlewares: "authelia@file"
       traefik.http.services.movienight.loadbalancer.server.port: "80"
       homepage.group: "Tools"
       homepage.name: "MovieNight"

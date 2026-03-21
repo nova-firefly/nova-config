@@ -7,6 +7,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | Stack | File | Services |
 |-------|------|----------|
 | infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wud |
+| authelia | docker-compose.authelia.yaml | authelia, redis |
 | media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, gluetun, qbittorrent, sabnzbd |
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant |
@@ -39,7 +40,57 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **External networks:** `traefik_default` (shared)
 
-**WUD triggers configured (in wud service env):** infra, media, backup, movienight stacks
+**WUD triggers configured (in wud service env):** infra, media, backup, movienight, tools, authelia stacks
+
+---
+
+## authelia stack (`docker-compose.authelia.yaml`)
+
+**Purpose:** Central authentication portal; provides forward-auth middleware for all protected services via Traefik
+
+| Service | Image | Port(s) | URL | Notes |
+|---------|-------|---------|-----|-------|
+| authelia | authelia/authelia:4 | 9091 | auth.NOVA_DOMAIN | Authentication portal + forwardAuth API |
+| redis | redis:7-alpine | — | — | Session storage; internal network only |
+
+**External volumes:** `authelia_data` (SQLite DB at `/config/data/db.sqlite3`), `authelia_redis` (Redis persistence)
+
+**Config files (bind-mounted):**
+- `./authelia/configuration.yml` — Main config (read-only); uses Go template syntax via `X_AUTHELIA_CONFIG_FILTERS=template`
+- `./authelia/users_database.yml` — User accounts (writable — Authelia updates on password change)
+
+**Middleware reference:** `authelia@file` — defined in `traefik/dynamic.yaml`; add to any router with: `traefik.http.routers.<name>.middlewares: "authelia@file"`
+
+**Services excluded from Authelia protection:**
+- `plex` — native Plex app uses token auth; redirect breaks all clients
+- `homeassistant` — webhooks, integrations, mobile app use Bearer tokens
+- `immich` — mobile app uses API key headers; redirect breaks sync
+- `overseerr` — "Sign in with Plex" OAuth flow + mobile app
+- `ma` (Music Assistant) — deep HA integration (add `middlewares: [authelia]` in dynamic.yaml to enable)
+- `root-redirect` — redirect rule, not a service; wrapping causes redirect loop
+
+**Required env:** `AUTHELIA_JWT_SECRET`, `AUTHELIA_SESSION_SECRET`, `AUTHELIA_STORAGE_ENCRYPTION_KEY`
+
+**Networks:** `authelia_internal` (authelia ↔ redis only), `traefik_default` (traefik ↔ authelia)
+
+**Setup:**
+```bash
+# Generate secrets
+openssl rand -hex 64  # run 3x for JWT_SECRET, SESSION_SECRET, STORAGE_ENCRYPTION_KEY
+
+# Generate password hash (replace placeholder in authelia/users_database.yml)
+docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password 'YourPassword'
+
+# Create volumes
+docker volume create authelia_data && docker volume create authelia_redis
+
+# Start
+./nova.sh up authelia
+```
+
+**Disabling native auth in *arr apps (recommended once Authelia is running):**
+- Radarr/Sonarr/Prowlarr/Bazarr: Settings → General → Authentication → **External**
+- Tautulli: Settings → Web Interface → **Disable login**
 
 ---
 
@@ -180,6 +231,7 @@ Services appear on homepage grouped by their `homepage.group` label:
 - Infrastructure, Media, Downloads, Tools, Development, Home Automation
 
 ### traefik/dynamic.yaml
-Routes for host-mode services that Docker provider can't discover:
+Routes for host-mode services that Docker provider can't discover, plus global middleware definitions:
 - `ma.NOVA_DOMAIN` → `host.docker.internal:8095` (Music Assistant)
-- `glances.NOVA_DOMAIN` → `host.docker.internal:61208` (Glances)
+- `glances.NOVA_DOMAIN` → `host.docker.internal:61208` (Glances) — protected by `authelia@file`
+- `authelia` middleware — forwardAuth to `http://authelia:9091/api/authz/forward-auth`

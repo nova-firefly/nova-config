@@ -15,7 +15,7 @@
 #   config    Validate compose files
 #   orphans   Find running containers not defined in any stack and offer to remove them
 #
-# Stack names: infra, media, immich, home, backup, gaming, dev, tools, movienight
+# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight
 # Omit stack name to apply to all stacks.
 #
 # Examples:
@@ -33,7 +33,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-ALL_STACKS=(infra media immich home backup gaming dev tools movienight)
+ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight)
 
 # --- Ensure shared networks exist ---
 
