@@ -73,6 +73,35 @@ get_defined_containers() {
   done
 }
 
+# --- Remove containers that would block a stack bring-up ---
+# Force-removes containers whose names are declared in the compose file but are
+# NOT owned by this compose project (stale, renamed, or manually created).
+# Containers already tracked under the correct project are left for compose to
+# handle naturally (no-op or recreate). Prevents "name already in use" errors.
+
+remove_conflicting_containers() {
+  local stack="$1"
+  local file="docker-compose.${stack}.yaml"
+  [[ -f "$file" ]] || return 0
+
+  # Derive project name from the 'name:' field in the compose file
+  local project_name
+  project_name=$(grep '^name:' "$file" | awk '{print $2}' | tr -d '"' | head -1)
+  [[ -z "$project_name" ]] && project_name="$stack"
+
+  while IFS= read -r cname; do
+    [[ -z "$cname" ]] && continue
+    if docker inspect "$cname" &>/dev/null 2>&1; then
+      local owner
+      owner=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$cname" 2>/dev/null || true)
+      if [[ "$owner" != "$project_name" ]]; then
+        echo "    [pre-clean] removing stale container '$cname' (owner: ${owner:-unmanaged})"
+        docker rm -f "$cname" &>/dev/null
+      fi
+    fi
+  done < <(grep 'container_name:' "$file" | sed 's/.*container_name: *"\?\([^"]*\)"\?.*/\1/')
+}
+
 # --- Compose file builder ---
 
 get_compose_args() {
@@ -134,10 +163,12 @@ case "$CMD" in
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
+        remove_conflicting_containers "$s"
         run_compose "$CMD" "$s" "$@" -d
       done
     else
       echo "==> $STACK"
+      remove_conflicting_containers "$STACK"
       run_compose "$CMD" "$STACK" "$@" -d
     fi
     ;;
@@ -161,11 +192,13 @@ case "$CMD" in
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
         run_compose pull "$s" "$@"
+        remove_conflicting_containers "$s"
         run_compose up "$s" -d "$@"
       done
     else
       echo "==> $STACK"
       run_compose pull "$STACK" "$@"
+      remove_conflicting_containers "$STACK"
       run_compose up "$STACK" -d "$@"
     fi
     ;;
