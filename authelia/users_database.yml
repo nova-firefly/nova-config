@@ -15,7 +15,7 @@
 users:
   admin:
     displayname: "Admin"
-    password: "$argon2id$v=19$m=65536,t=3,p=4$REPLACE_THIS_WITH_REAL_HASH"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$smhsSsMbJfm3sns3vrKMMw$WsLLCmyXi1O1EdzCdYCRCIogGNmGhb3lTgrI+qHRzGk"
     email: "admin@example.com"
     groups:
       - admins
