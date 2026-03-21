@@ -1,4 +1,4 @@
-# Media Stack - Plex, *arr apps, Gluetun + qBittorrent + SABnzbd, Tautulli, Seerr
+# Media Stack - Plex, *arr apps, Gluetun + qBittorrent, Tautulli, Seerr
 # Usage: docker compose -f docker-compose.media.yaml up -d
 # Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*, NOVA_DOMAIN
 
@@ -308,7 +308,6 @@ services:
       - "/data3/movies:/plex_movies_3"
       - "qbittorrent_data:/downloads"
       - "radarr_config:/config"
-      - "sabnzbd_data:/downloads-sabnzbd"
 
   sonarr:
     cap_drop:
@@ -373,7 +372,6 @@ services:
       - "/data2/tv:/plex_tv_2"
       - "/data3/tv:/plex_tv_3"
       - "qbittorrent_data:/downloads"
-      - "sabnzbd_data:/downloads-sabnzbd"
       - "sonarr_config:/config"
 
   decluttarr:
@@ -551,13 +549,6 @@ services:
       traefik.http.routers.qbittorrent.service: "qbittorrent"
       traefik.http.routers.qbittorrent.middlewares: "authelia@file"
       traefik.http.services.qbittorrent.loadbalancer.server.port: "8090"
-      # SABnzbd WebUI (port 8080 — default linuxserver/sabnzbd port)
-      traefik.http.routers.sabnzbd.rule: "Host(`sabnzbd.${NOVA_DOMAIN}`)"
-      traefik.http.routers.sabnzbd.entrypoints: "websecure"
-      traefik.http.routers.sabnzbd.tls: "true"
-      traefik.http.routers.sabnzbd.service: "sabnzbd"
-      traefik.http.routers.sabnzbd.middlewares: "authelia@file"
-      traefik.http.services.sabnzbd.loadbalancer.server.port: "8080"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
@@ -569,7 +560,6 @@ services:
       - "media"
       - "traefik_default"
     ports:
-      - "127.0.0.1:9090:8080/tcp"   # SABnzbd WebUI (localhost only — Traefik handles external; 9090→8080 avoids conflict with stirling-pdf)
       - "127.0.0.1:8090:8090/tcp"   # qBittorrent WebUI (localhost only — Traefik handles external)
     restart: "unless-stopped"
     volumes:
@@ -628,57 +618,6 @@ services:
       - "qbittorrent_config:/config"
       - "qbittorrent_data:/downloads"
 
-  sabnzbd:
-    cap_drop:
-      - "AUDIT_CONTROL"
-      - "BLOCK_SUSPEND"
-      - "DAC_READ_SEARCH"
-      - "IPC_LOCK"
-      - "IPC_OWNER"
-      - "LEASE"
-      - "LINUX_IMMUTABLE"
-      - "MAC_ADMIN"
-      - "MAC_OVERRIDE"
-      - "NET_ADMIN"
-      - "NET_BROADCAST"
-      - "SYSLOG"
-      - "SYS_ADMIN"
-      - "SYS_BOOT"
-      - "SYS_MODULE"
-      - "SYS_NICE"
-      - "SYS_PACCT"
-      - "SYS_PTRACE"
-      - "SYS_RAWIO"
-      - "SYS_RESOURCE"
-      - "SYS_TIME"
-      - "SYS_TTY_CONFIG"
-      - "WAKE_ALARM"
-    container_name: "sabnzbd"
-    environment:
-      - "PUID=${PUID}"
-      - "PGID=${PGID}"
-      - "TZ=${TZ}"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api?mode=version&output=json >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    image: "lscr.io/linuxserver/sabnzbd:latest"
-    labels:
-      homepage.group: "Downloads"
-      homepage.name: "SABnzbd"
-      homepage.icon: "sabnzbd.svg"
-      homepage.href: "http://sabnzbd.${NOVA_DOMAIN}"
-      homepage.description: "Usenet Downloader"
-      wud.watch: "true"
-      wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
-    network_mode: "service:gluetun"
-    restart: "unless-stopped"
-    volumes:
-      - "sabnzbd_config:/config"
-      - "sabnzbd_data:/downloads"
 
 volumes:
 
@@ -702,12 +641,6 @@ volumes:
     external: true
 
   radarr_config:
-    external: true
-
-  sabnzbd_config:
-    external: true
-
-  sabnzbd_data:
     external: true
 
   sonarr_config:

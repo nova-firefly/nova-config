@@ -8,7 +8,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 |-------|------|----------|
 | infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wud |
 | authelia | docker-compose.authelia.yaml | authelia, redis |
-| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, gluetun, qbittorrent, sabnzbd |
+| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, gluetun, qbittorrent |
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
@@ -109,19 +109,18 @@ docker volume create authelia_data && docker volume create authelia_redis
 | seerr | ghcr.io/seerr-team/seerr | 5055 | seerr.NOVA_DOMAIN | Media request management |
 | kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00; config in `./kometa/`; no web UI |
 | kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `./kometa/` bind-mount to write config.yml |
-| gluetun | qmcgaw/gluetun | 9090→8080, 8090 | qbittorrent.NOVA_DOMAIN, sabnzbd.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes qBittorrent + SABnzbd through it |
+| gluetun | qmcgaw/gluetun | 8090 | qbittorrent.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes qBittorrent through it |
 | qbittorrent | lscr.io/linuxserver/qbittorrent | (via gluetun) 8090 | qbittorrent.NOVA_DOMAIN | Torrent client; `network_mode: service:gluetun`; WebUI on 8090 (WEBUI_PORT=8090) |
-| sabnzbd | lscr.io/linuxserver/sabnzbd | (via gluetun) 8080 | sabnzbd.NOVA_DOMAIN | Usenet downloader; `network_mode: service:gluetun`; WebUI on 8080 (default) |
 
-**Key:** qbittorrent and sabnzbd run inside gluetun's network namespace (`network_mode: service:gluetun`). Traefik labels are on gluetun, not the sidecars. Two homepage entries use numbered label syntax (`homepage.1.*`, `homepage.2.*`).
+**Key:** qbittorrent runs inside gluetun's network namespace (`network_mode: service:gluetun`). Traefik labels are on gluetun, not the sidecar.
 
 **Media paths:** `/data1`, `/data2`, `/data3` — mounted directly (not volumes) for media libraries
 
-**Download paths in arr services:** torrents at `/downloads` (qbittorrent_data), usenet at `/downloads-sabnzbd` (sabnzbd_data)
+**Download paths in arr services:** torrents at `/downloads` (qbittorrent_data)
 
-**External volumes:** `bazarr_config`, `gluetun_data`, `overseerr_config` (aliased as `seerr_config`), `prowlarr_config`, `qbittorrent_config`, `qbittorrent_data`, `radarr_config`, `sabnzbd_config`, `sabnzbd_data`, `sonarr_config`, `tautulli_config`
+**External volumes:** `bazarr_config`, `gluetun_data`, `overseerr_config` (aliased as `seerr_config`), `prowlarr_config`, `qbittorrent_config`, `qbittorrent_data`, `radarr_config`, `sonarr_config`, `tautulli_config`
 
-**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `QBITTORRENT_USER`, `QBITTORRENT_PASS`, `SABNZBD_API_KEY`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`
+**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `QBITTORRENT_USER`, `QBITTORRENT_PASS`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`
 
 ---
 
