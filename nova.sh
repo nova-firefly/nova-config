@@ -13,6 +13,7 @@
 #   ps        List running containers
 #   health    Show containers not in a healthy state
 #   config    Validate compose files
+#   restart   Restart stack or single service (picks up config changes, no pull/rebuild)
 #   orphans   Find running containers not defined in any stack and offer to remove them
 #
 # Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight
@@ -24,6 +25,8 @@
 #   ./nova.sh up media              # Start media stack
 #   ./nova.sh logs media -f         # Follow media stack logs
 #   ./nova.sh down                  # Stop all stacks
+#   ./nova.sh restart media         # Restart media stack (picks up config changes)
+#   ./nova.sh restart media kometa  # Restart only kometa service in media stack
 #   ./nova.sh update infra          # Pull + restart infra stack
 #   ./nova.sh recreate dev          # Full rebuild and restart dev stack
 #   ./nova.sh recreate infra scrutiny  # Recreate only the scrutiny service in infra
@@ -201,6 +204,24 @@ case "$CMD" in
       run_compose build "$STACK" --pull "$@"
       echo "==> $STACK: up"
       run_compose up "$STACK" -d "$@"
+    fi
+    ;;
+
+  restart)
+    if [[ -z "$STACK" ]]; then
+      for s in "${ALL_STACKS[@]}"; do
+        echo "==> $s"
+        run_compose restart "$s" "$@"
+      done
+    else
+      # Optional third argument: single service name within the stack
+      SERVICE=""
+      if [[ -n "${1:-}" && ! "${1:-}" =~ ^- ]]; then
+        SERVICE="$1"
+        shift
+      fi
+      echo "==> $STACK${SERVICE:+/$SERVICE}"
+      run_compose restart "$STACK" ${SERVICE:+"$SERVICE"} "$@"
     fi
     ;;
 

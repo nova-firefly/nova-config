@@ -99,10 +99,10 @@ libraries:
       # Docs: https://kometa.wiki/en/latest/defaults/overlays/ratings/
       - default: ratings
         template_variables:
-          rating1: imdb
-          rating1_image: imdb
-          rating2: rt_score
-          rating2_image: rt_score
+          rating1: audience
+          rating1_image: rt_popcorn
+          rating2: critic
+          rating2_image: rt_tomato
 settings:
   run_order:
   - operations
