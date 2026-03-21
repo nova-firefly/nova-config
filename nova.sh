@@ -14,7 +14,7 @@
 #   health    Show containers not in a healthy state
 #   config    Validate compose files
 #   restart   Restart stack or single service (picks up config changes, no pull/rebuild)
-#   orphans   Find running containers not defined in any stack and offer to remove them
+#   orphans   Find all containers (running + stopped) not defined in any stack and offer to remove them
 #
 # Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight
 # Omit stack name to apply to all stacks.
@@ -308,17 +308,17 @@ case "$CMD" in
     ;;
 
   orphans)
-    echo "==> Scanning for running containers not defined in any stack..."
+    echo "==> Scanning for all containers (running + stopped) not defined in any stack..."
     # Build lookup of defined container names
     defined=$(get_defined_containers | sort)
-    running=$(docker ps --format "{{.Names}}" | sort)
+    all_containers=$(docker ps -a --format "{{.Names}}" | sort)
 
     orphan_list=()
     while IFS= read -r name; do
       if ! grep -qxF "$name" <(echo "$defined"); then
         orphan_list+=("$name")
       fi
-    done <<< "$running"
+    done <<< "$all_containers"
 
     if [[ ${#orphan_list[@]} -eq 0 ]]; then
       echo "No orphaned containers found."
@@ -329,7 +329,8 @@ case "$CMD" in
     echo "Found ${#orphan_list[@]} container(s) not in any stack:"
     for name in "${orphan_list[@]}"; do
       image=$(docker inspect --format '{{.Config.Image}}' "$name" 2>/dev/null || echo "unknown")
-      printf "  %-35s  %s\n" "$name" "$image"
+      status=$(docker inspect --format '{{.State.Status}}' "$name" 2>/dev/null || echo "unknown")
+      printf "  %-35s  %-12s  %s\n" "$name" "$status" "$image"
     done
     echo ""
 
@@ -337,7 +338,7 @@ case "$CMD" in
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
       for name in "${orphan_list[@]}"; do
         echo "  Stopping $name..."
-        docker stop "$name"
+        docker stop "$name" 2>/dev/null || true
         echo "  Removing $name..."
         docker rm "$name"
       done
