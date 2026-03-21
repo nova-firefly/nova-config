@@ -526,7 +526,6 @@ services:
     devices:
       - "/dev/net/tun:/dev/net/tun"
     environment:
-      - "SERVER_CATEGORIES=p2p"
       - "SERVER_COUNTRIES=${MULLVAD_SERVER_COUNTRY:-Sweden}"
       - "TZ=${TZ}"
       - "VPN_SERVICE_PROVIDER=mullvad"
