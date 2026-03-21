@@ -526,7 +526,7 @@ services:
     devices:
       - "/dev/net/tun:/dev/net/tun"
     environment:
-      - "FIREWALL_VPN_INPUT_PORTS=${MULLVAD_WIREGUARD_PORT_FORWARD:-}"
+      - "SERVER_CATEGORIES=p2p"
       - "SERVER_COUNTRIES=${MULLVAD_SERVER_COUNTRY:-Sweden}"
       - "TZ=${TZ}"
       - "VPN_SERVICE_PROVIDER=mullvad"
@@ -612,6 +612,9 @@ services:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "dockercompose.media,discord.notify"
+    depends_on:
+      gluetun:
+        condition: service_healthy
     network_mode: "service:gluetun"
     restart: "unless-stopped"
     volumes:
