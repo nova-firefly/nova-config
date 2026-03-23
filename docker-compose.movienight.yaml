@@ -37,10 +37,8 @@ services:
       - "movienight_db:/var/lib/postgresql/data"
 
   movienight-backend:
-    build:
-      context: "./movienight/backend"
-      dockerfile: "Dockerfile"
     container_name: "movienight-backend"
+    image: "ghcr.io/kjsb25/movienight-backend:latest"
     depends_on:
       movienight-db:
         condition: service_healthy
@@ -58,7 +56,9 @@ services:
       traefik.http.routers.movienight-api.tls: "true"
       traefik.http.routers.movienight-api.middlewares: "authelia@file"
       traefik.http.services.movienight-api.loadbalancer.server.port: "4000"
-      wud.watch: "false"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.movienight,discord.notify"
     networks:
       - "traefik_default"
       - "movienight_internal"

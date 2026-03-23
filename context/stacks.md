@@ -160,14 +160,16 @@ docker volume create authelia_data && docker volume create authelia_redis
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
 | movienight-frontend | ghcr.io/kjsb25/movienight:latest | React frontend; routes all non-/graphql traffic |
-| movienight-backend | build: ./movienight/backend | GraphQL API on port 4000; built from submodule source |
+| movienight-backend | ghcr.io/kjsb25/movienight-backend:latest | GraphQL API on port 4000; built by CI in movienight repo |
 | movienight-db | postgres:15-alpine | Internal network only |
 
 **Network:** `movienight_internal` (internal: true) isolates DB from Traefik
 
 **Routing:** Traefik routes `/graphql` to backend, everything else to frontend — both on `movienight.NOVA_DOMAIN`
 
-**Submodule:** `movienight/` provides backend source. Initialize: `git submodule update --init`. To pick up upstream backend changes: `git submodule update --remote` then `nova.sh recreate movienight`.
+**Auto-deploy:** Both images are built by CI in the `kjsb25/movienight` repo on push to `master` and pushed to GHCR. WUD watches both images (`wud.watch: "true"`) and triggers `dockercompose.movienight` to pull and recreate when digests change. The CI's SSH deploy job also calls `nova.sh update movienight` immediately after the image push for same-push deployments.
+
+**Submodule:** `movienight/` is kept for local development reference only — no longer used for production builds.
 
 **Required env:** `MOVIENIGHT_DB_PASSWORD`
 
