@@ -29,7 +29,8 @@ services:
     labels:
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.movienight,discord.notify"
+      wud.tag.include: "^15-alpine$"
+      wud.trigger.include: "discord.notify"
     networks:
       - "movienight_internal"
     restart: "unless-stopped"
