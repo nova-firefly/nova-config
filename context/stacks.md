@@ -13,7 +13,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | docker-compose.dev.yaml | vibe-kanban |
-| tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja |
+| tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
 | backup | docker-compose.backup.yaml | backrest, duplicati |
 | gaming | docker-compose.gaming.yaml | minecraft |
 
@@ -193,8 +193,9 @@ docker volume create authelia_data && docker volume create authelia_redis
 | stirling-pdf | stirlingtools/stirling-pdf | 8080 | stirling-pdf.NOVA_DOMAIN | PDF manipulation tool |
 | vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management |
 | uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
+| ntfy | binwiederhier/ntfy | 80 | ntfy.NOVA_DOMAIN | Push notification server; no Authelia — must be reachable by webhooks |
 
-**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`
+**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`
 
 **Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose)
 
