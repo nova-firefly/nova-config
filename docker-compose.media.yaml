@@ -640,7 +640,7 @@ services:
       traefik.http.routers.qbittorrent-api.service: "qbittorrent"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "dockercompose.media,discord.notify"
     logging:
       driver: "json-file"
       options:
