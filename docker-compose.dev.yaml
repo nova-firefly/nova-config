@@ -79,7 +79,18 @@ services:
       - "vibe-kanban-data:/root/.local/share/vibe-kanban"
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
-      - "ha_config:/ha-config"
+      - "ha_config:/ha-config:ro"
+      # Config volumes (read-only) — for log/config inspection and debugging
+      - "bazarr_config:/mnt/configs/bazarr:ro"
+      - "prowlarr_config:/mnt/configs/prowlarr:ro"
+      - "seerr_config:/mnt/configs/seerr:ro"
+      - "qbittorrent_config:/mnt/configs/qbittorrent:ro"
+      - "radarr_config:/mnt/configs/radarr:ro"
+      - "sonarr_config:/mnt/configs/sonarr:ro"
+      - "tautulli_config:/mnt/configs/tautulli:ro"
+      - "stirling_config:/mnt/configs/stirling:ro"
+      - "samba_config:/mnt/configs/samba:ro"
+      - "backrest_backrest_config:/mnt/configs/backrest:ro"
 
   vibe-kanban-tools:
     build: "./vibe-kanban-tools"
@@ -121,6 +132,28 @@ volumes:
   vibe-kanban-repos:
     external: true
   ha_config:
+    external: true
+
+  # Config volumes — read-only access for log/config inspection
+  bazarr_config:
+    external: true
+  prowlarr_config:
+    external: true
+  seerr_config:
+    external: true
+  qbittorrent_config:
+    external: true
+  radarr_config:
+    external: true
+  sonarr_config:
+    external: true
+  tautulli_config:
+    external: true
+  stirling_config:
+    external: true
+  samba_config:
+    external: true
+  backrest_backrest_config:
     external: true
 
   vibe-kanban-claude:
