@@ -1,4 +1,4 @@
-# Tools Stack - Stirling PDF, Vikunja, Uptime Kuma
+# Tools Stack - Stirling PDF, Vikunja, Uptime Kuma, ntfy
 # Usage: docker compose -f docker-compose.tools.yaml up -d
 # Requires .env file for: NOVA_DOMAIN
 
@@ -102,6 +102,39 @@ services:
     volumes:
       - "actual_data:/data"
 
+  ntfy:
+    container_name: "ntfy"
+    command: serve
+    environment:
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 http://localhost:80/v1/health -O /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    image: "binwiederhier/ntfy:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.ntfy.rule: "Host(`ntfy.${NOVA_DOMAIN}`)"
+      traefik.http.routers.ntfy.entrypoints: "websecure"
+      traefik.http.routers.ntfy.tls: "true"
+      traefik.http.services.ntfy.loadbalancer.server.port: "80"
+      # No Authelia middleware — ntfy must be reachable by webhooks from Uptime-Kuma, Backrest, etc.
+      homepage.group: "Infrastructure"
+      homepage.name: "ntfy"
+      homepage.icon: "ntfy.svg"
+      homepage.href: "https://ntfy.${NOVA_DOMAIN}"
+      homepage.description: "Push Notifications"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.tools,discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "ntfy_data:/var/cache/ntfy"
+
   uptime-kuma:
     container_name: "uptime-kuma"
     environment:
@@ -145,6 +178,9 @@ volumes:
     external: true
 
   vikunja_files:
+    external: true
+
+  ntfy_data:
     external: true
 
   actual_data: {}
