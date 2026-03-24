@@ -36,7 +36,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight)
+ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test)
 
 # --- Ensure shared networks exist ---
 
