@@ -46,6 +46,7 @@ services:
       - "DB_USER=movienight_user"
       - "DB_PASSWORD=${MOVIENIGHT_TEST_DB_PASSWORD}"
       - "PORT=4000"
+      - "TMDB_API_KEY=${TMDB_API_KEY}"
     labels:
       traefik.enable: "true"
       traefik.http.routers.movienight-test-api.rule: "Host(`movienight-test.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
