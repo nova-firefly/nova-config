@@ -1,0 +1,82 @@
+# MovieNight Test Stack - Test branch deploy
+# Images built from non-master branches by deploy-test.yml workflow (tagged :test)
+# Usage: docker compose -f docker-compose.movienight-test.yaml up -d
+# Requires .env file for: NOVA_DOMAIN, MOVIENIGHT_TEST_DB_PASSWORD
+# One-time setup: docker volume create movienight_test_db
+
+name: movienight-test
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+  movienight_test_internal:
+    internal: true
+
+services:
+
+  movienight-test-db:
+    container_name: "movienight-test-db"
+    environment:
+      - "POSTGRES_DB=movienight"
+      - "POSTGRES_USER=movienight_user"
+      - "POSTGRES_PASSWORD=${MOVIENIGHT_TEST_DB_PASSWORD}"
+    healthcheck:
+      interval: 10s
+      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U movienight_user -d movienight"]
+      timeout: 5s
+    image: "postgres:15-alpine"
+    networks:
+      - "movienight_test_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "movienight_test_db:/var/lib/postgresql/data"
+
+  movienight-test-backend:
+    container_name: "movienight-test-backend"
+    image: "ghcr.io/kjsb25/movienight-backend:test"
+    depends_on:
+      movienight-test-db:
+        condition: service_healthy
+    environment:
+      - "DB_HOST=movienight-test-db"
+      - "DB_PORT=5432"
+      - "DB_NAME=movienight"
+      - "DB_USER=movienight_user"
+      - "DB_PASSWORD=${MOVIENIGHT_TEST_DB_PASSWORD}"
+      - "PORT=4000"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.movienight-test-api.rule: "Host(`movienight-test.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
+      traefik.http.routers.movienight-test-api.entrypoints: "websecure"
+      traefik.http.routers.movienight-test-api.tls: "true"
+      traefik.http.routers.movienight-test-api.middlewares: "authelia@file"
+      traefik.http.services.movienight-test-api.loadbalancer.server.port: "4000"
+    networks:
+      - "traefik_default"
+      - "movienight_test_internal"
+    restart: "unless-stopped"
+
+  movienight-test-frontend:
+    container_name: "movienight-test-frontend"
+    image: "ghcr.io/kjsb25/movienight:test"
+    depends_on:
+      - "movienight-test-backend"
+    healthcheck:
+      disable: true
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.movienight-test.rule: "Host(`movienight-test.${NOVA_DOMAIN}`)"
+      traefik.http.routers.movienight-test.entrypoints: "websecure"
+      traefik.http.routers.movienight-test.tls: "true"
+      traefik.http.routers.movienight-test.middlewares: "authelia@file"
+      traefik.http.services.movienight-test.loadbalancer.server.port: "80"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+
+volumes:
+
+  movienight_test_db:
+    external: true
