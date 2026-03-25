@@ -8,7 +8,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 |-------|------|----------|
 | infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wud |
 | authelia | docker-compose.authelia.yaml | authelia, redis |
-| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, kometa-webhook, gluetun, qbittorrent |
+| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent |
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
@@ -109,7 +109,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | seerr | ghcr.io/seerr-team/seerr | 5055 | seerr.NOVA_DOMAIN | Media request management |
 | kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00 via trigger-wrapper.sh; config in `./kometa/`; no web UI |
 | kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `./kometa/` bind-mount to write config.yml |
-| kometa-webhook | local build (`./kometa-webhook/`) | 9000 (internal only) | — | Webhook trigger for on-demand kometa runs; only reachable from `kometa_webhook` internal Docker network |
+| internal-webhook | local build (`./internal-webhook/`) | 9000 (internal only) | — | Internal webhook server for container-to-container triggers; only reachable from `internal_webhook` internal Docker network; currently handles `/kometa/trigger` |
 | gluetun | qmcgaw/gluetun | 8090 | qbittorrent.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes qBittorrent through it |
 | qbittorrent | lscr.io/linuxserver/qbittorrent | (via gluetun) 8090 | qbittorrent.NOVA_DOMAIN | Torrent client; `network_mode: service:gluetun`; WebUI on 8090 (WEBUI_PORT=8090) |
 
@@ -164,7 +164,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | movienight-backend | ghcr.io/kjsb25/movienight-backend:latest | GraphQL API on port 4000; built by CI in movienight repo |
 | movienight-db | postgres:15-alpine | Internal network only |
 
-**Networks:** `movienight_internal` (internal: true) isolates DB from Traefik; `kometa_webhook` (external, internal: true) connects backend to `kometa-webhook` in media stack
+**Networks:** `movienight_internal` (internal: true) isolates DB from Traefik; `internal_webhook` (external, internal: true) connects backend to `internal-webhook` in media stack
 
 **Routing:** Traefik routes `/graphql` to backend, everything else to frontend — both on `movienight.NOVA_DOMAIN`
 
@@ -228,7 +228,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 - `traefik_default` — all internet-facing services; created by `nova.sh up` if missing
 - `wud_default` — WUD and watched services
 - `media` — internal network for *arr suite + gluetun
-- `kometa_webhook` — `internal: true` network shared between `kometa-webhook` (media stack) and `movienight-backend` (movienight stack); no internet egress; created by `nova.sh up` if missing
+- `internal_webhook` — `internal: true` network shared between `internal-webhook` (media stack) and authorised caller containers (currently `movienight-backend`); no internet egress; created by `nova.sh up` if missing
 
 ### Homepage Dashboard Groups
 Services appear on homepage grouped by their `homepage.group` label:

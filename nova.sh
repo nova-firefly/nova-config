@@ -48,10 +48,10 @@ ensure_socket_proxy_network() {
   docker network create socket_proxy 2>/dev/null || true
 }
 
-ensure_kometa_webhook_network() {
+ensure_internal_webhook_network() {
   # internal: true — containers on this network have no internet egress.
-  # Only kometa-webhook (media stack) and movienight-backend are added to it.
-  docker network create --internal kometa_webhook 2>/dev/null || true
+  # Shared between internal-webhook (media stack) and authorised caller containers.
+  docker network create --internal internal_webhook 2>/dev/null || true
 }
 
 # --- Extract external volume names from a compose file ---
@@ -166,7 +166,7 @@ case "$CMD" in
   up)
     ensure_traefik_network
     ensure_socket_proxy_network
-    ensure_kometa_webhook_network
+    ensure_internal_webhook_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -195,7 +195,7 @@ case "$CMD" in
   update)
     ensure_traefik_network
     ensure_socket_proxy_network
-    ensure_kometa_webhook_network
+    ensure_internal_webhook_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -214,7 +214,7 @@ case "$CMD" in
   recreate)
     ensure_traefik_network
     ensure_socket_proxy_network
-    ensure_kometa_webhook_network
+    ensure_internal_webhook_network
     # Optional third argument: single service name within the stack
     SERVICE=""
     if [[ -n "${1:-}" && ! "${1:-}" =~ ^- ]]; then
@@ -279,7 +279,7 @@ case "$CMD" in
     echo "==> Creating shared networks..."
     ensure_traefik_network
     ensure_socket_proxy_network
-    ensure_kometa_webhook_network
+    ensure_internal_webhook_network
     echo "==> Creating external volumes for all stacks..."
     for s in "${ALL_STACKS[@]}"; do
       file="docker-compose.${s}.yaml"

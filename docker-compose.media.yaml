@@ -11,9 +11,9 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
-  kometa_webhook:
+  internal_webhook:
     external: true
-    name: "kometa_webhook"
+    name: "internal_webhook"
 
 services:
 
@@ -539,9 +539,9 @@ services:
       - "./kometa:/config"
       - "./kometa-trigger:/trigger"
 
-  kometa-webhook:
+  internal-webhook:
     build:
-      context: ./kometa-webhook
+      context: ./internal-webhook
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -566,11 +566,11 @@ services:
       - "SYS_TIME"
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
-    container_name: "kometa-webhook"
+    container_name: "internal-webhook"
     environment:
-      # Optional: set to require Bearer token auth on POST /trigger.
+      # Optional: set to require Bearer token auth on all POST requests.
       # If unset, network isolation (internal Docker network) is the only guard.
-      - "WEBHOOK_SECRET=${KOMETA_WEBHOOK_SECRET:-}"
+      - "WEBHOOK_SECRET=${INTERNAL_WEBHOOK_SECRET:-}"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health 2>/dev/null || exit 1"]
       interval: 30s
@@ -578,7 +578,7 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - "kometa_webhook"   # internal network shared only with movienight-backend
+      - "internal_webhook"   # internal network shared only with authorised callers
     read_only: true
     restart: "unless-stopped"
     security_opt:
