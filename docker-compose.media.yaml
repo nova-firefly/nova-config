@@ -502,9 +502,21 @@ services:
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
     container_name: "kometa"
-    # trigger-wrapper.sh replaces the default entrypoint; it replicates the
-    # daily schedule and also runs immediately when the webhook drops a trigger
-    # file in ./kometa-trigger/ (shared with kometa-webhook via bind-mount).
+    # -------------------------------------------------------------------------
+    # NON-STANDARD ENTRYPOINT — see kometa/trigger-wrapper.sh for details
+    #
+    # The default kometateam/kometa entrypoint is replaced with a thin bash
+    # wrapper (bind-mounted from ./kometa/trigger-wrapper.sh → /config/).
+    # The wrapper replicates the daily schedule controlled by KOMETA_TIME and
+    # ALSO watches for a sentinel file at /trigger/run (written by the
+    # internal-webhook container via the shared ./kometa-trigger/ bind-mount)
+    # to kick off an immediate on-demand run without Docker socket access.
+    #
+    # If you ever need to run plain kometa (e.g. for debugging), override the
+    # entrypoint temporarily:
+    #   docker run --rm -it --entrypoint python3 kometateam/kometa \
+    #     /app/kometa.py --config /config/config.yml --run
+    # -------------------------------------------------------------------------
     entrypoint: ["/bin/bash", "/config/trigger-wrapper.sh"]
     environment:
       - "TZ=${TZ}"

@@ -4,12 +4,10 @@ WORKDIR /app
 
 COPY server.py .
 
-# Create non-root user and trigger directory
-RUN adduser -D -u 65534 webhook && \
-    mkdir -p /trigger && \
-    chown webhook:webhook /trigger
+# nobody (uid 65534) already exists in Alpine — use it directly
+RUN mkdir -p /trigger && chown nobody:nobody /trigger
 
-USER 65534
+USER nobody
 
 EXPOSE 9000
 
