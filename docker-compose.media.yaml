@@ -515,7 +515,7 @@ services:
     # If you ever need to run plain kometa (e.g. for debugging), override the
     # entrypoint temporarily:
     #   docker run --rm -it --entrypoint python3 kometateam/kometa \
-    #     /app/kometa.py --config /config/config.yml --run
+    #     kometa.py --config /config/config.yml --run
     # -------------------------------------------------------------------------
     entrypoint: ["/bin/bash", "/config/trigger-wrapper.sh"]
     environment:

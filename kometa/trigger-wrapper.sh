@@ -41,7 +41,7 @@ run_kometa() {
       exit 0
     fi
     log "[$reason] Starting kometa run..."
-    python3 /app/kometa.py --config /config/config.yml --run 2>&1 || true
+    python3 kometa.py --config /config/config.yml --run 2>&1 || true
     log "[$reason] Run complete"
   ) 9>"$LOCK_FILE"
 }
