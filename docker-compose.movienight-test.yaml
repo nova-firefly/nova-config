@@ -48,6 +48,7 @@ services:
       - "PORT=4000"
       - "NODE_ENV=development"
       - "TMDB_API_KEY=${TMDB_API_KEY}"
+      - "KOMETA_COLLECTIONS_PATH=/kometa-collections"
     labels:
       traefik.enable: "true"
       traefik.http.routers.movienight-test-api.rule: "Host(`movienight-test.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
@@ -58,6 +59,8 @@ services:
       - "traefik_default"
       - "movienight_test_internal"
     restart: "unless-stopped"
+    volumes:
+      - "./kometa/collections:/kometa-collections"
 
   movienight-test-frontend:
     container_name: "movienight-test-frontend"
