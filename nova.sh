@@ -48,6 +48,12 @@ ensure_socket_proxy_network() {
   docker network create socket_proxy 2>/dev/null || true
 }
 
+ensure_internal_webhook_network() {
+  # internal: true — containers on this network have no internet egress.
+  # Shared between internal-webhook (media stack) and authorised caller containers.
+  docker network create --internal internal_webhook 2>/dev/null || true
+}
+
 # --- Extract external volume names from a compose file ---
 # Scans for volumes blocks and prints keys that have external: true beneath them.
 
@@ -160,6 +166,7 @@ case "$CMD" in
   up)
     ensure_traefik_network
     ensure_socket_proxy_network
+    ensure_internal_webhook_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -188,6 +195,7 @@ case "$CMD" in
   update)
     ensure_traefik_network
     ensure_socket_proxy_network
+    ensure_internal_webhook_network
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -206,6 +214,7 @@ case "$CMD" in
   recreate)
     ensure_traefik_network
     ensure_socket_proxy_network
+    ensure_internal_webhook_network
     # Optional third argument: single service name within the stack
     SERVICE=""
     if [[ -n "${1:-}" && ! "${1:-}" =~ ^- ]]; then
@@ -217,7 +226,7 @@ case "$CMD" in
         echo "==> $s: down"
         run_compose down "$s"
         echo "==> $s: build"
-        run_compose build "$s" --pull "$@"
+        run_compose build "$s" --pull --no-cache "$@"
         echo "==> $s: up"
         run_compose up "$s" -d "$@"
       done
@@ -227,14 +236,14 @@ case "$CMD" in
       echo "==> $STACK/$SERVICE: rm"
       run_compose rm "$STACK" -f "$SERVICE"
       echo "==> $STACK/$SERVICE: build"
-      run_compose build "$STACK" "$SERVICE" --pull "$@"
+      run_compose build "$STACK" "$SERVICE" --pull --no-cache "$@"
       echo "==> $STACK/$SERVICE: up"
       run_compose up "$STACK" -d "$SERVICE" "$@"
     else
       echo "==> $STACK: down"
       run_compose down "$STACK"
       echo "==> $STACK: build"
-      run_compose build "$STACK" --pull "$@"
+      run_compose build "$STACK" --pull --no-cache "$@"
       echo "==> $STACK: up"
       run_compose up "$STACK" -d "$@"
     fi
@@ -270,6 +279,7 @@ case "$CMD" in
     echo "==> Creating shared networks..."
     ensure_traefik_network
     ensure_socket_proxy_network
+    ensure_internal_webhook_network
     echo "==> Creating external volumes for all stacks..."
     for s in "${ALL_STACKS[@]}"; do
       file="docker-compose.${s}.yaml"

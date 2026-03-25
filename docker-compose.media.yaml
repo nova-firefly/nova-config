@@ -11,6 +11,9 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
+  internal_webhook:
+    external: true
+    name: "internal_webhook"
 
 services:
 
@@ -499,6 +502,22 @@ services:
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
     container_name: "kometa"
+    # -------------------------------------------------------------------------
+    # NON-STANDARD ENTRYPOINT — see kometa/trigger-wrapper.sh for details
+    #
+    # The default kometateam/kometa entrypoint is replaced with a thin bash
+    # wrapper (bind-mounted from ./kometa/trigger-wrapper.sh → /config/).
+    # The wrapper replicates the daily schedule controlled by KOMETA_TIME and
+    # ALSO watches for a sentinel file at /trigger/run (written by the
+    # internal-webhook container via the shared ./kometa-trigger/ bind-mount)
+    # to kick off an immediate on-demand run without Docker socket access.
+    #
+    # If you ever need to run plain kometa (e.g. for debugging), override the
+    # entrypoint temporarily:
+    #   docker run --rm -it --entrypoint python3 kometateam/kometa \
+    #     kometa.py --config /config/config.yml --run
+    # -------------------------------------------------------------------------
+    entrypoint: ["/bin/bash", "/config/trigger-wrapper.sh"]
     environment:
       - "TZ=${TZ}"
       # Kometa secrets: KOMETA_<name> vars are injected as <<name>> in config.yml
@@ -530,6 +549,56 @@ services:
     restart: "unless-stopped"
     volumes:
       - "./kometa:/config"
+      - "kometa_trigger:/trigger"
+
+  internal-webhook:
+    build:
+      context: ./internal-webhook
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "internal-webhook"
+    environment:
+      # Optional: set to require Bearer token auth on all POST requests.
+      # If unset, network isolation (internal Docker network) is the only guard.
+      - "WEBHOOK_SECRET=${INTERNAL_WEBHOOK_SECRET:-}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - "internal_webhook"   # internal network shared only with authorised callers
+    read_only: true
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    tmpfs:
+      - "/tmp:size=1m,noexec,nosuid,nodev"
+    volumes:
+      - "kometa_trigger:/trigger"  # shared with kometa service; named volume avoids host permission issues
 
   gluetun:
     cap_add:
@@ -662,3 +731,7 @@ volumes:
 
   tautulli_config:
     external: true
+
+  kometa_trigger:
+    # Shared IPC volume between kometa and internal-webhook.
+    # Not external — compose manages it; no data needs to survive stack removal.
