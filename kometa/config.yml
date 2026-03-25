@@ -95,6 +95,7 @@ libraries:
       # Custom collections
       - file: config/collections/letterboxd.yml
       - file: config/collections/4k.yml
+      - file: config/collections/movienight.yml
     overlay_files:
       # Docs: https://kometa.wiki/en/latest/defaults/overlays/ratings/
       - default: ratings

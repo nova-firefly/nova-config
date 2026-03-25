@@ -46,6 +46,9 @@ services:
       - "DB_PASSWORD=${MOVIENIGHT_DB_PASSWORD}"
       - "PORT=4000"
       - "TMDB_API_KEY=${TMDB_API_KEY}"
+      # Path inside the container where Kometa collection files are written.
+      # Mounted from ./kometa/collections so exports land directly in nova-config.
+      - "KOMETA_COLLECTIONS_PATH=/kometa-collections"
     labels:
       traefik.enable: "true"
       traefik.http.routers.movienight-api.rule: "Host(`movienight.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
@@ -57,6 +60,8 @@ services:
       - "traefik_default"
       - "movienight_internal"
     restart: "unless-stopped"
+    volumes:
+      - "./kometa/collections:/kometa-collections"
 
   movienight-frontend:
     container_name: "movienight-frontend"
