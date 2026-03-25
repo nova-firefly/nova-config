@@ -549,7 +549,7 @@ services:
     restart: "unless-stopped"
     volumes:
       - "./kometa:/config"
-      - "./kometa-trigger:/trigger"
+      - "kometa_trigger:/trigger"
 
   internal-webhook:
     build:
@@ -598,7 +598,7 @@ services:
     tmpfs:
       - "/tmp:size=1m,noexec,nosuid,nodev"
     volumes:
-      - "./kometa-trigger:/trigger"  # shared with kometa service
+      - "kometa_trigger:/trigger"  # shared with kometa service; named volume avoids host permission issues
 
   gluetun:
     cap_add:
@@ -731,3 +731,7 @@ volumes:
 
   tautulli_config:
     external: true
+
+  kometa_trigger:
+    # Shared IPC volume between kometa and internal-webhook.
+    # Not external — compose manages it; no data needs to survive stack removal.

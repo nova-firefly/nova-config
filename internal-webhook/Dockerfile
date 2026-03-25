@@ -4,9 +4,9 @@ WORKDIR /app
 
 COPY server.py .
 
-# nobody (uid 65534) already exists in Alpine — use it directly
-RUN mkdir -p /trigger && chown nobody:nobody /trigger
-
+# nobody (uid 65534) already exists in Alpine — use it directly.
+# /trigger is provided at runtime via a named Docker volume (world-writable
+# by default), so no chown is needed here.
 USER nobody
 
 EXPOSE 9000

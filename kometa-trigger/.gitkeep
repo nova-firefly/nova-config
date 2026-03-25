@@ -1,4 +1,0 @@
-# Trigger directory for kometa-webhook → kometa IPC
-# kometa-webhook drops a 'run' file here; trigger-wrapper.sh picks it up and
-# starts an immediate kometa run. This directory is empty between triggers.
-# Do not commit any files placed here by the running service.
