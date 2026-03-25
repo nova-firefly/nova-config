@@ -9,7 +9,7 @@ collections:
     tmdb_movie:
       # Replace with TMDB IDs exported from the MovieNight admin panel
       - 0
-    collection_order: custom
+    collection_order: release
     sync_mode: sync
     radarr_add_missing: true
     radarr_search: true
