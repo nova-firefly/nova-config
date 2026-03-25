@@ -88,7 +88,7 @@ services:
       homepage.group: "Tools"
       homepage.name: "MovieNight"
       homepage.icon: "mdi-popcorn"
-      homepage.href: "https://movienight.${NOVA_DOMAIN}/movienight/"
+      homepage.href: "https://movienight.${NOVA_DOMAIN}"
       homepage.description: "Movie Suggestion App"
     networks:
       - "traefik_default"
