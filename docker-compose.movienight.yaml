@@ -26,10 +26,6 @@ services:
       test: ["CMD-SHELL", "pg_isready -U movienight_user -d movienight"]
       timeout: 5s
     image: "postgres:15-alpine"
-    labels:
-      wud.watch: "true"
-      wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.movienight,discord.notify"
     networks:
       - "movienight_internal"
     restart: "unless-stopped"
@@ -57,9 +53,6 @@ services:
       traefik.http.routers.movienight-api.tls: "true"
       traefik.http.routers.movienight-api.middlewares: "authelia@file"
       traefik.http.services.movienight-api.loadbalancer.server.port: "4000"
-      wud.watch: "true"
-      wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.movienight,discord.notify"
     networks:
       - "traefik_default"
       - "movienight_internal"
@@ -84,9 +77,6 @@ services:
       homepage.icon: "mdi-popcorn"
       homepage.href: "https://movienight.${NOVA_DOMAIN}/movienight/"
       homepage.description: "Movie Suggestion App"
-      wud.watch: "true"
-      wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.movienight,discord.notify"
     networks:
       - "traefik_default"
     restart: "unless-stopped"
