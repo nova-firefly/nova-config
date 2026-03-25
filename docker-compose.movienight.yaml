@@ -48,6 +48,7 @@ services:
       - "DB_USER=movienight_user"
       - "DB_PASSWORD=${MOVIENIGHT_DB_PASSWORD}"
       - "PORT=4000"
+      - "NODE_ENV=production"
       - "TMDB_API_KEY=${TMDB_API_KEY}"
       # Path inside the container where Kometa collection files are written.
       # Mounted from ./kometa/collections so exports land directly in nova-config.
