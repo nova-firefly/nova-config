@@ -226,7 +226,7 @@ case "$CMD" in
         echo "==> $s: down"
         run_compose down "$s"
         echo "==> $s: build"
-        run_compose build "$s" --pull "$@"
+        run_compose build "$s" --pull --no-cache "$@"
         echo "==> $s: up"
         run_compose up "$s" -d "$@"
       done
@@ -236,14 +236,14 @@ case "$CMD" in
       echo "==> $STACK/$SERVICE: rm"
       run_compose rm "$STACK" -f "$SERVICE"
       echo "==> $STACK/$SERVICE: build"
-      run_compose build "$STACK" "$SERVICE" --pull "$@"
+      run_compose build "$STACK" "$SERVICE" --pull --no-cache "$@"
       echo "==> $STACK/$SERVICE: up"
       run_compose up "$STACK" -d "$SERVICE" "$@"
     else
       echo "==> $STACK: down"
       run_compose down "$STACK"
       echo "==> $STACK: build"
-      run_compose build "$STACK" --pull "$@"
+      run_compose build "$STACK" --pull --no-cache "$@"
       echo "==> $STACK: up"
       run_compose up "$STACK" -d "$@"
     fi
