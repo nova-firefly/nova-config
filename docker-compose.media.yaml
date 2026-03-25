@@ -11,6 +11,9 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
+  kometa_webhook:
+    external: true
+    name: "kometa_webhook"
 
 services:
 
@@ -499,6 +502,10 @@ services:
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
     container_name: "kometa"
+    # trigger-wrapper.sh replaces the default entrypoint; it replicates the
+    # daily schedule and also runs immediately when the webhook drops a trigger
+    # file in ./kometa-trigger/ (shared with kometa-webhook via bind-mount).
+    entrypoint: ["/bin/bash", "/config/trigger-wrapper.sh"]
     environment:
       - "TZ=${TZ}"
       # Kometa secrets: KOMETA_<name> vars are injected as <<name>> in config.yml
@@ -530,6 +537,56 @@ services:
     restart: "unless-stopped"
     volumes:
       - "./kometa:/config"
+      - "./kometa-trigger:/trigger"
+
+  kometa-webhook:
+    build:
+      context: ./kometa-webhook
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "kometa-webhook"
+    environment:
+      # Optional: set to require Bearer token auth on POST /trigger.
+      # If unset, network isolation (internal Docker network) is the only guard.
+      - "WEBHOOK_SECRET=${KOMETA_WEBHOOK_SECRET:-}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - "kometa_webhook"   # internal network shared only with movienight-backend
+    read_only: true
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    tmpfs:
+      - "/tmp:size=1m,noexec,nosuid,nodev"
+    volumes:
+      - "./kometa-trigger:/trigger"  # shared with kometa service
 
   gluetun:
     cap_add:

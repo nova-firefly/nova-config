@@ -11,6 +11,9 @@ networks:
     name: "traefik_default"
   movienight_internal:
     internal: true
+  kometa_webhook:
+    external: true
+    name: "kometa_webhook"
 
 services:
 
@@ -49,6 +52,9 @@ services:
       # Path inside the container where Kometa collection files are written.
       # Mounted from ./kometa/collections so exports land directly in nova-config.
       - "KOMETA_COLLECTIONS_PATH=/kometa-collections"
+      # Webhook URL to trigger an immediate kometa run after each export.
+      # kometa-webhook is reachable via the shared kometa_webhook internal network.
+      - "KOMETA_TRIGGER_URL=http://kometa-webhook:9000/trigger"
     labels:
       traefik.enable: "true"
       traefik.http.routers.movienight-api.rule: "Host(`movienight.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
@@ -59,6 +65,7 @@ services:
     networks:
       - "traefik_default"
       - "movienight_internal"
+      - "kometa_webhook"   # can reach kometa-webhook; no internet egress from this network
     restart: "unless-stopped"
     volumes:
       - "./kometa/collections:/kometa-collections"
