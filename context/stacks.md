@@ -182,13 +182,14 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
-| vibe-kanban | ghcr.io/kjsb25/vibe-kanban:latest | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
+| vibe-kanban | local build (`./vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
+| vibe-kanban-tools | ghcr.io/kjsb25/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
 
-**Auto-deploy:** Image is built by CI in the `kjsb25/nova-config` repo on push to `master` when files under `vibe-kanban/` change, and pushed to GHCR. The CI deploy job also SSH-deploys immediately via `nova.sh update dev`. WUD watches the image (`wud.watch: "true"`) and triggers `dockercompose.dev` to pull and recreate when the digest changes.
+**Auto-deploy (vibe-kanban-tools):** Image is built by CI in the `kjsb25/vibe-kanban-tools` repo on push to `main` and pushed to GHCR. The CI deploy job also SSH-deploys immediately via `nova.sh update dev`. WUD watches the image (`wud.watch: "true"`) and triggers `dockercompose.dev` to pull and recreate when the digest changes.
 
-**Required env:** `GH_HOST`, `GH_TOKEN`
+**Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`
 
-**Required GitHub secrets:** `NOVA_HOST`, `NOVA_USER`, `NOVA_SSH_KEY`
+**Required GitHub secrets (vibe-kanban-tools repo):** `NOVA_HOST`, `NOVA_USER`, `NOVA_SSH_KEY`
 
 ---
 
