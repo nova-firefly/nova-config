@@ -40,7 +40,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **External networks:** `traefik_default` (shared)
 
-**WUD triggers configured (in wud service env):** infra, media, backup, movienight, tools, authelia stacks
+**WUD triggers configured (in wud service env):** infra, media, backup, tools, authelia, dev stacks
 
 ---
 
@@ -180,11 +180,15 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Purpose:** Development environment
 
-| Service | Notes |
-|---------|-------|
-| vibe-kanban | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
+| Service | Image/Build | Notes |
+|---------|-------------|-------|
+| vibe-kanban | ghcr.io/kjsb25/vibe-kanban:latest | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
 
-**Required env:** `GH_TOKEN`
+**Auto-deploy:** Image is built by CI in the `kjsb25/nova-config` repo on push to `master` when files under `vibe-kanban/` change, and pushed to GHCR. The CI deploy job also SSH-deploys immediately via `nova.sh update dev`. WUD watches the image (`wud.watch: "true"`) and triggers `dockercompose.dev` to pull and recreate when the digest changes.
+
+**Required env:** `GH_HOST`, `GH_TOKEN`
+
+**Required GitHub secrets:** `NOVA_HOST`, `NOVA_USER`, `NOVA_SSH_KEY`
 
 ---
 

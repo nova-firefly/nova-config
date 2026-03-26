@@ -14,7 +14,7 @@ networks:
 services:
 
   vibe-kanban:
-    build: "./vibe-kanban"
+    image: "ghcr.io/kjsb25/vibe-kanban:latest"
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -65,7 +65,9 @@ services:
       homepage.icon: "https://www.google.com/s2/favicons?domain=vibekanban.com/&sz=128"
       homepage.href: "http://kanban.${NOVA_DOMAIN}"
       homepage.description: "Project Management"
-      wud.watch: "false"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.dev,discord.notify"
     networks:
       - "traefik_default"
       - "socket_proxy"
