@@ -36,7 +36,44 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Load .env so NOVA_DOMAIN and NTFY_TOPIC are available to the shell
+if [[ -f .env ]]; then
+  # shellcheck disable=SC1091
+  set -o allexport; source .env; set +o allexport
+fi
+
 ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test)
+
+# --- ntfy notification helper ---
+# Publishes a push notification to ntfy when a mutating compose command runs.
+# Requires NTFY_TOPIC (and NOVA_DOMAIN) to be set in .env; silently no-ops otherwise.
+
+ntfy_notify() {
+  local title="$1" body="$2" tags="$3" priority="${4:-default}"
+  [[ -z "${NTFY_TOPIC:-}" || -z "${NOVA_DOMAIN:-}" ]] && return 0
+  curl -sf \
+    -H "Title: ${title}" \
+    -H "Tags: ${tags}" \
+    -H "Priority: ${priority}" \
+    -d "${body}" \
+    "https://ntfy.${NOVA_DOMAIN}/${NTFY_TOPIC}" \
+    >/dev/null 2>&1 || true  # never let a failed notification break the script
+}
+
+# Set this variable in mutating case blocks to enable ntfy on exit.
+# The trap fires on both clean exit and error, so both success and failure are covered.
+_NTFY_TITLE=""
+
+_ntfy_on_exit() {
+  local rc=$?
+  [[ -z "${_NTFY_TITLE:-}" ]] && return
+  if [[ $rc -eq 0 ]]; then
+    ntfy_notify "${_NTFY_TITLE}" "Completed $(date '+%Y-%m-%d %H:%M:%S')" "white_check_mark" "default"
+  else
+    ntfy_notify "${_NTFY_TITLE} FAILED" "Failed (exit ${rc}) at $(date '+%Y-%m-%d %H:%M:%S')" "warning" "high"
+  fi
+}
+trap _ntfy_on_exit EXIT
 
 # --- Ensure shared networks exist ---
 
@@ -152,6 +189,7 @@ shift 1
 
 case "$CMD" in
   down)
+    _NTFY_TITLE="nova down ${STACK:-all}"
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -164,6 +202,7 @@ case "$CMD" in
     ;;
 
   up)
+    _NTFY_TITLE="nova up ${STACK:-all}"
     ensure_traefik_network
     ensure_socket_proxy_network
     ensure_internal_webhook_network
@@ -193,6 +232,7 @@ case "$CMD" in
     ;;
 
   update)
+    _NTFY_TITLE="nova update ${STACK:-all}"
     ensure_traefik_network
     ensure_socket_proxy_network
     ensure_internal_webhook_network
@@ -212,6 +252,7 @@ case "$CMD" in
     ;;
 
   recreate)
+    _NTFY_TITLE="nova recreate ${STACK:-all}"
     ensure_traefik_network
     ensure_socket_proxy_network
     ensure_internal_webhook_network
@@ -220,6 +261,7 @@ case "$CMD" in
     if [[ -n "${1:-}" && ! "${1:-}" =~ ^- ]]; then
       SERVICE="$1"
       shift
+      _NTFY_TITLE="nova recreate ${STACK:-all}/${SERVICE}"
     fi
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
@@ -250,6 +292,7 @@ case "$CMD" in
     ;;
 
   restart)
+    _NTFY_TITLE="nova restart ${STACK:-all}"
     if [[ -z "$STACK" ]]; then
       for s in "${ALL_STACKS[@]}"; do
         echo "==> $s"
@@ -261,6 +304,7 @@ case "$CMD" in
       if [[ -n "${1:-}" && ! "${1:-}" =~ ^- ]]; then
         SERVICE="$1"
         shift
+        _NTFY_TITLE="nova restart ${STACK}/${SERVICE}"
       fi
       echo "==> $STACK${SERVICE:+/$SERVICE}"
       run_compose restart "$STACK" ${SERVICE:+"$SERVICE"} "$@"
