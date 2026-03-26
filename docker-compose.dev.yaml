@@ -93,7 +93,7 @@ services:
       - "backrest_backrest_config:/mnt/configs/backrest:ro"
 
   vibe-kanban-tools:
-    build: "./vibe-kanban-tools"
+    image: "ghcr.io/kjsb25/vibe-kanban-tools:latest"
     container_name: "vibe-kanban-tools"
     environment:
       - "VIBE_KANBAN_URL=http://vibe-kanban:4000"
