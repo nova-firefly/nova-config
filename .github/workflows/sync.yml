@@ -1,0 +1,29 @@
+name: Sync to Nova
+
+# Keeps the nova-config checkout on the host in sync with master.
+# - Push: syncs immediately when master changes
+# - Schedule: resets any local drift hourly (acts as a safety net)
+# - Dispatch: manual trigger via GitHub UI
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '0 * * * *'   # hourly — resets local changes within an hour
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync nova-config on host
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.NOVA_HOST }}
+          username: ${{ secrets.NOVA_USER }}
+          key: ${{ secrets.NOVA_SSH_KEY }}
+          script: |
+            cd ${{ secrets.NOVA_CONFIG_PATH }}
+            git fetch origin
+            git reset --hard origin/master
+            git submodule update --init --recursive
