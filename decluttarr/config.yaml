@@ -1,18 +1,18 @@
 # Decluttarr Configuration
 # Cleans up stalled, slow, failed, and unimportable downloads automatically.
 #
-# Global default: max_strikes=3 (3 × 30min = 90min grace period)
+# Global default: max_strikes=3 (3 × 10min = 30min grace period)
 # Override per-job where a longer window is warranted (e.g. remove_stalled).
 #
-# remove_stalled strategy: timer=30min * max_strikes=48 = 24 hours
-# remove_slow strategy:    timer=30min * max_strikes=10 = 5 hours
-# all others:              timer=30min * max_strikes=3  = 90 minutes
+# remove_stalled strategy: timer=10min * max_strikes=24 = 4 hours
+# remove_slow strategy:    timer=10min * max_strikes=10 = ~100 minutes
+# all others:              timer=10min * max_strikes=3  = 30 minutes
 
 general:
-  log_level: INFO
+  log_level: VERBOSE
   test_run: false
-  # Check queues every 30 minutes
-  timer: 30
+  # Check queues every 10 minutes
+  timer: 10
   ssl_verification: true
 
 # Global defaults — individual jobs override these as needed
@@ -39,15 +39,15 @@ download_clients:
 
 jobs:
   # Mark stalled downloads (no peer connections / no progress) as failed
-  # after 48 strikes × 30min = 24 hours. Any progress resets the counter.
+  # after 24 strikes × 10min = 4 hours. Any progress resets the counter.
   remove_stalled:
-    max_strikes: 48
+    max_strikes: 24
 
   # Remove downloads that stay below min_speed KB/s for 10 consecutive checks
-  # (10 × 30min = 5 hours). Adjust min_speed to match your connection.
+  # (10 × 10min = ~100 minutes). Adjust min_speed to match your connection.
   # qBittorrent is configured as an instance above for real-time speed data.
   remove_slow:
-    min_speed: 100
+    min_speed: 500
     max_strikes: 10
 
   # Remove items already marked as failed in the *arr queue
@@ -55,7 +55,7 @@ jobs:
 
   # Remove completed downloads that repeatedly fail to import (e.g. fake
   # releases disguised as .exe, corrupted files, wrong format). Uses global
-  # max_strikes (3 × 30min = 90 min) before giving up and removing.
+  # max_strikes (3 × 10min = 30 min) before giving up and removing.
   remove_failed_imports: true
 
   # Remove queue items whose source file no longer exists on disk — handles
