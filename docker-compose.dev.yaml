@@ -79,7 +79,6 @@ services:
       - "vibe-kanban-data:/root/.local/share/vibe-kanban"
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
-      - "ha_config:/ha-config"
       # Config volumes (read-only) — for log/config inspection and debugging
       - "bazarr_config:/mnt/configs/bazarr:ro"
       - "prowlarr_config:/mnt/configs/prowlarr:ro"
@@ -131,9 +130,6 @@ volumes:
 
   vibe-kanban-repos:
     external: true
-  ha_config:
-    external: true
-
   # Config volumes — read-only access for log/config inspection
   bazarr_config:
     external: true
