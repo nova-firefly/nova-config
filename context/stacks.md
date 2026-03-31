@@ -10,7 +10,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | authelia | docker-compose.authelia.yaml | authelia, redis |
 | media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent |
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
-| home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant |
+| home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | docker-compose.dev.yaml | vibe-kanban |
 | tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
@@ -149,6 +149,9 @@ docker volume create authelia_data && docker volume create authelia_redis
 | homeassistant | Core home automation platform |
 | zwave-js-ui | Z-Wave device management |
 | music-assistant | Music streaming; host network mode → routed via traefik/dynamic.yaml at `ma.NOVA_DOMAIN:8095` |
+| matter-server | Matter protocol server; host network mode; WebSocket on port 5580; HA connects via `ws://[host_ip]:5580/ws` |
+
+**External volumes:** `matter_server_data`
 
 **Required env:** `ZWAVE_SESSION_SECRET`
 

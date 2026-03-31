@@ -71,6 +71,34 @@ services:
     volumes:
       - "ha_config:/config"
 
+  matter-server:
+    container_name: "matter-server"
+    environment:
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost',5580)); s.close()\" >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/home-assistant-libs/python-matter-server:stable"
+    labels:
+      homepage.group: "Home Automation"
+      homepage.name: "Matter Server"
+      homepage.href: "https://ha.${NOVA_DOMAIN}"
+      homepage.icon: "home-assistant.svg"
+      homepage.description: "Matter Protocol Server"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    network_mode: "host"
+    restart: "unless-stopped"
+    security_opt:
+      - "apparmor:unconfined"
+    volumes:
+      - "matter_server_data:/data"
+      - "/run/dbus:/run/dbus:ro"
+
   music-assistant-server:
     container_name: "music-assistant-server"
     environment:
@@ -143,4 +171,7 @@ volumes:
     external: true
 
   zwave-js-ui:
+    external: true
+
+  matter_server_data:
     external: true
