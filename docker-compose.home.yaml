@@ -38,6 +38,7 @@ services:
       - "label=disable"
     volumes:
       - "ha_config:/config"
+      - "/run/dbus:/run/dbus:ro"
 
   matter-server:
     container_name: "matter-server"
@@ -128,6 +129,8 @@ services:
       wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
+    ports:
+      - "3000:3000"
     restart: "always"
     tty: true
     volumes:
