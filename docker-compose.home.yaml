@@ -39,6 +39,8 @@ services:
     container_name: "homeassistant"
     environment:
       - "TZ=${TZ}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     hostname: "${NOVA_HOSTNAME}"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8123/manifest.json >/dev/null || exit 1"]
