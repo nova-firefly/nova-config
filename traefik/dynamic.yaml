@@ -20,6 +20,14 @@ http:
           - "Remote-Name"
 
   routers:
+    ha:
+      rule: Host(`ha.{{ env "NOVA_DOMAIN" }}`)
+      entrypoints:
+        - websecure
+      tls: {}
+      service: ha
+      # Home Assistant: no Authelia — mobile app and integrations use Bearer tokens
+
     ma:
       rule: Host(`ma.{{ env "NOVA_DOMAIN" }}`)
       entrypoints:
@@ -39,6 +47,11 @@ http:
         - authelia
 
   services:
+    ha:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:8123
+        passHostHeader: true
     ma:
       loadBalancer:
         servers:
