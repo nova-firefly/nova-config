@@ -12,35 +12,9 @@ networks:
 services:
 
   homeassistant:
-    cap_drop:
-      - "CAP_AUDIT_CONTROL"
-      - "CAP_BLOCK_SUSPEND"
-      - "CAP_DAC_READ_SEARCH"
-      - "CAP_IPC_LOCK"
-      - "CAP_IPC_OWNER"
-      - "CAP_LEASE"
-      - "CAP_LINUX_IMMUTABLE"
-      - "CAP_MAC_ADMIN"
-      - "CAP_MAC_OVERRIDE"
-      - "CAP_NET_ADMIN"
-      - "CAP_NET_BROADCAST"
-      - "CAP_SYSLOG"
-      - "CAP_SYS_ADMIN"
-      - "CAP_SYS_BOOT"
-      - "CAP_SYS_MODULE"
-      - "CAP_SYS_NICE"
-      - "CAP_SYS_PACCT"
-      - "CAP_SYS_PTRACE"
-      - "CAP_SYS_RAWIO"
-      - "CAP_SYS_RESOURCE"
-      - "CAP_SYS_TIME"
-      - "CAP_SYS_TTY_CONFIG"
-      - "CAP_WAKE_ALARM"
     container_name: "homeassistant"
     environment:
       - "TZ=${TZ}"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     hostname: "${NOVA_HOSTNAME}"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8123/manifest.json >/dev/null || exit 1"]
@@ -50,11 +24,6 @@ services:
       start_period: 120s
     image: "ghcr.io/home-assistant/home-assistant:stable"
     labels:
-      traefik.enable: "true"
-      traefik.http.routers.ha.rule: "Host(`ha.${NOVA_DOMAIN}`)"
-      traefik.http.routers.ha.entrypoints: "websecure"
-      traefik.http.routers.ha.tls: "true"
-      traefik.http.services.ha.loadbalancer.server.port: "8123"
       homepage.group: "Home Automation"
       homepage.name: "Home Assistant"
       homepage.icon: "home-assistant.svg"
@@ -62,12 +31,9 @@ services:
       homepage.description: "Smart Home Control"
       wud.watch: "true"
       wud.trigger.include: "discord.notify"
-    networks:
-      - "traefik_default"
+    network_mode: "host"
     privileged: true
     restart: "unless-stopped"
-    ports:
-      - "8123:8123/tcp"
     security_opt:
       - "label=disable"
     volumes:

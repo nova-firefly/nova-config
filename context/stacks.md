@@ -63,7 +63,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **Services excluded from Authelia protection:**
 - `plex` — native Plex app uses token auth; redirect breaks all clients
-- `homeassistant` — webhooks, integrations, mobile app use Bearer tokens
+- `homeassistant` — webhooks, integrations, mobile app use Bearer tokens; routed via dynamic.yaml (host network mode)
 - `immich` — mobile app uses API key headers; redirect breaks sync
 - `overseerr` — "Sign in with Plex" OAuth flow + mobile app
 - `ma` (Music Assistant) — deep HA integration (add `middlewares: [authelia]` in dynamic.yaml to enable)
@@ -146,7 +146,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Notes |
 |---------|-------|
-| homeassistant | Core home automation platform |
+| homeassistant | Core home automation platform; host network mode → routed via traefik/dynamic.yaml at `ha.NOVA_DOMAIN:8123` |
 | zwave-js-ui | Z-Wave device management |
 | music-assistant | Music streaming; host network mode → routed via traefik/dynamic.yaml at `ma.NOVA_DOMAIN:8095` |
 | matter-server | Matter protocol server; host network mode; WebSocket on port 5580; HA connects via `ws://[host_ip]:5580/ws` |
@@ -244,6 +244,7 @@ Services appear on homepage grouped by their `homepage.group` label:
 
 ### traefik/dynamic.yaml
 Routes for host-mode services that Docker provider can't discover, plus global middleware definitions:
+- `ha.NOVA_DOMAIN` → `host.docker.internal:8123` (Home Assistant)
 - `ma.NOVA_DOMAIN` → `host.docker.internal:8095` (Music Assistant)
 - `glances.NOVA_DOMAIN` → `host.docker.internal:61208` (Glances) — protected by `authelia@file`
 - `authelia` middleware — forwardAuth to `http://authelia:9091/api/authz/forward-auth`
