@@ -536,11 +536,6 @@ services:
       disable: true
     image: "kometateam/kometa:latest"
     labels:
-      homepage.group: "Media"
-      homepage.name: "Kometa"
-      homepage.icon: "kometa.png"
-      homepage.href: "https://kometa.wiki"
-      homepage.description: "Plex Collection Manager"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "dockercompose.media,discord.notify"

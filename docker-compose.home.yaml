@@ -52,11 +52,6 @@ services:
       start_period: 30s
     image: "ghcr.io/home-assistant-libs/python-matter-server:stable"
     labels:
-      homepage.group: "Home Automation"
-      homepage.name: "Matter Server"
-      homepage.href: "https://ha.${NOVA_DOMAIN}"
-      homepage.icon: "home-assistant.svg"
-      homepage.description: "Matter Protocol Server"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
