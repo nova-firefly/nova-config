@@ -29,15 +29,20 @@ authentication_backend:
         key_length: 32
         salt_length: 16
 
+totp:
+  issuer: '{{ env "NOVA_DOMAIN" }}'
+  period: 30
+  skew: 1
+
 access_control:
-  default_policy: one_factor
+  default_policy: two_factor
 
 session:
   name: authelia_session
   same_site: lax
   inactivity: 1h
   expiration: 8h
-  remember_me: 1M
+  remember_me: 7d
   redis:
     host: redis
     port: 6379

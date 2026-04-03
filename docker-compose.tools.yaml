@@ -87,6 +87,7 @@ services:
       traefik.http.routers.actual.rule: "Host(`actual.${NOVA_DOMAIN}`)"
       traefik.http.routers.actual.entrypoints: "websecure"
       traefik.http.routers.actual.tls: "true"
+      traefik.http.routers.actual.middlewares: "authelia@file"
       traefik.http.services.actual.loadbalancer.server.port: "5006"
       homepage.group: "Tools"
       homepage.name: "Actual Budget"

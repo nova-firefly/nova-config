@@ -34,8 +34,9 @@ http:
         - websecure
       tls: {}
       service: ma
-      # Music Assistant: integrates with Home Assistant and external music services.
-      # To protect it with Authelia, add: middlewares: [authelia]
+      middlewares:
+        - authelia
+      # Music Assistant: protected by Authelia. If HA integration breaks, remove the middleware.
 
     glances:
       rule: Host(`glances.{{ env "NOVA_DOMAIN" }}`)
