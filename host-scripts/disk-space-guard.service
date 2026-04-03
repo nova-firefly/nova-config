@@ -1,0 +1,12 @@
+[Unit]
+Description=Disk space guard — pause qBittorrent downloads on low disk
+After=network.target
+
+[Service]
+Type=oneshot
+# Point to the nova-config .env for credentials. Adjust path if needed.
+Environment=NOVA_ENV_FILE=/home/%u/nova-config/.env
+ExecStart=/usr/local/bin/disk-space-guard.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=disk-space-guard
