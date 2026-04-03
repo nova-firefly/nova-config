@@ -460,6 +460,11 @@ services:
       traefik.http.routers.tautulli.tls: "true"
       traefik.http.routers.tautulli.middlewares: "authelia@file"
       traefik.http.services.tautulli.loadbalancer.server.port: "8181"
+      # API router: bypasses Authelia — Tautulli API is authenticated via apikey param
+      traefik.http.routers.tautulli-api.rule: "Host(`tautulli.${NOVA_DOMAIN}`) && PathPrefix(`/api`)"
+      traefik.http.routers.tautulli-api.entrypoints: "websecure"
+      traefik.http.routers.tautulli-api.tls: "true"
+      traefik.http.routers.tautulli-api.service: "tautulli"
       homepage.group: "Media"
       homepage.name: "Tautulli"
       homepage.icon: "tautulli.svg"
