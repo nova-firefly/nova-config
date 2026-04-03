@@ -1,4 +1,10 @@
 {
+  "runtimes": {
+    "nvidia": {
+      "args": [],
+      "path": "nvidia-container-runtime"
+    }
+  },
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "10m",
