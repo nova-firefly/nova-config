@@ -1,6 +1,7 @@
 # Authelia Stack - Forward authentication for all protected services
 # Usage: docker compose -f docker-compose.authelia.yaml up -d
-# Requires .env file for: AUTHELIA_JWT_SECRET, AUTHELIA_SESSION_SECRET, AUTHELIA_STORAGE_ENCRYPTION_KEY
+# Requires .env file for: AUTHELIA_JWT_SECRET, AUTHELIA_SESSION_SECRET, AUTHELIA_STORAGE_ENCRYPTION_KEY,
+#   AUTHELIA_NOTIFIER_SMTP_HOST, AUTHELIA_NOTIFIER_SMTP_USERNAME, AUTHELIA_NOTIFIER_SMTP_PASSWORD
 
 name: authelia
 
@@ -50,6 +51,10 @@ services:
       - "AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET=${AUTHELIA_JWT_SECRET}"
       - "AUTHELIA_SESSION_SECRET=${AUTHELIA_SESSION_SECRET}"
       - "AUTHELIA_STORAGE_ENCRYPTION_KEY=${AUTHELIA_STORAGE_ENCRYPTION_KEY}"
+      # SMTP notifier — required for password reset and auth notifications
+      - "AUTHELIA_NOTIFIER_SMTP_HOST=${AUTHELIA_NOTIFIER_SMTP_HOST}"
+      - "AUTHELIA_NOTIFIER_SMTP_USERNAME=${AUTHELIA_NOTIFIER_SMTP_USERNAME}"
+      - "AUTHELIA_NOTIFIER_SMTP_PASSWORD=${AUTHELIA_NOTIFIER_SMTP_PASSWORD}"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9091/api/health >/dev/null || exit 1"]
       interval: 30s
