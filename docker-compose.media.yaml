@@ -584,7 +584,7 @@ services:
       # If unset, network isolation (internal Docker network) is the only guard.
       - "WEBHOOK_SECRET=${INTERNAL_WEBHOOK_SECRET:-}"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health 2>/dev/null || exit 1"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
