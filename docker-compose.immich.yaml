@@ -1,6 +1,6 @@
 # Immich Stack - Photo management with ML, Postgres, and Redis
 # Usage: docker compose -f docker-compose.immich.yaml up -d
-# Requires .env file for: IMMICH_DB_PASSWORD, NOVA_DOMAIN
+# Requires .env file for: IMMICH_DB_PASSWORD, NOVA_DOMAIN, IMMICH_POWER_TOOLS_API_KEY
 
 name: immich
 
@@ -121,5 +121,73 @@ services:
     networks:
       - immich_default
 
+  immich-power-tools:
+    container_name: immich_power_tools
+    image: ghcr.io/immich-power-tools/immich-power-tools:latest
+    environment:
+      - "IMMICH_URL=http://immich_server:2283"
+      - "EXTERNAL_IMMICH_URL=https://immich.${NOVA_DOMAIN}"
+      - "IMMICH_API_KEY=${IMMICH_POWER_TOOLS_API_KEY}"
+      - "DB_HOST=immich_postgres"
+      - "DB_PORT=5432"
+      - "DB_USERNAME=${DB_USERNAME}"
+      - "DB_DATABASE_NAME=${DB_DATABASE_NAME}"
+      - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
+    volumes:
+      - "immich_power_tools_data:/app/data"
+    depends_on:
+      - database
+      - immich-server
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.immich-power-tools.rule: "Host(`immich-power-tools.${NOVA_DOMAIN}`)"
+      traefik.http.routers.immich-power-tools.entrypoints: "websecure"
+      traefik.http.routers.immich-power-tools.tls: "true"
+      traefik.http.services.immich-power-tools.loadbalancer.server.port: "3000"
+      homepage.group: "Media"
+      homepage.name: "Immich Power Tools"
+      homepage.icon: "immich.svg"
+      homepage.href: "https://immich-power-tools.${NOVA_DOMAIN}"
+      homepage.description: "Immich Library Organizer"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - immich_default
+      - traefik_default
+
 volumes:
   immich-ml-model-cache:
+  immich_power_tools_data:
+    external: true
