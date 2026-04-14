@@ -20,6 +20,15 @@ http:
           - "Remote-Name"
 
   routers:
+    plex:
+      rule: Host(`plex.{{ env "NOVA_DOMAIN" }}`)
+      entrypoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: plex
+      # No Authelia — Plex handles its own authentication
+
     ha:
       rule: Host(`ha.{{ env "NOVA_DOMAIN" }}`)
       entrypoints:
@@ -48,6 +57,12 @@ http:
         - authelia
 
   services:
+    plex:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:32400
+        passHostHeader: true
+
     ha:
       loadBalancer:
         servers:

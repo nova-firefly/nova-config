@@ -170,12 +170,8 @@ services:
       start_period: 120s
     image: "ghcr.io/linuxserver/plex:latest"
     labels:
-      traefik.enable: "true"
-      traefik.http.routers.plex.rule: "Host(`plex.${NOVA_DOMAIN}`)"
-      traefik.http.routers.plex.entrypoints: "websecure"
-      traefik.http.routers.plex.tls: "true"
-      traefik.http.routers.plex.tls.certresolver: "letsencrypt"
-      traefik.http.services.plex.loadbalancer.server.port: "32400"
+      # Traefik routing is handled via traefik/dynamic.yaml (host-mode containers
+      # are not discoverable by Traefik's Docker provider)
       homepage.group: "Media"
       homepage.name: "Plex"
       homepage.icon: "plex.svg"
@@ -184,10 +180,7 @@ services:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
-    networks:
-      - "traefik_default"
-    ports:
-      - "32400:32400/tcp"
+    network_mode: "host"
     restart: "unless-stopped"
     volumes:
       - "/data1/plex_config/plex_config/_data:/config"
@@ -517,6 +510,8 @@ services:
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
     container_name: "kometa"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # -------------------------------------------------------------------------
     # NON-STANDARD ENTRYPOINT — see kometa/trigger-wrapper.sh for details
     #
