@@ -57,8 +57,14 @@ storage:
     path: /config/data/db.sqlite3
 
 notifier:
-  filesystem:
-    filename: /tmp/authelia_notifications.txt
+  smtp:
+    host: '{{ env "AUTHELIA_NOTIFIER_SMTP_HOST" }}'
+    port: 587
+    username: '{{ env "AUTHELIA_NOTIFIER_SMTP_USERNAME" }}'
+    password: '{{ env "AUTHELIA_NOTIFIER_SMTP_PASSWORD" }}'
+    sender: 'Authelia <authelia@{{ env "NOVA_DOMAIN" }}>'
+    tls:
+      skip_verify: false
 
 identity_validation:
   reset_password:
