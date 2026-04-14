@@ -1,0 +1,11 @@
+[Unit]
+Description=Nova self-healing — recreate missing/stopped containers
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nova-heal.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nova-heal
