@@ -24,8 +24,7 @@ http:
       rule: Host(`plex.{{ env "NOVA_DOMAIN" }}`)
       entrypoints:
         - websecure
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: plex
       # No Authelia — Plex handles its own authentication
 
