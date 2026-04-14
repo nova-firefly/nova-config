@@ -136,7 +136,7 @@ services:
       - "SYS_ADMIN"
       - "SYS_BOOT"
       - "SYS_MODULE"
-      - "SYS_NICE"
+      # SYS_NICE intentionally NOT dropped — Plex uses nice() for transcoding CPU priority
       - "SYS_PACCT"
       - "SYS_PTRACE"
       - "SYS_RAWIO"
@@ -146,11 +146,21 @@ services:
       - "WAKE_ALARM"
     container_name: "plex"
     environment:
+      - "ADVERTISE_IP=http://${NOVA_HOST_IP}:32400/,https://plex.${NOVA_DOMAIN}/"
+      - "ALLOWED_NETWORKS=${PLEX_LAN_NETWORK:-192.168.1.0/24}"
       - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
+      - "NVIDIA_VISIBLE_DEVICES=all"
       - "PGID=${PGID}"
       - "PLEX_CLAIM=${PLEX_CLAIM_TOKEN}"
       - "PUID=${PUID}"
       - "VERSION=docker"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     hostname: "${NOVA_HOSTNAME}"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:32400/identity >/dev/null || exit 1"]
