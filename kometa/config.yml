@@ -15,7 +15,7 @@ tmdb:
   cache_expiration: 60
 
 plex:
-  url: http://plex:32400
+  url: http://host.docker.internal:32400
   token: <<plextoken>>
   timeout: 60
   db_cache: 40

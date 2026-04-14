@@ -136,7 +136,7 @@ services:
       - "SYS_ADMIN"
       - "SYS_BOOT"
       - "SYS_MODULE"
-      - "SYS_NICE"
+      # SYS_NICE intentionally NOT dropped — Plex uses nice() for transcoding CPU priority
       - "SYS_PACCT"
       - "SYS_PTRACE"
       - "SYS_RAWIO"
@@ -146,11 +146,21 @@ services:
       - "WAKE_ALARM"
     container_name: "plex"
     environment:
+      - "ADVERTISE_IP=http://${NOVA_HOST_IP}:32400/,https://plex.${NOVA_DOMAIN}/"
+      - "ALLOWED_NETWORKS=${PLEX_LAN_NETWORK:-192.168.1.0/24}"
       - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
+      - "NVIDIA_VISIBLE_DEVICES=all"
       - "PGID=${PGID}"
       - "PLEX_CLAIM=${PLEX_CLAIM_TOKEN}"
       - "PUID=${PUID}"
       - "VERSION=docker"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     hostname: "${NOVA_HOSTNAME}"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:32400/identity >/dev/null || exit 1"]
@@ -160,12 +170,8 @@ services:
       start_period: 120s
     image: "ghcr.io/linuxserver/plex:latest"
     labels:
-      traefik.enable: "true"
-      traefik.http.routers.plex.rule: "Host(`plex.${NOVA_DOMAIN}`)"
-      traefik.http.routers.plex.entrypoints: "websecure"
-      traefik.http.routers.plex.tls: "true"
-      traefik.http.routers.plex.tls.certresolver: "letsencrypt"
-      traefik.http.services.plex.loadbalancer.server.port: "32400"
+      # Traefik routing is handled via traefik/dynamic.yaml (host-mode containers
+      # are not discoverable by Traefik's Docker provider)
       homepage.group: "Media"
       homepage.name: "Plex"
       homepage.icon: "plex.svg"
@@ -174,10 +180,7 @@ services:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
-    networks:
-      - "traefik_default"
-    ports:
-      - "32400:32400/tcp"
+    network_mode: "host"
     restart: "unless-stopped"
     volumes:
       - "/data1/plex_config/plex_config/_data:/config"
@@ -507,6 +510,8 @@ services:
       - "SYS_TTY_CONFIG"
       - "WAKE_ALARM"
     container_name: "kometa"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # -------------------------------------------------------------------------
     # NON-STANDARD ENTRYPOINT — see kometa/trigger-wrapper.sh for details
     #
