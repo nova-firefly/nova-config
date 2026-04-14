@@ -1,0 +1,13 @@
+[Unit]
+Description=Nova self-healing — run nova.sh up to recreate missing containers
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# Path is set by install-nova-heal.sh at install time
+WorkingDirectory=@NOVA_CONFIG_DIR@
+ExecStart=@NOVA_CONFIG_DIR@/nova.sh up
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nova-heal
