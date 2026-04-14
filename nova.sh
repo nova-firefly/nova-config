@@ -202,7 +202,8 @@ case "$CMD" in
     ;;
 
   up)
-    _NTFY_TITLE="nova up ${STACK:-all}"
+    # Allow callers (e.g. nova-heal) to suppress the exit notification and handle it themselves
+    [[ -z "${NOVA_SUPPRESS_NOTIFY:-}" ]] && _NTFY_TITLE="nova up ${STACK:-all}"
     ensure_traefik_network
     ensure_socket_proxy_network
     ensure_internal_webhook_network
