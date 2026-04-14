@@ -1,0 +1,11 @@
+[Unit]
+Description=Run nova reconcile every 15 minutes to self-heal missing containers
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
