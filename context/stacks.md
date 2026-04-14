@@ -135,8 +135,11 @@ docker volume create authelia_data && docker volume create authelia_redis
 | immich-machine-learning | ghcr.io/immich-app/immich-machine-learning | ML inference |
 | immich-postgres | tensorchord/pgvecto-rs | PostgreSQL with vector extension |
 | immich-redis | redis | Cache |
+| immich-power-tools | ghcr.io/immich-power-tools/immich-power-tools | Library organizer UI — face merge, album suggestions, analytics; at `immich-power-tools.NOVA_DOMAIN` |
 
-**Required env:** `IMMICH_DB_PASSWORD`, `UPLOAD_LOCATION`, `DB_DATA_LOCATION`, `DB_USERNAME`, `DB_DATABASE_NAME`
+**External volumes:** `immich_power_tools_data`
+
+**Required env:** `IMMICH_DB_PASSWORD`, `UPLOAD_LOCATION`, `DB_DATA_LOCATION`, `DB_USERNAME`, `DB_DATABASE_NAME`, `IMMICH_POWER_TOOLS_API_KEY`
 
 ---
 
