@@ -15,8 +15,9 @@
 #   config    Validate compose files
 #   restart   Restart stack or single service (picks up config changes, no pull/rebuild)
 #   orphans   Find all containers (running + stopped) not defined in any stack and offer to remove them
+#   reconcile Check all stacks for missing containers and recreate them (self-healing)
 #
-# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight
+# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test
 # Omit stack name to apply to all stacks.
 #
 # Examples:
@@ -32,6 +33,7 @@
 #   ./nova.sh recreate infra scrutiny  # Recreate only the scrutiny service in infra
 #   ./nova.sh health                # Show unhealthy/starting containers
 #   ./nova.sh orphans               # Find and optionally remove containers no longer in config
+#   ./nova.sh reconcile             # Detect + recreate any missing containers across all stacks
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -43,6 +45,9 @@ if [[ -f .env ]]; then
 fi
 
 ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test)
+
+# Stacks excluded from reconcile — intentionally transient or CI-only stacks
+RECONCILE_SKIP_STACKS=(movienight-test)
 
 # --- ntfy notification helper ---
 # Publishes a push notification to ntfy when a mutating compose command runs.
@@ -400,6 +405,75 @@ case "$CMD" in
       echo "Done."
     else
       echo "Aborted — no containers removed."
+    fi
+    ;;
+
+  reconcile)
+    echo "==> Reconcile: checking all stacks for missing containers ($(date '+%Y-%m-%d %H:%M:%S'))..."
+    ensure_traefik_network
+    ensure_socket_proxy_network
+    ensure_internal_webhook_network
+
+    recovered_stacks=()
+
+    for s in "${ALL_STACKS[@]}"; do
+      # Skip intentionally transient/CI stacks
+      [[ " ${RECONCILE_SKIP_STACKS[*]} " == *" ${s} "* ]] && {
+        printf "  [skip] %s\n" "$s"
+        continue
+      }
+
+      file="docker-compose.${s}.yaml"
+      [[ -f "$file" ]] || continue
+
+      # Derive the compose project name (matches com.docker.compose.project label)
+      project_name=$(grep '^name:' "$file" | awk '{print $2}' | tr -d '"' | head -1)
+      [[ -z "$project_name" ]] && project_name="$s"
+
+      # Get services defined in this stack
+      mapfile -t services < <(docker compose -f "$file" config --services 2>/dev/null || true)
+      [[ ${#services[@]} -eq 0 ]] && continue
+
+      missing_services=()
+      for svc in "${services[@]}"; do
+        # Check whether ANY container exists (running or stopped) for this service
+        existing=$(docker ps -a \
+          --filter "label=com.docker.compose.project=${project_name}" \
+          --filter "label=com.docker.compose.service=${svc}" \
+          --format "{{.Names}}" 2>/dev/null | head -1)
+        [[ -z "$existing" ]] && missing_services+=("$svc")
+      done
+
+      if [[ ${#missing_services[@]} -gt 0 ]]; then
+        echo "  [MISSING] ${s}: ${missing_services[*]}"
+        remove_conflicting_containers "$s"
+        if run_compose up "$s" -d; then
+          recovered_stacks+=("${s}(${missing_services[*]})")
+        else
+          echo "  [ERROR]   ${s}: compose up -d failed — manual intervention may be needed"
+          ntfy_notify \
+            "nova reconcile: FAILED ${s}" \
+            "compose up -d failed for ${s}. Missing: ${missing_services[*]}" \
+            "warning" \
+            "urgent"
+        fi
+      else
+        printf "  [ok]  %s\n" "$s"
+      fi
+    done
+
+    echo ""
+    if [[ ${#recovered_stacks[@]} -gt 0 ]]; then
+      recovered_str=$(printf '%s, ' "${recovered_stacks[@]}")
+      recovered_str="${recovered_str%, }"
+      echo "==> Self-healed: ${recovered_str}"
+      ntfy_notify \
+        "nova self-heal: containers recovered" \
+        "Recreated missing containers: ${recovered_str}" \
+        "ambulance,white_check_mark" \
+        "high"
+    else
+      echo "==> All stacks healthy — no recovery needed."
     fi
     ;;
 
