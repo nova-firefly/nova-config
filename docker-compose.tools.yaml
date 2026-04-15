@@ -72,6 +72,9 @@ services:
       homepage.icon: "vikunja.svg"
       homepage.href: "http://vikunja.${NOVA_DOMAIN}"
       homepage.description: "Task Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
 
   actual:
     container_name: "actual"

@@ -29,6 +29,11 @@ services:
       test: ["CMD-SHELL", "pg_isready -U movienight_user -d movienight"]
       timeout: 5s
     image: "postgres:15-alpine"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.tag.include: "^15-alpine$"
+      wud.trigger.include: "discord.notify"
     networks:
       - "movienight_internal"
     restart: "unless-stopped"

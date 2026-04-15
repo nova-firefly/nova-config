@@ -114,7 +114,7 @@ services:
       homepage.description: "Container Management"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "dockercompose.infra,discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -145,6 +145,8 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       - "--api.dashboard=true"
       - "--ping=true"
+      - "--ping.entrypoint=ping"
+      - "--entrypoints.ping.address=:8082"
     container_name: "traefik"
     depends_on:
       - "socket-proxy"
@@ -154,7 +156,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ping >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/ping >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -278,9 +280,14 @@ services:
       - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_FILE=/compose/docker-compose.dev.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_FILE=/compose/docker-compose.home.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_PRUNE=true"
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
+      # Registries - lscr.io (LinuxServer) images not auto-detected without this
+      - "WUD_REGISTRY_LSCR_PUBLIC_URL=https://lscr.io"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ >/dev/null || exit 1"]
       interval: 30s
@@ -307,7 +314,7 @@ services:
       - "3003:3000/tcp"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "${NOVA_CONFIG_PATH:-.}:/compose:ro"
+      - "${NOVA_CONFIG_PATH:-.}:/compose"
 
   scrutiny:
     container_name: "scrutiny"
