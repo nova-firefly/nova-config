@@ -278,6 +278,9 @@ services:
       - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_FILE=/compose/docker-compose.dev.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_AI_FILE=/compose/docker-compose.ai.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_AI_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_AI_PRUNE=true"
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"

@@ -16,6 +16,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
 | backup | docker-compose.backup.yaml | backrest, duplicati |
 | gaming | docker-compose.gaming.yaml | minecraft |
+| ai | docker-compose.ai.yaml | ollama, open-webui |
 
 ---
 
@@ -230,6 +231,41 @@ docker volume create authelia_data && docker volume create authelia_redis
 | Service | Notes |
 |---------|-------|
 | minecraft | Minecraft server |
+
+---
+
+## ai stack (`docker-compose.ai.yaml`)
+
+**Purpose:** Local AI inference server and web chat interface
+
+| Service | Image | Port | URL | Notes |
+|---------|-------|------|-----|-------|
+| ollama | ollama/ollama:0.12.9 | 11434 | ollama.NOVA_DOMAIN | LLM inference server; NVIDIA GPU passthrough; **pinned to 0.12.9** for GTX 970 (Maxwell/sm_52) CUDA 12 compatibility — unpin after GPU upgrade to RTX 30xx/40xx |
+| open-webui | ghcr.io/open-webui/open-webui:main | 8080 | ai.NOVA_DOMAIN | ChatGPT-style web UI; connects to Ollama via `ai_internal` network; behind Authelia |
+
+**External volumes:** `ollama_data` (models at `/root/.ollama`), `open_webui_data`
+
+**Networks:** `ai_internal` (internal: true, ollama ↔ open-webui only), `traefik_default`
+
+**GPU note:** `OLLAMA_KEEP_ALIVE=5m` — model unloads after 5 min idle to reclaim VRAM for Plex transcoding. Both share the same NVIDIA GPU.
+
+**Ollama API:** Exposed at `ollama.NOVA_DOMAIN` without Authelia for editor extension access (Continue.dev, etc.).
+
+**First-run model pull (after `./nova.sh up ai`):**
+```bash
+docker exec ollama ollama pull qwen2.5-coder:3b    # coding chat
+docker exec ollama ollama pull qwen2.5-coder:1.5b  # autocomplete
+```
+
+**Continue.dev config** (`~/.continue/config.json` on workstation):
+```json
+{
+  "models": [{"title": "Qwen2.5-Coder 3B", "provider": "ollama", "model": "qwen2.5-coder:3b", "apiBase": "https://ollama.NOVA_DOMAIN"}],
+  "tabAutocompleteModel": {"title": "Qwen2.5-Coder 1.5B", "provider": "ollama", "model": "qwen2.5-coder:1.5b", "apiBase": "https://ollama.NOVA_DOMAIN"}
+}
+```
+
+**Required env:** `TZ`, `NOVA_DOMAIN`
 
 ---
 

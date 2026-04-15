@@ -1,0 +1,101 @@
+# AI Stack - Ollama + Open-WebUI
+# Usage: ./nova.sh up ai
+# Requires .env file for: NOVA_DOMAIN, TZ
+#
+# NOTE: Ollama is pinned to 0.12.9 for GTX 970 (Maxwell/sm_52) CUDA 12 compatibility.
+# Ollama v0.13.2+ ships CUDA 13 which dropped sm_52 support (GitHub issue #13726).
+# After a GPU upgrade to Ampere/Ada (RTX 30xx/40xx), unpin to: ollama/ollama:latest
+#
+# GPU sharing: Ollama and Plex both use NVIDIA GPU. OLLAMA_KEEP_ALIVE=5m unloads
+# the model after 5 minutes idle to reclaim VRAM for Plex transcoding.
+
+name: ai
+
+networks:
+  ai_internal:
+    internal: true
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  ollama:
+    container_name: "ollama"
+    # Pinned: last version with CUDA 12 backend — required for GTX 970 (sm_52/Maxwell).
+    # DO NOT auto-update. Remove pin after GPU upgrade to RTX 30xx/40xx.
+    image: "ollama/ollama:0.12.9"
+    environment:
+      - "OLLAMA_KEEP_ALIVE=5m"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.ollama.rule: "Host(`ollama.${NOVA_DOMAIN}`)"
+      traefik.http.routers.ollama.entrypoints: "websecure"
+      traefik.http.routers.ollama.tls: "true"
+      # No Authelia — Ollama API must be reachable by editor extensions (Continue.dev, etc.)
+      traefik.http.services.ollama.loadbalancer.server.port: "11434"
+      wud.watch: "false"
+    networks:
+      - "ai_internal"
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "ollama_data:/root/.ollama"
+
+  open-webui:
+    container_name: "open-webui"
+    depends_on:
+      - ollama
+    environment:
+      - "OLLAMA_BASE_URL=http://ollama:11434"
+      - "WEBUI_AUTH=true"
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: "ghcr.io/open-webui/open-webui:main"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.open-webui.rule: "Host(`ai.${NOVA_DOMAIN}`)"
+      traefik.http.routers.open-webui.entrypoints: "websecure"
+      traefik.http.routers.open-webui.tls: "true"
+      traefik.http.routers.open-webui.middlewares: "authelia@file"
+      traefik.http.services.open-webui.loadbalancer.server.port: "8080"
+      homepage.group: "Tools"
+      homepage.name: "AI Assistant"
+      homepage.icon: "ollama.png"
+      homepage.href: "https://ai.${NOVA_DOMAIN}"
+      homepage.description: "Local AI (Ollama)"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.ai,discord.notify"
+    networks:
+      - "ai_internal"
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "open_webui_data:/app/backend/data"
+
+volumes:
+
+  ollama_data:
+    external: true
+
+  open_webui_data:
+    external: true
