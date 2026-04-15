@@ -556,6 +556,80 @@ services:
       - "./kometa:/config"
       - "kometa_trigger:/trigger"
 
+  homescreen-hero:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "homescreen-hero"
+    environment:
+      - "TZ=${TZ}"
+      # Plex — host-mode container; reached via host gateway
+      - "HSH_PLEX_URL=http://host.docker.internal:32400"
+      - "HSH_PLEX_TOKEN=${PLEX_TOKEN}"
+      # Tautulli — optional widget data
+      - "HSH_TAUTULLI_URL=http://tautulli:8181"
+      - "HSH_TAUTULLI_API_KEY=${TAUTULLI_API_KEY}"
+      # Seerr — optional request widget
+      - "HSH_SEERR_URL=http://seerr:5055"
+      - "HSH_SEERR_API_KEY=${SEERR_API_KEY}"
+      # Optional metadata enrichment
+      - "HSH_TMDB_API_KEY=${TMDB_API_KEY}"
+      - "HSH_MDBLIST_API_KEY=${MDBLIST_API_KEY}"
+      # Auth — password + JWT signing secret for session tokens
+      - "HSH_AUTH_PASSWORD=${HSH_AUTH_PASSWORD}"
+      - "HSH_AUTH_SECRET_KEY=${HSH_AUTH_SECRET_KEY}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "trentferguson/homescreen-hero:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.homescreen-hero.rule: "Host(`homescreen-hero.${NOVA_DOMAIN}`)"
+      traefik.http.routers.homescreen-hero.entrypoints: "websecure"
+      traefik.http.routers.homescreen-hero.tls: "true"
+      traefik.http.services.homescreen-hero.loadbalancer.server.port: "8000"
+      homepage.group: "Media"
+      homepage.name: "Homescreen Hero"
+      homepage.icon: "plex.svg"
+      homepage.href: "https://homescreen-hero.${NOVA_DOMAIN}"
+      homepage.description: "Plex Dashboard & Collection Manager"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "8000:8000/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "homescreen_hero_data:/data"
+
   internal-webhook:
     build:
       context: ./internal-webhook
@@ -739,6 +813,9 @@ volumes:
     external: true
 
   tautulli_config:
+    external: true
+
+  homescreen_hero_data:
     external: true
 
   kometa_trigger:

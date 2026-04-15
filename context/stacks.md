@@ -107,6 +107,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | prowlarr | lscr.io/linuxserver/prowlarr | 9696 | prowlarr.NOVA_DOMAIN | Indexer aggregator; on `media` network |
 | tautulli | ghcr.io/tautulli/tautulli | 8181 | tautulli.NOVA_DOMAIN | Plex stats/monitoring |
 | seerr | ghcr.io/seerr-team/seerr | 5055 | seerr.NOVA_DOMAIN | Media request management |
+| homescreen-hero | trentferguson/homescreen-hero | 8000 | homescreen-hero.NOVA_DOMAIN | Plex dashboard: collection rotation, Tautulli/Seerr widgets, watch history tools |
 | kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00 via trigger-wrapper.sh; config in `./kometa/`; no web UI |
 | kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `./kometa/` bind-mount to write config.yml |
 | internal-webhook | local build (`./internal-webhook/`) | 9000 (internal only) | — | Internal webhook server for container-to-container triggers; only reachable from `internal_webhook` internal Docker network; currently handles `/kometa/trigger` |
@@ -119,9 +120,9 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Download paths in arr services:** torrents at `/downloads` (qbittorrent_data)
 
-**External volumes:** `bazarr_config`, `gluetun_data`, `overseerr_config` (aliased as `seerr_config`), `prowlarr_config`, `qbittorrent_config`, `qbittorrent_data`, `radarr_config`, `sonarr_config`, `tautulli_config`
+**External volumes:** `bazarr_config`, `gluetun_data`, `homescreen_hero_data`, `overseerr_config` (aliased as `seerr_config`), `prowlarr_config`, `qbittorrent_config`, `qbittorrent_data`, `radarr_config`, `sonarr_config`, `tautulli_config`
 
-**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `QBITTORRENT_USER`, `QBITTORRENT_PASS`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`
+**Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `QBITTORRENT_USER`, `QBITTORRENT_PASS`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`, `TAUTULLI_API_KEY`, `SEERR_API_KEY`, `HSH_AUTH_PASSWORD`, `HSH_AUTH_SECRET_KEY`
 
 ---
 
