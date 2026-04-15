@@ -286,6 +286,8 @@ services:
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
+      # Registries - lscr.io (LinuxServer) images not auto-detected without this
+      - "WUD_REGISTRY_LSCR_PUBLIC_URL=https://lscr.io"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ >/dev/null || exit 1"]
       interval: 30s
