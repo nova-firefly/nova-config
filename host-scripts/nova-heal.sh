@@ -2,8 +2,10 @@
 # nova-heal.sh — Periodic self-healing wrapper for nova docker stacks.
 # Deployed to /usr/local/bin/ by host-scripts/install-nova-heal.sh.
 #
-# Runs nova.sh up and notifies ntfy only when containers are actually
-# recreated/started, or when the run fails. Silent on healthy no-op runs.
+# Runs nova.sh up --no-recreate and notifies ntfy only when containers are
+# actually started/created, or when the run fails. Silent on healthy no-op runs.
+# --no-recreate ensures running containers are never touched even if compose
+# config has drifted — only stopped or missing containers are recovered.
 
 set -euo pipefail
 
@@ -41,7 +43,7 @@ log "Heal run starting"
 # Run nova.sh up with NOVA_SUPPRESS_NOTIFY=1 so it skips its own exit notification.
 # We handle ntfy here with smarter signal: only fire when something was actually healed.
 set +o pipefail
-NOVA_SUPPRESS_NOTIFY=1 "${NOVA_SH}" up 2>&1 | tee "${TMPLOG}"
+NOVA_SUPPRESS_NOTIFY=1 "${NOVA_SH}" up --no-recreate 2>&1 | tee "${TMPLOG}"
 RC=${PIPESTATUS[0]}
 set -o pipefail
 
