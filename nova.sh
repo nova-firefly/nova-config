@@ -42,7 +42,7 @@ if [[ -f .env ]]; then
   set -o allexport; source .env; set +o allexport
 fi
 
-ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test)
+ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test ai)
 
 # --- ntfy notification helper ---
 # Publishes a push notification to ntfy when a mutating compose command runs.
