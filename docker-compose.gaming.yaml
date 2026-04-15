@@ -37,11 +37,12 @@ services:
       - "VERSION=LATEST"
       - "UID=${PUID}"
       - "GID=${PGID}"
-    image: "itzg/minecraft-server:latest"
+    image: "itzg/minecraft-server:java25"
     labels:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
+    restart: unless-stopped
     ports:
       - "25565:25565/tcp"
     stdin_open: true
