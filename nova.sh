@@ -17,7 +17,7 @@
 #   orphans   Find all containers (running + stopped) not defined in any stack and offer to remove them
 #   reconcile Check all stacks for missing containers and recreate them (self-healing)
 #
-# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test
+# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test, multica
 # Omit stack name to apply to all stacks.
 #
 # Examples:
@@ -44,7 +44,7 @@ if [[ -f .env ]]; then
   set -o allexport; source .env; set +o allexport
 fi
 
-ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test)
+ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test multica)
 
 # Stacks excluded from reconcile — intentionally transient or CI-only stacks
 RECONCILE_SKIP_STACKS=(movienight-test)
