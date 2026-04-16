@@ -186,9 +186,14 @@ if [[ $# -lt 1 ]]; then
 fi
 
 CMD="$1"
-STACK="${2:-}"
 shift 1
-[[ -n "$STACK" ]] && shift
+# If next arg is present and doesn't start with '-', treat it as the stack name.
+# Flags like --no-recreate are extra args passed through to docker compose, not stack names.
+STACK=""
+if [[ -n "${1:-}" && ! "${1:-}" =~ ^- ]]; then
+  STACK="$1"
+  shift
+fi
 
 # --- Handle commands ---
 
