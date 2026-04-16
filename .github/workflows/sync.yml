@@ -13,6 +13,16 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint-env:
+    name: Lint .env.example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dotenv-linter
+        run: curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh | sh -s -- -b /usr/local/bin
+      - name: Lint .env.example
+        run: dotenv-linter --skip UnorderedKey .env.example
+
   sync:
     runs-on: ubuntu-latest
     steps:

@@ -16,6 +16,7 @@
 #   restart   Restart stack or single service (picks up config changes, no pull/rebuild)
 #   orphans   Find all containers (running + stopped) not defined in any stack and offer to remove them
 #   reconcile Check all stacks for missing containers and recreate them (self-healing)
+#   check-env Compare .env against .env.example and report any missing or extra keys
 #
 # Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test
 # Omit stack name to apply to all stacks.
@@ -480,6 +481,27 @@ case "$CMD" in
     else
       echo "==> All stacks healthy — no recovery needed."
     fi
+    ;;
+
+  check-env)
+    if ! command -v dotenv-linter &>/dev/null; then
+      echo "Error: dotenv-linter not installed." >&2
+      echo "Install: curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh | sh -s -- -b /usr/local/bin" >&2
+      exit 1
+    fi
+    if [[ ! -f .env.example ]]; then
+      echo "Error: .env.example not found" >&2
+      exit 1
+    fi
+    if [[ ! -f .env ]]; then
+      echo "Error: .env not found — copy .env.example to .env and fill in values" >&2
+      exit 1
+    fi
+    echo "==> Comparing .env against .env.example..."
+    dotenv-linter compare .env .env.example
+    echo "==> Linting .env..."
+    dotenv-linter --skip UnorderedKey .env
+    echo "==> OK"
     ;;
 
   *)

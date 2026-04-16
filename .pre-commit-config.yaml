@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/dotenv-linter/dotenv-linter
+    rev: v3.3.0
+    hooks:
+      - id: dotenv-linter
+        args: [--skip, UnorderedKey]
+
+  - repo: local
+    hooks:
+      - id: dotenv-compare
+        name: Check .env matches .env.example
+        language: system
+        entry: bash -c 'if [[ -f .env && -f .env.example ]]; then dotenv-linter compare .env .env.example; fi'
+        pass_filenames: false
+        always_run: true
