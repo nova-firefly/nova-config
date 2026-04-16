@@ -1,0 +1,123 @@
+# Multica Stack - AI Agent Orchestration Platform (builds from source)
+# Usage: docker compose -f docker-compose.multica.yaml up -d --build
+# Requires .env file for: NOVA_DOMAIN, MULTICA_JWT_SECRET, MULTICA_DB_PASSWORD
+#
+# PREREQUISITE: Clone the multica repo into nova-config/multica/ before first up:
+#   git clone https://github.com/multica-ai/multica ./multica
+#
+# First build is slow (Go compilation + Next.js build — allow 5-10 min).
+# To update multica: cd multica && git pull && cd .. && nova.sh recreate multica
+#
+# URLs after startup:
+#   Frontend:  https://multica.NOVA_DOMAIN
+#   Backend:   https://multica-api.NOVA_DOMAIN  (used by multica CLI daemon)
+#
+# Multica CLI daemon setup (run on developer machine, not in Docker):
+#   multica setup self-host --server https://multica-api.NOVA_DOMAIN
+
+name: multica
+
+networks:
+  multica_internal:
+    internal: true
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  multica-db:
+    container_name: "multica-db"
+    image: "pgvector/pgvector:pg17"
+    environment:
+      - "POSTGRES_DB=multica"
+      - "POSTGRES_USER=multica"
+      - "POSTGRES_PASSWORD=${MULTICA_DB_PASSWORD}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U multica -d multica"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - "multica_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "multica_pgdata:/var/lib/postgresql/data"
+
+  multica-backend:
+    container_name: "multica-backend"
+    build:
+      context: "./multica"
+      dockerfile: Dockerfile
+    depends_on:
+      multica-db:
+        condition: service_healthy
+    environment:
+      - "DATABASE_URL=postgres://multica:${MULTICA_DB_PASSWORD}@multica-db:5432/multica?sslmode=disable"
+      - "PORT=8080"
+      - "JWT_SECRET=${MULTICA_JWT_SECRET}"
+      - "FRONTEND_ORIGIN=https://multica.${NOVA_DOMAIN}"
+      - "CORS_ALLOWED_ORIGINS=https://multica.${NOVA_DOMAIN}"
+      - "MULTICA_APP_URL=https://multica.${NOVA_DOMAIN}"
+      - "COOKIE_DOMAIN=.${NOVA_DOMAIN}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ >/dev/null 2>&1 || wget -qO- http://localhost:8080/ >/dev/null 2>&1 || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.multica-api.rule: "Host(`multica-api.${NOVA_DOMAIN}`)"
+      traefik.http.routers.multica-api.entrypoints: "websecure"
+      traefik.http.routers.multica-api.tls: "true"
+      traefik.http.services.multica-api.loadbalancer.server.port: "8080"
+      wud.watch: "false"
+    networks:
+      - "multica_internal"
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "multica_uploads:/app/data/uploads"
+
+  multica-frontend:
+    container_name: "multica-frontend"
+    build:
+      context: "./multica"
+      dockerfile: Dockerfile.web
+      args:
+        REMOTE_API_URL: "http://multica-backend:8080"
+        NEXT_PUBLIC_WS_URL: "wss://multica-api.${NOVA_DOMAIN}"
+    depends_on:
+      - "multica-backend"
+    environment:
+      - "HOSTNAME=0.0.0.0"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.multica.rule: "Host(`multica.${NOVA_DOMAIN}`)"
+      traefik.http.routers.multica.entrypoints: "websecure"
+      traefik.http.routers.multica.tls: "true"
+      traefik.http.services.multica.loadbalancer.server.port: "3000"
+      homepage.group: "Development"
+      homepage.name: "Multica"
+      homepage.icon: "mdi-robot-outline"
+      homepage.href: "https://multica.${NOVA_DOMAIN}"
+      homepage.description: "AI Agent Team Orchestration"
+      wud.watch: "false"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+
+volumes:
+
+  multica_pgdata:
+    external: true
+
+  multica_uploads:
+    external: true

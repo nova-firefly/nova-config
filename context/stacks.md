@@ -16,6 +16,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
 | backup | docker-compose.backup.yaml | backrest, duplicati |
 | gaming | docker-compose.gaming.yaml | minecraft |
+| multica | docker-compose.multica.yaml | multica-db, multica-backend, multica-frontend |
 
 ---
 
@@ -222,6 +223,40 @@ docker volume create authelia_data && docker volume create authelia_redis
 | backrest | Restic-based backup manager (Restic-based; supports S3, B2, SFTP, and more) |
 
 **External volumes:** `backrest_backrest_cache`, `backrest_backrest_config`, `backrest_backrest_data`
+
+---
+
+## multica stack (`docker-compose.multica.yaml`)
+
+**Purpose:** AI agent team orchestration — kanban board where humans and AI agents collaborate as teammates
+
+**PREREQUISITE:** Clone the multica repo before starting:
+```bash
+git clone https://github.com/multica-ai/multica ./multica
+```
+
+**First startup:** Slow (~5-10 min) — builds Go backend and Next.js frontend from source.
+
+**To update:** `cd multica && git pull && cd .. && nova.sh recreate multica`
+
+| Service | Image/Build | Port(s) | URL | Notes |
+|---------|-------------|---------|-----|-------|
+| multica-db | pgvector/pgvector:pg17 | — | — | Internal only; pgvector extension for semantic search |
+| multica-backend | local build (`./multica`) | 8080 | multica-api.NOVA_DOMAIN | Go API + WebSocket; used by CLI daemon |
+| multica-frontend | local build (`./multica`) | 3000 | multica.NOVA_DOMAIN | Next.js web UI |
+
+**Networks:** `multica_internal` (internal: true) isolates DB from Traefik; `traefik_default` for frontend + backend
+
+**External volumes:** `multica_pgdata`, `multica_uploads`
+
+**Required env:** `MULTICA_JWT_SECRET`, `MULTICA_DB_PASSWORD`
+
+**Multica CLI daemon** (runs on developer machine, not in Docker):
+```bash
+multica setup self-host --server https://multica-api.NOVA_DOMAIN
+```
+
+**WUD:** Disabled (`wud.watch: false`) — builds from source, no image digest to track.
 
 ---
 
