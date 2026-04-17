@@ -23,6 +23,14 @@ NTFY_TOPIC="${NTFY_TOPIC:-}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [nova-heal] $*"; }
 
+# Ensure we are on the main branch before healing — skip if on a feature branch
+# to avoid applying in-progress / uncommitted config changes to production stacks.
+CURRENT_BRANCH=$(git -C "${NOVA_CONFIG_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+if [[ "${CURRENT_BRANCH}" != "main" && "${CURRENT_BRANCH}" != "master" ]]; then
+  log "Skipping heal — nova-config is on branch '${CURRENT_BRANCH}', not main/master"
+  exit 0
+fi
+
 ntfy() {
   local title="$1" body="$2" tags="$3" priority="${4:-default}"
   [[ -z "${NTFY_TOPIC}" || -z "${NOVA_DOMAIN}" ]] && return 0
