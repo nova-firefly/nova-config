@@ -1,4 +1,4 @@
-# Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer, Scrutiny
+# Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer, Scrutiny, WireGuard
 # Usage: docker compose -f docker-compose.infra.yaml up -d
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN
 
@@ -253,6 +253,50 @@ services:
       - "/var/lib/docker/volumes:/docker_volumes"
       - "samba_config:/etc/samba"
 
+  wg-easy:
+    cap_add:
+      - "NET_ADMIN"
+      - "SYS_MODULE"
+    container_name: "wg-easy"
+    environment:
+      - "TZ=${TZ}"
+      # Public hostname clients use to reach the WireGuard server.
+      # Your DuckDNS domain resolves to your current public IP — use that.
+      - "WG_HOST=${NOVA_DOMAIN}"
+      # Bcrypt password hash for the wg-easy web UI.
+      # Generate with: docker run --rm ghcr.io/wg-easy/wg-easy wgpwd
+      - "PASSWORD_HASH=${WG_EASY_PASSWORD_HASH}"
+      - "WG_PORT=51820"
+      - "PORT=51821"
+      - "WG_DEFAULT_DNS=1.1.1.1"
+    image: "ghcr.io/wg-easy/wg-easy"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.wg-easy.rule: "Host(`vpn.${NOVA_DOMAIN}`)"
+      traefik.http.routers.wg-easy.entrypoints: "websecure"
+      traefik.http.routers.wg-easy.tls: "true"
+      traefik.http.routers.wg-easy.middlewares: "authelia@file"
+      traefik.http.services.wg-easy.loadbalancer.server.port: "51821"
+      homepage.group: "Infrastructure"
+      homepage.name: "WireGuard"
+      homepage.icon: "wireguard.svg"
+      homepage.href: "https://vpn.${NOVA_DOMAIN}"
+      homepage.description: "VPN Server"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.infra,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      # WireGuard tunnel — this UDP port must be forwarded on your router to the host.
+      - "51820:51820/udp"
+    restart: "unless-stopped"
+    sysctls:
+      - "net.ipv4.ip_forward=1"
+      - "net.ipv4.conf.all.src_valid_mark=1"
+    volumes:
+      - "wg_easy_data:/etc/wireguard"
+
   wud:
     container_name: "wud"
     environment:
@@ -372,3 +416,6 @@ volumes:
     external: true
 
   arcane_data:
+
+  wg_easy_data:
+    external: true

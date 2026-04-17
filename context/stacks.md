@@ -6,7 +6,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 | Stack | File | Services |
 |-------|------|----------|
-| infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wud |
+| infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wg-easy, wud |
 | authelia | docker-compose.authelia.yaml | authelia, redis |
 | media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent |
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
@@ -31,10 +31,11 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | duckdns | lscr.io/linuxserver/duckdns | — | — | Dynamic DNS updater |
 | glances | nicolargo/glances:latest-full | 61208 (host) | glances.NOVA_DOMAIN | System monitor; host network mode → routed via traefik/dynamic.yaml |
 | volume-sharer | gdiepen/volume-sharer | 139, 445 (host) | — | Samba share of Docker volumes |
+| wg-easy | ghcr.io/wg-easy/wg-easy | 51820/udp (host), 51821 (web UI) | vpn.NOVA_DOMAIN | WireGuard VPN server; UDP 51820 must be forwarded on router |
 | wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; triggers per-stack docker-compose pull+up |
 | scrutiny | ghcr.io/analogj/scrutiny:master-omnibus | 8082→8080 | scrutiny.NOVA_DOMAIN | S.M.A.R.T. hard drive health monitoring; needs SYS_RAWIO + device passthrough |
 
-**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_data`
+**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_data`, `wg_easy_data`
 
 **Config files (bind-mounted):** `./scrutiny/scrutiny.yaml` — device labels and web config
 
