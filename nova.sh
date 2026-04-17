@@ -15,9 +15,10 @@
 #   config    Validate compose files
 #   restart   Restart stack or single service (picks up config changes, no pull/rebuild)
 #   orphans   Find all containers (running + stopped) not defined in any stack and offer to remove them
-#   reconcile Check all stacks for missing containers and recreate them (self-healing)
+#   reconcile        Check all stacks for missing containers and recreate them (self-healing)
+#   secrets-refresh  Pull secrets from 1Password Connect and regenerate .env
 #
-# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test
+# Stack names: infra, secrets, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test
 # Omit stack name to apply to all stacks.
 #
 # Examples:
@@ -44,7 +45,7 @@ if [[ -f .env ]]; then
   set -o allexport; source .env; set +o allexport
 fi
 
-ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test)
+ALL_STACKS=(infra secrets authelia media immich home backup gaming dev tools movienight movienight-test)
 
 # Stacks excluded from reconcile — intentionally transient or CI-only stacks
 RECONCILE_SKIP_STACKS=(movienight-test)
@@ -480,6 +481,30 @@ case "$CMD" in
     else
       echo "==> All stacks healthy — no recovery needed."
     fi
+    ;;
+
+  secrets-refresh)
+    # Pull secrets from 1Password Connect and regenerate .env
+    if ! command -v op &>/dev/null; then
+      echo "Error: 'op' CLI not found." >&2
+      echo "Install from: https://developer.1password.com/docs/cli/get-started/" >&2
+      exit 1
+    fi
+    if [[ -z "${OP_CONNECT_TOKEN:-}" ]]; then
+      echo "Error: OP_CONNECT_TOKEN not set in .env" >&2
+      exit 1
+    fi
+    if [[ ! -f ".env.tpl" ]]; then
+      echo "Error: .env.tpl not found" >&2
+      exit 1
+    fi
+    echo "==> Refreshing .env from 1Password Connect (http://localhost:8080)..."
+    [[ -f ".env" ]] && cp ".env" ".env.backup"
+    OP_CONNECT_HOST="http://localhost:8080" \
+    OP_CONNECT_TOKEN="${OP_CONNECT_TOKEN}" \
+      op inject -i .env.tpl -o .env
+    echo "==> Done. Restart affected stacks to apply new values:"
+    echo "    ./nova.sh restart <stack>"
     ;;
 
   *)

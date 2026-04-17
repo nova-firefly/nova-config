@@ -7,6 +7,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | Stack | File | Services |
 |-------|------|----------|
 | infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wud |
+| secrets | docker-compose.secrets.yaml | op-connect-api, op-connect-sync |
 | authelia | docker-compose.authelia.yaml | authelia, redis |
 | media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent |
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
@@ -41,6 +42,59 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 **External networks:** `traefik_default` (shared)
 
 **WUD triggers configured (in wud service env):** infra, media, backup, tools, authelia, dev stacks
+
+---
+
+## secrets stack (`docker-compose.secrets.yaml`)
+
+**Purpose:** 1Password Connect Server — serves vault secrets to the host via local REST API. Enables `./nova.sh secrets-refresh` to regenerate `.env` from 1Password without touching a file editor.
+
+| Service | Image | Port(s) | Notes |
+|---------|-------|---------|-------|
+| op-connect-api | 1password/connect-api | 127.0.0.1:8080 | REST API for `op` CLI; localhost only, no Traefik |
+| op-connect-sync | 1password/connect-sync | — | Syncs vault data from 1Password cloud |
+
+**External volumes:** `op_connect_data` (shared between both containers)
+
+**Files (bind-mounted):** `./1password-credentials.json` — gitignored; downloaded from 1password.com
+
+**Required .env:** `OP_CONNECT_TOKEN` — the one secret that stays in `.env` permanently (bootstrap key)
+
+**Workflow:**
+```bash
+# Edit a secret on phone: open 1Password app → find item → edit value
+# Then on server:
+./nova.sh secrets-refresh       # regenerates .env from 1Password
+./nova.sh restart <stack>       # picks up new value
+```
+
+**One-time bootstrap:**
+```bash
+# 1. Create Connect Server credentials
+#    1password.com → Integrations → Connect → New Server (name: "Nova")
+#    → Download 1password-credentials.json → place in nova-config/
+
+# 2. Create access token (in same flow or via API)
+#    Name: "nova-cli", grant access to "Nova Homelab" vault
+#    → Add to .env as: OP_CONNECT_TOKEN=<token>
+
+# 3. Create external volume and start stack
+docker volume create op_connect_data
+./nova.sh up secrets
+
+# 4. Verify Connect API is reachable
+curl http://localhost:8080/heartbeat
+
+# 5. Create "Nova Homelab" vault in 1Password app
+#    Populate items matching .env.tpl op:// references (see migration checklist)
+
+# 6. Dry-run injection (prints resolved .env without writing)
+OP_CONNECT_HOST=http://localhost:8080 OP_CONNECT_TOKEN=$(grep OP_CONNECT_TOKEN .env | cut -d= -f2) \
+  op inject -i .env.tpl
+
+# 7. Generate .env from 1Password
+./nova.sh secrets-refresh
+```
 
 ---
 
