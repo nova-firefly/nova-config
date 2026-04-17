@@ -484,12 +484,8 @@ case "$CMD" in
     ;;
 
   secrets-refresh)
-    # Pull secrets from 1Password Connect and regenerate .env
-    if ! command -v op &>/dev/null; then
-      echo "Error: 'op' CLI not found." >&2
-      echo "Install from: https://developer.1password.com/docs/cli/get-started/" >&2
-      exit 1
-    fi
+    # Pull secrets from 1Password Connect and regenerate .env.
+    # Runs the op CLI in a disposable container — no host install required.
     if [[ -z "${OP_CONNECT_TOKEN:-}" ]]; then
       echo "Error: OP_CONNECT_TOKEN not set in .env" >&2
       exit 1
@@ -500,9 +496,13 @@ case "$CMD" in
     fi
     echo "==> Refreshing .env from 1Password Connect (http://localhost:8080)..."
     [[ -f ".env" ]] && cp ".env" ".env.backup"
-    OP_CONNECT_HOST="http://localhost:8080" \
-    OP_CONNECT_TOKEN="${OP_CONNECT_TOKEN}" \
-      op inject -i .env.tpl -o .env
+    docker run --rm \
+      --network host \
+      -v "$(pwd)/.env.tpl:/app/.env.tpl:ro" \
+      -e OP_CONNECT_HOST="http://localhost:8080" \
+      -e OP_CONNECT_TOKEN="${OP_CONNECT_TOKEN}" \
+      1password/op:2 \
+      inject -i /app/.env.tpl > .env
     echo "==> Done. Restart affected stacks to apply new values:"
     echo "    ./nova.sh restart <stack>"
     ;;

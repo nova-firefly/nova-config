@@ -64,9 +64,12 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 ```bash
 # Edit a secret on phone: open 1Password app → find item → edit value
 # Then on server:
-./nova.sh secrets-refresh       # regenerates .env from 1Password
+./nova.sh secrets-refresh       # regenerates .env from 1Password (runs op in a container)
 ./nova.sh restart <stack>       # picks up new value
 ```
+
+**No host installs required** — `secrets-refresh` runs the `op` CLI in a disposable
+container (`1password/op:2`) using `--network host` to reach the Connect API.
 
 **One-time bootstrap:**
 ```bash
@@ -88,9 +91,12 @@ curl http://localhost:8080/heartbeat
 # 5. Create "Nova Homelab" vault in 1Password app
 #    Populate items matching .env.tpl op:// references (see migration checklist)
 
-# 6. Dry-run injection (prints resolved .env without writing)
-OP_CONNECT_HOST=http://localhost:8080 OP_CONNECT_TOKEN=$(grep OP_CONNECT_TOKEN .env | cut -d= -f2) \
-  op inject -i .env.tpl
+# 6. Dry-run injection (prints resolved .env to stdout, nothing written)
+docker run --rm --network host \
+  -v "$(pwd)/.env.tpl:/app/.env.tpl:ro" \
+  -e OP_CONNECT_HOST=http://localhost:8080 \
+  -e OP_CONNECT_TOKEN="$(grep OP_CONNECT_TOKEN .env | cut -d= -f2)" \
+  1password/op:2 inject -i /app/.env.tpl
 
 # 7. Generate .env from 1Password
 ./nova.sh secrets-refresh
