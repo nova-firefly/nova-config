@@ -1,13 +1,13 @@
 name: Sync to Nova
 
-# Keeps the nova-config checkout on the host in sync with master.
-# - Push: syncs immediately when master changes
+# Keeps the nova-config checkout on the host in sync with main.
+# - Push: syncs immediately when main changes
 # - Schedule: resets any local drift hourly (acts as a safety net)
 # - Dispatch: manual trigger via GitHub UI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   schedule:
     - cron: '0 * * * *'   # hourly — resets local changes within an hour
   workflow_dispatch:
@@ -26,5 +26,5 @@ jobs:
           script: |
             cd ${{ secrets.NOVA_CONFIG_PATH }}
             git fetch origin
-            git reset --hard origin/master
+            git reset --hard origin/main
             git submodule update --init --recursive
