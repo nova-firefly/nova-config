@@ -42,7 +42,7 @@ services:
 
   movienight-backend:
     container_name: "movienight-backend"
-    image: "ghcr.io/kjsb25/movienight-backend:latest"
+    image: "ghcr.io/nova-firefly/movienight-backend:latest"
     depends_on:
       movienight-db:
         condition: service_healthy
@@ -78,7 +78,7 @@ services:
 
   movienight-frontend:
     container_name: "movienight-frontend"
-    image: "ghcr.io/kjsb25/movienight:latest"
+    image: "ghcr.io/nova-firefly/movienight:latest"
     depends_on:
       - "movienight-backend"
     healthcheck:

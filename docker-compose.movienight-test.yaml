@@ -35,7 +35,7 @@ services:
 
   movienight-test-backend:
     container_name: movienight-test-backend
-    image: ghcr.io/kjsb25/movienight-backend:test
+    image: ghcr.io/nova-firefly/movienight-backend:test
     restart: unless-stopped
     depends_on:
       movienight-test-db:
@@ -61,7 +61,7 @@ services:
 
   movienight-test-frontend:
     container_name: movienight-test-frontend
-    image: ghcr.io/kjsb25/movienight:test
+    image: ghcr.io/nova-firefly/movienight:test
     restart: unless-stopped
     depends_on:
       - movienight-test-backend
