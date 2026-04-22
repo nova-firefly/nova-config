@@ -12,6 +12,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
+| docs | docker-compose.docs.yaml | docmost, docmost-db, docmost-redis |
 | dev | docker-compose.dev.yaml | vibe-kanban |
 | tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
 | backup | docker-compose.backup.yaml | backrest, duplicati |
@@ -40,7 +41,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **External networks:** `traefik_default` (shared)
 
-**WUD triggers configured (in wud service env):** infra, media, backup, tools, authelia, dev stacks
+**WUD triggers configured (in wud service env):** infra, media, backup, tools, authelia, dev, docs, home stacks
 
 ---
 
@@ -180,6 +181,24 @@ docker volume create authelia_data && docker volume create authelia_redis
 **Submodule:** `movienight/` is kept for local development reference only — no longer used for production builds.
 
 **Required env:** `MOVIENIGHT_DB_PASSWORD`
+
+---
+
+## docs stack (`docker-compose.docs.yaml`)
+
+**Purpose:** Collaborative wiki and documentation platform (DocMost)
+
+| Service | Image | Port(s) | URL | Notes |
+|---------|-------|---------|-----|-------|
+| docmost | docmost/docmost:latest | 3000 | docs.NOVA_DOMAIN | Wiki/docs app; protected by Authelia |
+| docmost-db | postgres:16-alpine | — | — | Internal network only |
+| docmost-redis | redis:7-alpine | — | — | Internal network only; append-only persistence |
+
+**External volumes:** `docmost_data`, `docmost_db`, `docmost_redis`
+
+**Required env:** `DOCMOST_APP_SECRET`, `DOCMOST_DB_PASSWORD`
+
+**Networks:** `docs_internal` (internal: true) isolates DB and Redis from Traefik; `traefik_default` for docmost app
 
 ---
 

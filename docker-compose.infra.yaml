@@ -283,6 +283,9 @@ services:
       - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_FILE=/compose/docker-compose.home.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_DOCS_FILE=/compose/docker-compose.docs.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_DOCS_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_DOCS_PRUNE=true"
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"

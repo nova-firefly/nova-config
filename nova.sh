@@ -44,7 +44,7 @@ if [[ -f .env ]]; then
   set -o allexport; source .env; set +o allexport
 fi
 
-ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test)
+ALL_STACKS=(infra authelia media immich home backup gaming dev tools docs movienight movienight-test)
 
 # Stacks excluded from reconcile — intentionally transient or CI-only stacks
 RECONCILE_SKIP_STACKS=(movienight-test)
