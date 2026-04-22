@@ -1,0 +1,109 @@
+# Docs Stack - DocMost collaborative wiki/docs platform
+# Usage: docker compose -f docker-compose.docs.yaml up -d
+# Requires .env file for: NOVA_DOMAIN, DOCMOST_APP_SECRET, DOCMOST_DB_PASSWORD
+
+name: docs
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+  docs_internal:
+    internal: true
+
+services:
+
+  docmost:
+    container_name: "docmost"
+    image: "docmost/docmost:latest"
+    depends_on:
+      docmost-db:
+        condition: service_healthy
+      docmost-redis:
+        condition: service_healthy
+    environment:
+      - "APP_URL=https://docs.${NOVA_DOMAIN}"
+      - "APP_SECRET=${DOCMOST_APP_SECRET}"
+      - "DATABASE_URL=postgresql://docmost:${DOCMOST_DB_PASSWORD}@docmost-db:5432/docmost?sslmode=disable"
+      - "REDIS_URL=redis://docmost-redis:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      # Traefik
+      traefik.enable: "true"
+      traefik.http.routers.docmost.rule: "Host(`docs.${NOVA_DOMAIN}`)"
+      traefik.http.routers.docmost.entrypoints: "websecure"
+      traefik.http.routers.docmost.tls: "true"
+      traefik.http.routers.docmost.middlewares: "authelia@file"
+      traefik.http.services.docmost.loadbalancer.server.port: "3000"
+      # Homepage
+      homepage.group: "Tools"
+      homepage.name: "DocMost"
+      homepage.icon: "mdi-notebook-edit"
+      homepage.href: "https://docs.${NOVA_DOMAIN}"
+      homepage.description: "Wiki & Docs"
+      # WUD
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.docs,discord.notify"
+    networks:
+      - "traefik_default"
+      - "docs_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "docmost_data:/app/data/storage"
+
+  docmost-db:
+    container_name: "docmost-db"
+    image: "postgres:16-alpine"
+    environment:
+      - "POSTGRES_DB=docmost"
+      - "POSTGRES_USER=docmost"
+      - "POSTGRES_PASSWORD=${DOCMOST_DB_PASSWORD}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docmost -d docmost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.tag.include: "^16-alpine$"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "docs_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "docmost_db:/var/lib/postgresql/data"
+
+  docmost-redis:
+    container_name: "docmost-redis"
+    image: "redis:7-alpine"
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.tag.include: "^7-alpine$"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "docs_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "docmost_redis:/data"
+
+volumes:
+  docmost_data:
+    external: true
+  docmost_db:
+    external: true
+  docmost_redis:
+    external: true
