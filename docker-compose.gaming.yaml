@@ -186,6 +186,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "/var/lib/pterodactyl:/var/lib/pterodactyl"
       - "/tmp/pterodactyl:/tmp/pterodactyl"
+      - "/run/wings:/run/wings"
       - "./pterodactyl:/etc/pterodactyl"
       - "/etc/ssl/certs:/etc/ssl/certs:ro"
 
