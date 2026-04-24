@@ -2,6 +2,7 @@
 # Images tagged :test are built by the deploy-test.yml workflow on each PR push.
 # Usage:  docker compose -f docker-compose.movienight-test.yaml up -d
 # Requires in .env:  NOVA_DOMAIN  MOVIENIGHT_TEST_DB_PASSWORD  TMDB_API_KEY
+#   Optional: MOVIENIGHT_SMTP_HOST, MOVIENIGHT_SMTP_USER, MOVIENIGHT_SMTP_PASS (for password reset)
 # One-time setup:    docker volume create movienight_test_db
 
 name: movienight-test
@@ -49,6 +50,14 @@ services:
       PORT: 4000
       NODE_ENV: development
       TMDB_API_KEY: ${TMDB_API_KEY}
+      # SMTP for password-reset emails (optional for test)
+      SMTP_HOST: ${MOVIENIGHT_SMTP_HOST:-}
+      SMTP_PORT: ${MOVIENIGHT_SMTP_PORT:-587}
+      SMTP_SECURE: ${MOVIENIGHT_SMTP_SECURE:-false}
+      SMTP_USER: ${MOVIENIGHT_SMTP_USER:-}
+      SMTP_PASS: ${MOVIENIGHT_SMTP_PASS:-}
+      SMTP_FROM: ${MOVIENIGHT_SMTP_FROM:-noreply@movienight.local}
+      APP_URL: https://movienight-test.${NOVA_DOMAIN}
     labels:
       traefik.enable: "true"
       traefik.http.routers.movienight-test-api.rule: "Host(`movienight-test.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
