@@ -1,6 +1,7 @@
 # MovieNight Stack - Movie suggestion app
 # Usage: docker compose -f docker-compose.movienight.yaml up -d
-# Requires .env file for: NOVA_DOMAIN, MOVIENIGHT_DB_PASSWORD
+# Requires .env file for: NOVA_DOMAIN, MOVIENIGHT_DB_PASSWORD, MOVIENIGHT_JWT_SECRET,
+#   MOVIENIGHT_ADMIN_PASSWORD, MOVIENIGHT_SMTP_HOST, MOVIENIGHT_SMTP_USER, MOVIENIGHT_SMTP_PASS
 # Note: movienight submodule must be initialized (git submodule update --init)
 
 name: movienight
@@ -54,6 +55,8 @@ services:
       - "DB_PASSWORD=${MOVIENIGHT_DB_PASSWORD}"
       - "PORT=4000"
       - "NODE_ENV=production"
+      - "JWT_SECRET=${MOVIENIGHT_JWT_SECRET}"
+      - "ADMIN_PASSWORD=${MOVIENIGHT_ADMIN_PASSWORD}"
       - "TMDB_API_KEY=${TMDB_API_KEY}"
       # Path inside the container where Kometa collection files are written.
       # Mounted from ./kometa/collections so exports land directly in nova-config.
@@ -61,6 +64,14 @@ services:
       # Webhook URL to trigger an immediate kometa run after each export.
       # internal-webhook is reachable via the shared internal_webhook internal network.
       - "KOMETA_TRIGGER_URL=http://internal-webhook:9000/kometa/trigger"
+      # SMTP for password-reset emails
+      - "SMTP_HOST=${MOVIENIGHT_SMTP_HOST:-}"
+      - "SMTP_PORT=${MOVIENIGHT_SMTP_PORT:-587}"
+      - "SMTP_SECURE=${MOVIENIGHT_SMTP_SECURE:-true}"
+      - "SMTP_USER=${MOVIENIGHT_SMTP_USER:-}"
+      - "SMTP_PASS=${MOVIENIGHT_SMTP_PASS:-}"
+      - "SMTP_FROM=${MOVIENIGHT_SMTP_FROM:-noreply@movienight.local}"
+      - "APP_URL=https://movienight.${NOVA_DOMAIN}"
     labels:
       traefik.enable: "true"
       traefik.http.routers.movienight-api.rule: "Host(`movienight.${NOVA_DOMAIN}`) && PathPrefix(`/graphql`)"
