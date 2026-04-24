@@ -102,6 +102,8 @@ services:
 
   pterodactyl-panel:
     container_name: "pterodactyl-panel"
+    extra_hosts:
+      - "wings.${NOVA_DOMAIN}:host-gateway"
     image: "ghcr.io/pterodactyl/panel:latest"
     depends_on:
       pterodactyl-db:
