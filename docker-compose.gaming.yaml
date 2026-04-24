@@ -1,56 +1,166 @@
-# Gaming Stack - Minecraft Server
+# Gaming Stack - Game Server Management
 # Usage: docker compose -f docker-compose.gaming.yaml up -d
+#
+# Pterodactyl setup (first run):
+#   1. Boot the stack: ./nova.sh up gaming
+#   2. Create admin user:
+#      docker exec -it pterodactyl-panel php artisan p:user:make
+#   3. Log in at https://pterodactyl.NOVA_DOMAIN and create a Node
+#      (Admin > Nodes > Create New). Set FQDN to wings.NOVA_DOMAIN,
+#      scheme HTTPS, port 443, daemon port 2022.
+#   4. On the Node config page, click "Generate Token" and copy the
+#      config block. Save it to ./pterodactyl/config.yml on the host.
+#   5. Wings will auto-restart, read config.yml, and connect to the panel.
+#
+# NOTE: Wings requires privileged mode and the host Docker socket to
+#       create and manage game server containers.
 
 name: gaming
 
 services:
 
-  minecraft:
-    cap_drop:
-      - "AUDIT_CONTROL"
-      - "BLOCK_SUSPEND"
-      - "DAC_READ_SEARCH"
-      - "IPC_LOCK"
-      - "IPC_OWNER"
-      - "LEASE"
-      - "LINUX_IMMUTABLE"
-      - "MAC_ADMIN"
-      - "MAC_OVERRIDE"
-      - "NET_ADMIN"
-      - "NET_BROADCAST"
-      - "SYSLOG"
-      - "SYS_ADMIN"
-      - "SYS_BOOT"
-      - "SYS_MODULE"
-      - "SYS_NICE"
-      - "SYS_PACCT"
-      - "SYS_PTRACE"
-      - "SYS_RAWIO"
-      - "SYS_RESOURCE"
-      - "SYS_TIME"
-      - "SYS_TTY_CONFIG"
-      - "WAKE_ALARM"
-    container_name: "minecraft"
+  pterodactyl-db:
+    container_name: "pterodactyl-db"
+    image: "mariadb:11"
     environment:
-      - "EULA=TRUE"
-      - "TYPE=VANILLA"
-      - "VERSION=LATEST"
-      - "UID=${PUID}"
-      - "GID=${PGID}"
-    image: "itzg/minecraft-server:java25"
+      - "MYSQL_DATABASE=pterodactyl"
+      - "MYSQL_USER=pterodactyl"
+      - "MYSQL_PASSWORD=${PTERODACTYL_DB_PASSWORD}"
+      - "MYSQL_ROOT_PASSWORD=${PTERODACTYL_DB_ROOT_PASSWORD}"
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh --su-mysql --connect --innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     labels:
+      wud.watch: "false"
+    networks:
+      - "gaming_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "pterodactyl_db:/var/lib/mysql"
+
+  pterodactyl-cache:
+    container_name: "pterodactyl-cache"
+    image: "redis:7-alpine"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    labels:
+      wud.watch: "false"
+    networks:
+      - "gaming_internal"
+    restart: "unless-stopped"
+
+  pterodactyl-panel:
+    container_name: "pterodactyl-panel"
+    extra_hosts:
+      - "wings.${NOVA_DOMAIN}:host-gateway"
+    image: "ghcr.io/pterodactyl/panel:latest"
+    depends_on:
+      pterodactyl-db:
+        condition: service_healthy
+      pterodactyl-cache:
+        condition: service_healthy
+    environment:
+      - "APP_ENV=production"
+      - "APP_URL=https://pterodactyl.${NOVA_DOMAIN}"
+      - "APP_TIMEZONE=${TZ}"
+      - "APP_SERVICE_AUTHOR=${PTERODACTYL_APP_SERVICE_AUTHOR}"
+      - "APP_KEY=${PTERODACTYL_APP_KEY}"
+      - "CACHE_DRIVER=redis"
+      - "SESSION_DRIVER=redis"
+      - "QUEUE_DRIVER=redis"
+      - "REDIS_HOST=pterodactyl-cache"
+      - "DB_HOST=pterodactyl-db"
+      - "DB_PORT=3306"
+      - "DB_DATABASE=pterodactyl"
+      - "DB_USERNAME=pterodactyl"
+      - "DB_PASSWORD=${PTERODACTYL_DB_PASSWORD}"
+      - "HASHIDS_SALT=${PTERODACTYL_HASHIDS_SALT}"
+      - "HASHIDS_LENGTH=8"
+      - "MAIL_DRIVER=${PTERODACTYL_MAIL_DRIVER:-log}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    labels:
+      # Traefik
+      traefik.enable: "true"
+      traefik.http.routers.pterodactyl.rule: "Host(`pterodactyl.${NOVA_DOMAIN}`)"
+      traefik.http.routers.pterodactyl.entrypoints: "websecure"
+      traefik.http.routers.pterodactyl.tls: "true"
+      traefik.http.services.pterodactyl.loadbalancer.server.port: "80"
+      # Homepage
+      homepage.group: "Tools"
+      homepage.name: "Pterodactyl"
+      homepage.icon: "pterodactyl.svg"
+      homepage.href: "https://pterodactyl.${NOVA_DOMAIN}"
+      homepage.description: "Game server management panel"
+      # WUD
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
-    restart: unless-stopped
+      wud.trigger.include: "dockercompose.gaming,discord.notify"
+    networks:
+      - "traefik_default"
+      - "gaming_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "pterodactyl_panel_var:/app/var"
+      - "pterodactyl_panel_logs:/app/storage/logs"
+
+  pterodactyl-wings:
+    container_name: "pterodactyl-wings"
+    image: "ghcr.io/pterodactyl/wings:latest"
+    environment:
+      - "TZ=${TZ}"
+    labels:
+      # Traefik - Wings API (Panel communicates with Wings over HTTPS)
+      traefik.enable: "true"
+      traefik.http.routers.pterodactyl-wings.rule: "Host(`wings.${NOVA_DOMAIN}`)"
+      traefik.http.routers.pterodactyl-wings.entrypoints: "websecure"
+      traefik.http.routers.pterodactyl-wings.tls: "true"
+      traefik.http.services.pterodactyl-wings.loadbalancer.server.port: "8080"
+      # WUD
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.gaming,discord.notify"
+    networks:
+      - "traefik_default"
     ports:
-      - "25565:25565/tcp"
-    stdin_open: true
+      - "2022:2022/tcp"
+    privileged: true
+    restart: "unless-stopped"
     tty: true
     volumes:
-      - "minecraft_data:/data"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/var/lib/pterodactyl:/var/lib/pterodactyl"
+      - "/tmp/pterodactyl:/tmp/pterodactyl"
+      - "/run/wings:/run/wings"
+      - "./pterodactyl:/etc/pterodactyl"
+      - "/etc/ssl/certs:/etc/ssl/certs:ro"
+
+networks:
+
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+  gaming_internal:
+    internal: true
 
 volumes:
 
-  minecraft_data:
+  pterodactyl_db:
+    external: true
+
+  pterodactyl_panel_var:
+    external: true
+
+  pterodactyl_panel_logs:
     external: true
