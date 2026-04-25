@@ -3,6 +3,10 @@
 .env.local
 .env.*.local
 
+# 1Password Connect Server credentials
+# Download from 1password.com → Integrations → Connect → New Server
+1password-credentials.json
+
 # Backup files
 *.bak
 *.backup
