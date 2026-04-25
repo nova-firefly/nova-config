@@ -16,6 +16,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
 | backup | docker-compose.backup.yaml | backrest, duplicati |
 | gaming | docker-compose.gaming.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
+| geopulse | docker-compose.geopulse.yaml | geopulse-keygen, geopulse-postgres, geopulse-backend, geopulse-ui |
 
 ---
 
@@ -40,7 +41,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **External networks:** `traefik_default` (shared)
 
-**WUD triggers configured (in wud service env):** infra, media, backup, tools, authelia, dev, gaming stacks
+**WUD triggers configured (in wud service env):** infra, media, backup, tools, authelia, dev, gaming, geopulse stacks
 
 ---
 
@@ -268,6 +269,45 @@ docker exec -it pterodactyl-panel php artisan p:user:make
 #    Copy the generated config block → save to ./pterodactyl/config.yml
 
 # 6. Wings picks up config.yml on next restart and connects to the panel
+```
+
+---
+
+## geopulse stack (`docker-compose.geopulse.yaml`)
+
+**Purpose:** Google Timeline alternative — location tracking, trip history, and Immich photo integration
+
+| Service | Image | Port(s) | URL | Notes |
+|---------|-------|---------|-----|-------|
+| geopulse-keygen | alpine:latest | — | — | Init container; generates JWT RSA keys and AI encryption key into `geopulse_keys` volume |
+| geopulse-postgres | postgis/postgis:17-3.5 | — | — | PostGIS-enabled PostgreSQL; internal network only |
+| geopulse-backend | tess1o/geopulse-backend | 8080 (internal) | — | Java/Quarkus API; 512MB mem limit; on both internal and traefik_default |
+| geopulse-ui | tess1o/geopulse-ui | 5555→80 | geopulse.NOVA_DOMAIN | Vue 3 frontend with nginx proxy to backend |
+
+**Networks:** `geopulse_internal` (internal: true) isolates Postgres; `traefik_default` for UI and backend
+
+**Immich integration:** Backend reaches Immich via `traefik_default` at `http://immich_server:2283`. Configure in GeoPulse Admin Panel > Integrations with an Immich API key.
+
+**External volumes:** `geopulse_keys` (JWT keys), `geopulse_postgres_data`
+
+**Required env:** `GEOPULSE_VERSION`, `GEOPULSE_POSTGRES_PASSWORD`, `GEOPULSE_POSTGRES_USERNAME`, `GEOPULSE_POSTGRES_DB`, `GEOPULSE_ADMIN_EMAIL`
+
+**First-run setup:**
+```bash
+# 1. Create external volumes
+docker volume create geopulse_keys
+docker volume create geopulse_postgres_data
+
+# 2. Copy env vars from .env.example to .env, set GEOPULSE_POSTGRES_PASSWORD and GEOPULSE_ADMIN_EMAIL
+
+# 3. Start the stack
+./nova.sh up geopulse
+
+# 4. Register with the email set in GEOPULSE_ADMIN_EMAIL to get admin role
+
+# 5. Configure Immich: Admin Panel > Integrations > Immich
+#    URL: http://immich_server:2283
+#    API Key: (generate in Immich > User Settings > API Keys)
 ```
 
 ---
