@@ -1,0 +1,157 @@
+# GeoPulse Stack - Google Timeline alternative with location tracking and Immich photo integration
+# Usage: docker compose -f docker-compose.geopulse.yaml up -d
+# Requires .env file for: GEOPULSE_VERSION, GEOPULSE_POSTGRES_PASSWORD, GEOPULSE_ADMIN_EMAIL, NOVA_DOMAIN
+
+name: geopulse
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+  geopulse_internal:
+    internal: true
+
+services:
+
+  geopulse-keygen:
+    container_name: "geopulse-keygen"
+    image: "alpine:latest"
+    restart: "no"
+    volumes:
+      - "geopulse_keys:/keys"
+    command:
+      - sh
+      - -ec
+      - |
+        set -e
+        mkdir -p /keys
+        if [ ! -f /keys/jwt-private-key.pem ] || [ ! -f /keys/jwt-public-key.pem ]; then
+          command -v openssl >/dev/null 2>&1 || apk add --no-cache openssl
+          openssl genpkey -algorithm RSA -out /keys/jwt-private-key.pem
+          openssl rsa -pubout -in /keys/jwt-private-key.pem -out /keys/jwt-public-key.pem
+          chmod 644 /keys/jwt-private-key.pem /keys/jwt-public-key.pem
+        fi
+        if [ ! -f /keys/ai-encryption-key.txt ]; then
+          command -v openssl >/dev/null 2>&1 || apk add --no-cache openssl
+          openssl rand -base64 32 > /keys/ai-encryption-key.txt
+          chmod 644 /keys/ai-encryption-key.txt
+        fi
+    labels:
+      wud.watch: "false"
+
+  geopulse-postgres:
+    container_name: "geopulse-postgres"
+    image: "postgis/postgis:17-3.5"
+    environment:
+      POSTGRES_USER: "${GEOPULSE_POSTGRES_USERNAME}"
+      POSTGRES_PASSWORD: "${GEOPULSE_POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${GEOPULSE_POSTGRES_DB}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${GEOPULSE_POSTGRES_USERNAME} -d ${GEOPULSE_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      wud.watch: "true"
+      wud.trigger.include: "dockercompose.geopulse,discord.notify"
+    networks:
+      - "geopulse_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "geopulse_postgres_data:/var/lib/postgresql/data"
+
+  geopulse-backend:
+    container_name: "geopulse-backend"
+    image: "tess1o/geopulse-backend:${GEOPULSE_VERSION}-native"
+    mem_limit: 512m
+    mem_reservation: 128m
+    env_file:
+      - .env
+    environment:
+      - "GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}"
+    depends_on:
+      geopulse-keygen:
+        condition: service_completed_successfully
+      geopulse-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    labels:
+      wud.watch: "true"
+      wud.trigger.include: "dockercompose.geopulse,discord.notify"
+    networks:
+      - "geopulse_internal"
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "geopulse_keys:/app/keys"
+
+  geopulse-ui:
+    container_name: "geopulse-ui"
+    image: "tess1o/geopulse-ui:${GEOPULSE_VERSION}"
+    env_file:
+      - .env
+    depends_on:
+      geopulse-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:80/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    labels:
+      # Traefik
+      traefik.enable: "true"
+      traefik.http.routers.geopulse.rule: "Host(`geopulse.${NOVA_DOMAIN}`)"
+      traefik.http.routers.geopulse.entrypoints: "websecure"
+      traefik.http.routers.geopulse.tls: "true"
+      traefik.http.services.geopulse.loadbalancer.server.port: "80"
+      # Homepage
+      homepage.group: "Tools"
+      homepage.name: "GeoPulse"
+      homepage.icon: "mdi-map-marker-path"
+      homepage.href: "https://geopulse.${NOVA_DOMAIN}"
+      homepage.description: "Location Timeline"
+      # WUD
+      wud.watch: "true"
+      wud.trigger.include: "dockercompose.geopulse,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "5555:80/tcp"
+    restart: "unless-stopped"
+
+volumes:
+  geopulse_keys:
+    external: true
+  geopulse_postgres_data:
+    external: true

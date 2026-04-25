@@ -286,6 +286,9 @@ services:
       - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_FILE=/compose/docker-compose.gaming.yaml"
       - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_BACKUP=true"
       - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_PRUNE=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_GEOPULSE_FILE=/compose/docker-compose.geopulse.yaml"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_GEOPULSE_BACKUP=true"
+      - "WUD_TRIGGER_DOCKERCOMPOSE_GEOPULSE_PRUNE=true"
       # Discord notification trigger
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
