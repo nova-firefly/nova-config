@@ -13,6 +13,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | docker-compose.dev.yaml | vibe-kanban |
+| kandev | docker-compose.kandev.yaml | kandev |
 | tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
 | backup | docker-compose.backup.yaml | backrest, duplicati |
 | gaming | docker-compose.gaming.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
@@ -197,6 +198,29 @@ docker volume create authelia_data && docker volume create authelia_redis
 **Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`
 
 **Required GitHub secrets (vibe-kanban-tools repo):** `NOVA_HOST`, `NOVA_USER`, `NOVA_SSH_KEY`
+
+---
+
+## kandev stack (`docker-compose.kandev.yaml`)
+
+**Purpose:** AI kanban + dev environment — vibe-kanban alternative under evaluation since vibe-kanban is sunsetting (https://github.com/kdlbs/kandev, AGPL-3.0)
+
+| Service | Image | Port(s) | URL | Notes |
+|---------|-------|---------|-----|-------|
+| kandev | ghcr.io/kdlbs/kandev:latest | 38429 | kandev.NOVA_DOMAIN | Single port serves API + WebSocket + Web UI; SQLite + worktrees in `/data` |
+
+**Docker socket:** Same read-only `socket-proxy` access vibe-kanban has, exposed via `DOCKER_HOST=tcp://socket-proxy:2375`. `KANDEV_DOCKER_ENABLED=false` because the read-only proxy can't create containers — agents must use the local-process executor.
+
+**Volumes:**
+- `kandev-data` (compose-managed) — DB, worktrees, sessions at `/data`
+- Host bind mounts `/home/koonan/.ssh` and `/home/koonan/.gitconfig` (`:ro`) into `/home/kandev/` so the in-container `kandev` user (uid 1000) can use existing git auth
+- Read-only mounts of arr/tools config volumes at `/mnt/configs/<svc>` (same set vibe-kanban exposes) for agent log/config inspection
+
+**Required env:** `GH_TOKEN` (reused from dev stack)
+
+**Optional env:** `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` — uncomment matching env lines in the compose file after setting
+
+**Caveat:** The official `ghcr.io/kdlbs/kandev` image does **not** ship with Claude Code, Codex, or other agent CLIs pre-installed. If kandev expects these on PATH (TBD during evaluation), build a derived image — see `vibe-kanban/Dockerfile` for the pattern.
 
 ---
 

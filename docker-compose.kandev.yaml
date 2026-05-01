@@ -1,0 +1,139 @@
+# Kandev Stack - AI Kanban & Development Environment (vibe-kanban alternative)
+# Usage: docker compose -f docker-compose.kandev.yaml up -d
+#
+# Upstream: https://github.com/kdlbs/kandev (AGPL-3.0)
+# Image: ghcr.io/kdlbs/kandev:latest — single port serves API + WebSocket + Web UI
+#
+# Note on docker socket access:
+#   This stack mirrors vibe-kanban's read-only socket-proxy access via
+#   DOCKER_HOST=tcp://socket-proxy:2375. Kandev's "run agent in Docker container"
+#   executor (KANDEV_DOCKER_ENABLED=true) cannot create containers through the
+#   read-only proxy — agents must use the default local-process executor.
+
+name: kandev
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+  socket_proxy:
+    external: true
+    name: "socket_proxy"
+
+services:
+
+  kandev:
+    image: "ghcr.io/kdlbs/kandev:latest"
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "kandev"
+    environment:
+      - "TZ=${TZ}"
+      - "KANDEV_HOME_DIR=/data"
+      - "KANDEV_NO_BROWSER=1"
+      # Read-only docker socket proxy — same access vibe-kanban has.
+      # KANDEV_DOCKER_ENABLED stays false (default) since the proxy cannot
+      # create containers; flip to true only if you swap to a writable socket.
+      - "DOCKER_HOST=tcp://socket-proxy:2375"
+      - "KANDEV_DOCKER_ENABLED=false"
+      # Agent provider credentials — uncomment whichever providers you use.
+      # - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
+      # - "OPENAI_API_KEY=${OPENAI_API_KEY:-}"
+      # - "GEMINI_API_KEY=${GEMINI_API_KEY:-}"
+      - "GH_TOKEN=${GH_TOKEN}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:38429/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    hostname: "${NOVA_HOSTNAME}"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.kandev.rule: "Host(`kandev.${NOVA_DOMAIN}`)"
+      traefik.http.routers.kandev.entrypoints: "websecure"
+      traefik.http.routers.kandev.tls: "true"
+      traefik.http.routers.kandev.middlewares: "authelia@file"
+      traefik.http.services.kandev.loadbalancer.server.port: "38429"
+      homepage.group: "Development"
+      homepage.name: "Kandev"
+      homepage.icon: "https://www.google.com/s2/favicons?domain=github.com/kdlbs/kandev&sz=128"
+      homepage.href: "https://kandev.${NOVA_DOMAIN}"
+      homepage.description: "AI Kanban & Dev Environment"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.kandev,discord.notify"
+    networks:
+      - "traefik_default"
+      - "socket_proxy"
+    ports:
+      - "38429:38429/tcp"
+    restart: "unless-stopped"
+    volumes:
+      # Kandev DB, worktrees, sessions
+      - "kandev-data:/data"
+      # Reuse host SSH key + gitconfig so kandev can clone/push private repos.
+      # The image runs as user `kandev` (uid 1000); host user koonan (uid 1000)
+      # owns these files, so :ro mounts at /home/kandev/* are readable.
+      - "/home/koonan/.ssh:/home/kandev/.ssh:ro"
+      - "/home/koonan/.gitconfig:/home/kandev/.gitconfig:ro"
+      # Service config volumes (read-only) — same set vibe-kanban exposes
+      # so agents can inspect logs/config when debugging the stack.
+      - "bazarr_config:/mnt/configs/bazarr:ro"
+      - "prowlarr_config:/mnt/configs/prowlarr:ro"
+      - "seerr_config:/mnt/configs/seerr:ro"
+      - "qbittorrent_config:/mnt/configs/qbittorrent:ro"
+      - "radarr_config:/mnt/configs/radarr:ro"
+      - "sonarr_config:/mnt/configs/sonarr:ro"
+      - "tautulli_config:/mnt/configs/tautulli:ro"
+      - "stirling_config:/mnt/configs/stirling:ro"
+      - "samba_config:/mnt/configs/samba:ro"
+      - "backrest_backrest_config:/mnt/configs/backrest:ro"
+
+volumes:
+
+  kandev-data:
+
+  # Config volumes — read-only access for log/config inspection
+  bazarr_config:
+    external: true
+  prowlarr_config:
+    external: true
+  seerr_config:
+    external: true
+  qbittorrent_config:
+    external: true
+  radarr_config:
+    external: true
+  sonarr_config:
+    external: true
+  tautulli_config:
+    external: true
+  stirling_config:
+    external: true
+  samba_config:
+    external: true
+  backrest_backrest_config:
+    external: true
