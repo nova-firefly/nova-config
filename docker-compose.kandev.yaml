@@ -65,6 +65,8 @@ services:
       - "TZ=${TZ}"
       - "KANDEV_HOME_DIR=/data"
       - "KANDEV_NO_BROWSER=1"
+      # Verbose logging — drop back to "info" after debugging the auth flow.
+      - "KANDEV_LOG_LEVEL=debug"
       # Read-only docker socket proxy — same access vibe-kanban has.
       # KANDEV_DOCKER_ENABLED stays false (default) since the proxy cannot
       # create containers; flip to true only if you swap to a writable socket.
@@ -74,8 +76,11 @@ services:
       # - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
       # - "OPENAI_API_KEY=${OPENAI_API_KEY:-}"
       # - "GEMINI_API_KEY=${GEMINI_API_KEY:-}"
-      # GitHub PAT is entered in kandev's settings UI and stored in its DB —
-      # no GH_TOKEN env var needed.
+      # GitHub PAT — kandev's settings UI also accepts a token, but providing
+      # GITHUB_TOKEN here is one of its supported auth methods and avoids
+      # interactive setup. Note the name: kandev (via go-github) reads
+      # GITHUB_TOKEN, not GH_TOKEN.
+      - "GITHUB_TOKEN=${GH_TOKEN}"
     healthcheck:
       # Upstream kandev image has no wget/curl — use node's built-in http
       # module (node is on PATH because the base is node:24-bookworm-slim).

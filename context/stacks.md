@@ -221,7 +221,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 - Host bind mounts `/home/koonan/.ssh` and `/home/koonan/.gitconfig` (`:ro`) into `/home/kandev/` so the in-container `kandev` user (uid 1000) can use existing git auth
 - Read-only mounts of arr/tools config volumes at `/mnt/configs/<svc>` (same set vibe-kanban exposes) for agent log/config inspection
 
-**Required env:** none (GitHub auth handled in-app)
+**Required env:** `GH_TOKEN` (mapped into the container as `GITHUB_TOKEN`, kandev's go-github default). Settings UI also accepts a PAT directly; the env-var path bypasses that step.
 
 **Optional env:** `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` — uncomment matching env lines in the compose file after setting
 
