@@ -10,6 +10,8 @@ networks:
   socket_proxy:
     external: true
     name: "socket_proxy"
+  vibe_remote_internal:
+    internal: true
 
 services:
 
@@ -52,6 +54,7 @@ services:
       - "TZ=${TZ}"
       - "IS_SANDBOX=1"
       - "DOCKER_HOST=tcp://socket-proxy:2375"
+      - "VK_SHARED_API_BASE=https://kanban-remote.${NOVA_DOMAIN}"
     hostname: "${NOVA_HOSTNAME}"
     labels:
       traefik.enable: "true"
@@ -69,6 +72,7 @@ services:
     networks:
       - "traefik_default"
       - "socket_proxy"
+      - "vibe_remote_internal"
     ports:
       - "4000:4000/tcp"
     restart: "unless-stopped"
@@ -126,6 +130,100 @@ services:
       - "3001:3000/tcp"
     restart: "unless-stopped"
 
+  vibe-kanban-remote-db:
+    image: "postgres:16-alpine"
+    container_name: "vibe-kanban-remote-db"
+    command: ["postgres", "-c", "wal_level=logical"]
+    environment:
+      POSTGRES_DB: "remote"
+      POSTGRES_USER: "remote"
+      POSTGRES_PASSWORD: "${VIBE_REMOTE_DB_PASSWORD}"
+      TZ: "${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remote -d remote"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      wud.watch: "false"
+    networks:
+      - "vibe_remote_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "vibe-kanban-remote-db:/var/lib/postgresql/data"
+
+  vibe-kanban-electric:
+    image: "electricsql/electric:1.4.13"
+    container_name: "vibe-kanban-electric"
+    depends_on:
+      vibe-kanban-remote-db:
+        condition: "service_healthy"
+      vibe-kanban-remote:
+        condition: "service_healthy"
+    environment:
+      DATABASE_URL: "postgresql://electric_sync:${VIBE_REMOTE_ELECTRIC_PASSWORD}@vibe-kanban-remote-db:5432/remote?sslmode=disable"
+      PG_PROXY_PORT: "65432"
+      LOGICAL_PUBLISHER_HOST: "vibe-kanban-electric"
+      AUTH_MODE: "insecure"
+      ELECTRIC_INSECURE: "true"
+      ELECTRIC_MANUAL_TABLE_PUBLISHING: "true"
+      ELECTRIC_USAGE_REPORTING: "false"
+      ELECTRIC_FEATURE_FLAGS: "allow_subqueries,tagged_subqueries"
+      TZ: "${TZ}"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "false"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "vibe_remote_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "vibe-kanban-electric:/app/persistent"
+
+  vibe-kanban-remote:
+    build:
+      context: "./vibe-kanban-remote"
+      dockerfile: "crates/remote/Dockerfile"
+      args:
+        VITE_RELAY_API_BASE_URL: "https://kanban-remote.${NOVA_DOMAIN}"
+    container_name: "vibe-kanban-remote"
+    depends_on:
+      vibe-kanban-remote-db:
+        condition: "service_healthy"
+    environment:
+      RUST_LOG: "info,remote=info"
+      SERVER_DATABASE_URL: "postgres://remote:${VIBE_REMOTE_DB_PASSWORD}@vibe-kanban-remote-db:5432/remote"
+      SERVER_LISTEN_ADDR: "0.0.0.0:8081"
+      ELECTRIC_URL: "http://vibe-kanban-electric:3000"
+      ELECTRIC_ROLE_PASSWORD: "${VIBE_REMOTE_ELECTRIC_PASSWORD}"
+      SERVER_PUBLIC_BASE_URL: "https://kanban-remote.${NOVA_DOMAIN}"
+      VIBEKANBAN_REMOTE_JWT_SECRET: "${VIBE_REMOTE_JWT_SECRET}"
+      SELF_HOST_LOCAL_AUTH_EMAIL: "${VIBE_REMOTE_BOOTSTRAP_EMAIL}"
+      SELF_HOST_LOCAL_AUTH_PASSWORD: "${VIBE_REMOTE_BOOTSTRAP_PASSWORD}"
+      TZ: "${TZ}"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.vibe-kanban-remote.rule: "Host(`kanban-remote.${NOVA_DOMAIN}`)"
+      traefik.http.routers.vibe-kanban-remote.entrypoints: "websecure"
+      traefik.http.routers.vibe-kanban-remote.tls: "true"
+      traefik.http.services.vibe-kanban-remote.loadbalancer.server.port: "8081"
+      homepage.group: "Development"
+      homepage.name: "Vibe Kanban Remote"
+      homepage.icon: "https://www.google.com/s2/favicons?domain=vibekanban.com/&sz=128"
+      homepage.href: "https://kanban-remote.${NOVA_DOMAIN}"
+      homepage.description: "Self-hosted Vibe Kanban backend"
+      wud.watch: "false"
+    networks:
+      - "traefik_default"
+      - "vibe_remote_internal"
+    restart: "unless-stopped"
+
 volumes:
 
   vibe-kanban-repos:
@@ -157,3 +255,7 @@ volumes:
   vibe-kanban-cache:
 
   vibe-kanban-data:
+
+  vibe-kanban-remote-db:
+
+  vibe-kanban-electric:

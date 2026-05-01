@@ -189,14 +189,38 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
-| vibe-kanban | local build (`./vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
+| vibe-kanban | local build (`./vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001. Connects to vibe-kanban-remote via `VK_SHARED_API_BASE` |
 | vibe-kanban-tools | ghcr.io/kjsb25/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
+| vibe-kanban-remote | local build (`./vibe-kanban-remote`, `crates/remote/Dockerfile`) | Self-hosted Vibe Kanban backend (replaces sunset cloud). Rust API + bundled web UI on port 8081 → `kanban-remote.NOVA_DOMAIN` |
+| vibe-kanban-remote-db | postgres:16-alpine | Postgres for vibe-kanban-remote, `wal_level=logical` for ElectricSQL. Internal-only network |
+| vibe-kanban-electric | electricsql/electric:1.4.13 | Logical-replication sync layer required by vibe-kanban-remote. Internal-only network |
 
 **Auto-deploy (vibe-kanban-tools):** Image is built by CI in the `kjsb25/vibe-kanban-tools` repo on push to `main` and pushed to GHCR. The CI deploy job also SSH-deploys immediately via `nova.sh update dev`. WUD watches the image (`wud.watch: "true"`) and triggers `dockercompose.dev` to pull and recreate when the digest changes.
 
-**Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`
+**Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`, `VIBE_REMOTE_JWT_SECRET`, `VIBE_REMOTE_DB_PASSWORD`, `VIBE_REMOTE_ELECTRIC_PASSWORD`, `VIBE_REMOTE_BOOTSTRAP_EMAIL`, `VIBE_REMOTE_BOOTSTRAP_PASSWORD`
 
 **Required GitHub secrets (vibe-kanban-tools repo):** `NOVA_HOST`, `NOVA_USER`, `NOVA_SSH_KEY`
+
+**Vibe Kanban Remote — initial host setup:**
+
+```bash
+cd ~/nova-config
+git submodule add https://github.com/BloopAI/vibe-kanban.git vibe-kanban-remote
+cd vibe-kanban-remote && git checkout v0.1.44 && cd ..
+git submodule update --init --recursive
+
+# Generate secrets, fill into .env (see .env.example "Vibe Kanban Remote" section)
+openssl rand -base64 48      # VIBE_REMOTE_JWT_SECRET
+openssl rand -base64 24      # VIBE_REMOTE_DB_PASSWORD
+openssl rand -base64 24      # VIBE_REMOTE_ELECTRIC_PASSWORD
+
+./nova.sh up dev             # first build is multi-stage Rust + Vite, ~5-15 min
+curl -fsS https://kanban-remote.${NOVA_DOMAIN}/v1/health
+```
+
+Updates: `git -C vibe-kanban-remote pull` then `./nova.sh update dev` (WUD does not auto-pull this; built locally).
+
+**Architecture note:** The desktop client (`vibe-kanban`) talks to `vibe-kanban-remote` over the `vibe_remote_internal` network via `VK_SHARED_API_BASE`. `vibe-kanban-remote` is the only one of the three new services exposed via Traefik; Postgres + Electric are internal-only.
 
 ---
 
