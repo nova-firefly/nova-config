@@ -2,7 +2,17 @@
 # Usage: docker compose -f docker-compose.kandev.yaml up -d
 #
 # Upstream: https://github.com/kdlbs/kandev (AGPL-3.0)
-# Image: ghcr.io/kdlbs/kandev:latest — single port serves API + WebSocket + Web UI
+# Build: ./kandev/Dockerfile extends ghcr.io/kdlbs/kandev:latest with the
+#        Claude Code CLI and gh — kandev itself is just an orchestrator and
+#        shells out to whatever agent CLIs are on $PATH.
+#
+# Claude history & auth:
+#   /home/kandev/.claude is mounted from the existing dev_vibe-kanban-claude
+#   volume so kandev shares the same Claude Code credentials and conversation
+#   history that vibe-kanban has been building up. The custom entrypoint
+#   chowns this dir to uid 1000 on each start so kandev's user can write to it.
+#   Caveat: avoid running both stacks simultaneously to prevent rare write
+#   conflicts on ~/.claude.json / .credentials.json.
 #
 # Note on docker socket access:
 #   This stack mirrors vibe-kanban's read-only socket-proxy access via
@@ -23,7 +33,7 @@ networks:
 services:
 
   kandev:
-    image: "ghcr.io/kdlbs/kandev:latest"
+    build: "./kandev"
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
@@ -82,9 +92,9 @@ services:
       homepage.icon: "https://www.google.com/s2/favicons?domain=github.com/kdlbs/kandev&sz=128"
       homepage.href: "https://kandev.${NOVA_DOMAIN}"
       homepage.description: "AI Kanban & Dev Environment"
-      wud.watch: "true"
-      wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.kandev,discord.notify"
+      # Locally built image — WUD can't track digests for build:, mirror
+      # the vibe-kanban pattern. Update by running ./nova.sh recreate kandev.
+      wud.watch: "false"
     networks:
       - "traefik_default"
       - "socket_proxy"
@@ -94,6 +104,10 @@ services:
     volumes:
       # Kandev DB, worktrees, sessions
       - "kandev-data:/data"
+      # Shared Claude Code state (creds + history + skills + CLAUDE.md) — the
+      # same volume vibe-kanban writes to, so the existing conversation history
+      # carries over. Custom entrypoint chowns to uid 1000 on each start.
+      - "vibe-kanban-claude:/home/kandev/.claude"
       # Reuse host SSH key + gitconfig so kandev can clone/push private repos.
       # The image runs as user `kandev` (uid 1000); host user koonan (uid 1000)
       # owns these files, so :ro mounts at /home/kandev/* are readable.
@@ -115,6 +129,12 @@ services:
 volumes:
 
   kandev-data:
+
+  # Shared with vibe-kanban (dev stack). Reference by Docker volume name so
+  # the kandev stack can mount it whether or not the dev stack is up.
+  vibe-kanban-claude:
+    external: true
+    name: "dev_vibe-kanban-claude"
 
   # Config volumes — read-only access for log/config inspection
   bazarr_config:

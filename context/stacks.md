@@ -205,14 +205,19 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Purpose:** AI kanban + dev environment — vibe-kanban alternative under evaluation since vibe-kanban is sunsetting (https://github.com/kdlbs/kandev, AGPL-3.0)
 
-| Service | Image | Port(s) | URL | Notes |
-|---------|-------|---------|-----|-------|
-| kandev | ghcr.io/kdlbs/kandev:latest | 38429 | kandev.NOVA_DOMAIN | Single port serves API + WebSocket + Web UI; SQLite + worktrees in `/data` |
+| Service | Image/Build | Port(s) | URL | Notes |
+|---------|-------------|---------|-----|-------|
+| kandev | local build (`./kandev`) | 38429 | kandev.NOVA_DOMAIN | Extends `ghcr.io/kdlbs/kandev:latest` with Claude Code CLI + gh; single port serves API + WebSocket + Web UI; SQLite + worktrees in `/data` |
+
+**Why a local build:** Kandev is an orchestrator that shells out to whatever agent CLIs are on `$PATH` — the upstream image ships none. `./kandev/Dockerfile` adds `@anthropic-ai/claude-code` (npm) and `gh` (apt), mirroring `./vibe-kanban/Dockerfile`.
+
+**Custom entrypoint** (`./kandev/docker-entrypoint.sh`) replaces the upstream one and `chown -R kandev:kandev /home/kandev/.claude` on each start so the shared volume (root-owned by vibe-kanban) becomes writable by kandev's uid-1000 user.
 
 **Docker socket:** Same read-only `socket-proxy` access vibe-kanban has, exposed via `DOCKER_HOST=tcp://socket-proxy:2375`. `KANDEV_DOCKER_ENABLED=false` because the read-only proxy can't create containers — agents must use the local-process executor.
 
 **Volumes:**
 - `kandev-data` (compose-managed) — DB, worktrees, sessions at `/data`
+- `vibe-kanban-claude` (external, real name `dev_vibe-kanban-claude`) — **shared with vibe-kanban** so Claude Code creds, conversation history, skills, and CLAUDE.md carry over. Avoid running both stacks at once to prevent rare write conflicts on `~/.claude.json` / `.credentials.json`.
 - Host bind mounts `/home/koonan/.ssh` and `/home/koonan/.gitconfig` (`:ro`) into `/home/kandev/` so the in-container `kandev` user (uid 1000) can use existing git auth
 - Read-only mounts of arr/tools config volumes at `/mnt/configs/<svc>` (same set vibe-kanban exposes) for agent log/config inspection
 
@@ -220,7 +225,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Optional env:** `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` — uncomment matching env lines in the compose file after setting
 
-**Caveat:** The official `ghcr.io/kdlbs/kandev` image does **not** ship with Claude Code, Codex, or other agent CLIs pre-installed. If kandev expects these on PATH (TBD during evaluation), build a derived image — see `vibe-kanban/Dockerfile` for the pattern.
+**Updates:** `wud.watch: "false"` because WUD can't track digests for `build:` services. Refresh manually with `./nova.sh recreate kandev` to pull a newer base image and rebuild.
 
 ---
 
