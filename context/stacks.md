@@ -209,7 +209,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 |---------|-------------|---------|-----|-------|
 | kandev | local build (`./kandev`) | 38429 | kandev.NOVA_DOMAIN | Extends `ghcr.io/kdlbs/kandev:latest` with Claude Code CLI + gh; single port serves API + WebSocket + Web UI; SQLite + worktrees in `/data` |
 
-**Why a local build:** Kandev is an orchestrator that shells out to whatever agent CLIs are on `$PATH` — the upstream image ships none. `./kandev/Dockerfile` adds `@anthropic-ai/claude-code` (npm) and `gh` (apt), mirroring `./vibe-kanban/Dockerfile`.
+**Why a local build:** Kandev is an orchestrator that shells out to whatever agent CLIs are on `$PATH` — the upstream image ships none. `./kandev/Dockerfile` adds just `@anthropic-ai/claude-code` (npm). No `gh` CLI: kandev's Go backend calls the GitHub API directly and surfaces PRs/issues in its own `/github` page, authenticated via a PAT entered in its settings UI.
 
 **Custom entrypoint** (`./kandev/docker-entrypoint.sh`) replaces the upstream one and `chown -R kandev:kandev /home/kandev/.claude` on each start so the shared volume (root-owned by vibe-kanban) becomes writable by kandev's uid-1000 user.
 
@@ -221,7 +221,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 - Host bind mounts `/home/koonan/.ssh` and `/home/koonan/.gitconfig` (`:ro`) into `/home/kandev/` so the in-container `kandev` user (uid 1000) can use existing git auth
 - Read-only mounts of arr/tools config volumes at `/mnt/configs/<svc>` (same set vibe-kanban exposes) for agent log/config inspection
 
-**Required env:** `GH_TOKEN` (reused from dev stack)
+**Required env:** none (GitHub auth handled in-app)
 
 **Optional env:** `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` — uncomment matching env lines in the compose file after setting
 

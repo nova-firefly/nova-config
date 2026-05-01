@@ -3,8 +3,10 @@
 #
 # Upstream: https://github.com/kdlbs/kandev (AGPL-3.0)
 # Build: ./kandev/Dockerfile extends ghcr.io/kdlbs/kandev:latest with the
-#        Claude Code CLI and gh — kandev itself is just an orchestrator and
-#        shells out to whatever agent CLIs are on $PATH.
+#        Claude Code CLI — kandev itself is just an orchestrator and shells
+#        out to whatever agent CLIs are on $PATH. GitHub integration is
+#        native (Go backend calls the GitHub API directly), authenticated
+#        via a PAT entered in kandev's settings UI — no gh CLI required.
 #
 # Claude history & auth:
 #   /home/kandev/.claude is mounted from the existing dev_vibe-kanban-claude
@@ -72,7 +74,8 @@ services:
       # - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
       # - "OPENAI_API_KEY=${OPENAI_API_KEY:-}"
       # - "GEMINI_API_KEY=${GEMINI_API_KEY:-}"
-      - "GH_TOKEN=${GH_TOKEN}"
+      # GitHub PAT is entered in kandev's settings UI and stored in its DB —
+      # no GH_TOKEN env var needed.
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:38429/health >/dev/null || exit 1"]
       interval: 30s
