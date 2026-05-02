@@ -73,7 +73,7 @@ services:
       - "DOCKER_HOST=tcp://socket-proxy:2375"
       - "KANDEV_DOCKER_ENABLED=false"
       # Agent provider credentials — uncomment whichever providers you use.
-      # - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
+      - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
       # - "OPENAI_API_KEY=${OPENAI_API_KEY:-}"
       # - "GEMINI_API_KEY=${GEMINI_API_KEY:-}"
       # GitHub PAT — kandev's settings UI also accepts a token, but providing
@@ -114,6 +114,7 @@ services:
     volumes:
       # Kandev DB, worktrees, sessions
       - "kandev-data:/data"
+      - "vibe-kanban-repos:/repos"
       # Shared Claude Code state (creds + history + skills + CLAUDE.md) — the
       # same volume vibe-kanban writes to, so the existing conversation history
       # carries over. Custom entrypoint chowns to uid 1000 on each start.
@@ -145,6 +146,9 @@ volumes:
   vibe-kanban-claude:
     external: true
     name: "dev_vibe-kanban-claude"
+
+  vibe-kanban-repos:
+    external: true
 
   # Config volumes — read-only access for log/config inspection
   bazarr_config:
