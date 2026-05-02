@@ -85,7 +85,11 @@ services:
     restart: "unless-stopped"
     volumes:
       - "kandev-data:/data"
-      - "vibe-kanban-repos:/repos"
+      # Mount inside the kandev user's home so it falls within kandev's
+      # default repository-discovery allowed root (os.UserHomeDir() →
+      # /home/kandev). Mounting elsewhere yields "path is outside the
+      # allowed roots" in the Add Local Repository UI.
+      - "vibe-kanban-repos:/home/kandev/repos"
 
 volumes:
 
