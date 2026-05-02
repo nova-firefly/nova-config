@@ -4,23 +4,14 @@
 # Upstream: https://github.com/kdlbs/kandev (AGPL-3.0)
 # Build: ./kandev/Dockerfile extends ghcr.io/kdlbs/kandev:latest with the
 #        Claude Code CLI — kandev itself is just an orchestrator and shells
-#        out to whatever agent CLIs are on $PATH. GitHub integration is
-#        native (Go backend calls the GitHub API directly), authenticated
-#        via a PAT entered in kandev's settings UI — no gh CLI required.
+#        out to whatever agent CLIs are on $PATH.
 #
-# Claude history & auth:
-#   /home/kandev/.claude is mounted from the existing dev_vibe-kanban-claude
-#   volume so kandev shares the same Claude Code credentials and conversation
-#   history that vibe-kanban has been building up. The custom entrypoint
-#   chowns this dir to uid 1000 on each start so kandev's user can write to it.
-#   Caveat: avoid running both stacks simultaneously to prevent rare write
-#   conflicts on ~/.claude.json / .credentials.json.
+# Auth model:
+#   - Claude Code reads ANTHROPIC_API_KEY from the env (set in .env)
+#   - GitHub PAT entered in kandev's settings UI on first run
 #
-# Note on docker socket access:
-#   This stack mirrors vibe-kanban's read-only socket-proxy access via
-#   DOCKER_HOST=tcp://socket-proxy:2375. Kandev's "run agent in Docker container"
-#   executor (KANDEV_DOCKER_ENABLED=true) cannot create containers through the
-#   read-only proxy — agents must use the default local-process executor.
+# This is the minimal first-time config. Add SSH key mounts, gitconfig,
+# socket-proxy access, or read-only service config volumes later if needed.
 
 name: kandev
 
@@ -28,9 +19,6 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
-  socket_proxy:
-    external: true
-    name: "socket_proxy"
 
 services:
 
@@ -65,22 +53,7 @@ services:
       - "TZ=${TZ}"
       - "KANDEV_HOME_DIR=/data"
       - "KANDEV_NO_BROWSER=1"
-      # Verbose logging — drop back to "info" after debugging the auth flow.
-      - "KANDEV_LOG_LEVEL=debug"
-      # Read-only docker socket proxy — same access vibe-kanban has.
-      # KANDEV_DOCKER_ENABLED stays false (default) since the proxy cannot
-      # create containers; flip to true only if you swap to a writable socket.
-      - "DOCKER_HOST=tcp://socket-proxy:2375"
-      - "KANDEV_DOCKER_ENABLED=false"
-      # Agent provider credentials — uncomment whichever providers you use.
-      - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
-      # - "OPENAI_API_KEY=${OPENAI_API_KEY:-}"
-      # - "GEMINI_API_KEY=${GEMINI_API_KEY:-}"
-      # GitHub PAT — kandev's settings UI also accepts a token, but providing
-      # GITHUB_TOKEN here is one of its supported auth methods and avoids
-      # interactive setup. Note the name: kandev (via go-github) reads
-      # GITHUB_TOKEN, not GH_TOKEN.
-      - "GITHUB_TOKEN=${GH_TOKEN}"
+      - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}"
     healthcheck:
       # Upstream kandev image has no wget/curl — use node's built-in http
       # module (node is on PATH because the base is node:24-bookworm-slim).
@@ -107,67 +80,16 @@ services:
       wud.watch: "false"
     networks:
       - "traefik_default"
-      - "socket_proxy"
     ports:
       - "38429:38429/tcp"
     restart: "unless-stopped"
     volumes:
-      # Kandev DB, worktrees, sessions
       - "kandev-data:/data"
       - "vibe-kanban-repos:/repos"
-      # Shared Claude Code state (creds + history + skills + CLAUDE.md) — the
-      # same volume vibe-kanban writes to, so the existing conversation history
-      # carries over. Custom entrypoint chowns to uid 1000 on each start.
-      - "vibe-kanban-claude:/home/kandev/.claude"
-      # Reuse host SSH key + gitconfig so kandev can clone/push private repos.
-      # The image runs as user `kandev` (uid 1000); host user koonan (uid 1000)
-      # owns these files, so :ro mounts at /home/kandev/* are readable.
-      - "/home/koonan/.ssh:/home/kandev/.ssh:ro"
-      - "/home/koonan/.gitconfig:/home/kandev/.gitconfig:ro"
-      # Service config volumes (read-only) — same set vibe-kanban exposes
-      # so agents can inspect logs/config when debugging the stack.
-      - "bazarr_config:/mnt/configs/bazarr:ro"
-      - "prowlarr_config:/mnt/configs/prowlarr:ro"
-      - "seerr_config:/mnt/configs/seerr:ro"
-      - "qbittorrent_config:/mnt/configs/qbittorrent:ro"
-      - "radarr_config:/mnt/configs/radarr:ro"
-      - "sonarr_config:/mnt/configs/sonarr:ro"
-      - "tautulli_config:/mnt/configs/tautulli:ro"
-      - "stirling_config:/mnt/configs/stirling:ro"
-      - "samba_config:/mnt/configs/samba:ro"
-      - "backrest_backrest_config:/mnt/configs/backrest:ro"
 
 volumes:
 
   kandev-data:
 
-  # Shared with vibe-kanban (dev stack). Reference by Docker volume name so
-  # the kandev stack can mount it whether or not the dev stack is up.
-  vibe-kanban-claude:
-    external: true
-    name: "dev_vibe-kanban-claude"
-
   vibe-kanban-repos:
-    external: true
-
-  # Config volumes — read-only access for log/config inspection
-  bazarr_config:
-    external: true
-  prowlarr_config:
-    external: true
-  seerr_config:
-    external: true
-  qbittorrent_config:
-    external: true
-  radarr_config:
-    external: true
-  sonarr_config:
-    external: true
-  tautulli_config:
-    external: true
-  stirling_config:
-    external: true
-  samba_config:
-    external: true
-  backrest_backrest_config:
     external: true

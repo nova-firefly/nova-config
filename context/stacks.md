@@ -207,25 +207,25 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Image/Build | Port(s) | URL | Notes |
 |---------|-------------|---------|-----|-------|
-| kandev | local build (`./kandev`) | 38429 | kandev.NOVA_DOMAIN | Extends `ghcr.io/kdlbs/kandev:latest` with Claude Code CLI + gh; single port serves API + WebSocket + Web UI; SQLite + worktrees in `/data` |
+| kandev | local build (`./kandev`) | 38429 | kandev.NOVA_DOMAIN | Extends `ghcr.io/kdlbs/kandev:latest` with the Claude Code CLI; single port serves API + WebSocket + Web UI; SQLite + worktrees in `/data` |
 
-**Why a local build:** Kandev is an orchestrator that shells out to whatever agent CLIs are on `$PATH` — the upstream image ships none. `./kandev/Dockerfile` adds just `@anthropic-ai/claude-code` (npm). No `gh` CLI: kandev's Go backend calls the GitHub API directly and surfaces PRs/issues in its own `/github` page, authenticated via a PAT entered in its settings UI.
+**Why a local build:** Kandev is an orchestrator that shells out to whatever agent CLIs are on `$PATH` — the upstream image ships none. `./kandev/Dockerfile` adds just `@anthropic-ai/claude-code` (npm).
 
-**Custom entrypoint** (`./kandev/docker-entrypoint.sh`) replaces the upstream one and `chown -R kandev:kandev /home/kandev/.claude` on each start so the shared volume (root-owned by vibe-kanban) becomes writable by kandev's uid-1000 user.
-
-**Docker socket:** Same read-only `socket-proxy` access vibe-kanban has, exposed via `DOCKER_HOST=tcp://socket-proxy:2375`. `KANDEV_DOCKER_ENABLED=false` because the read-only proxy can't create containers — agents must use the local-process executor.
+**Auth model (minimal first-time config):**
+- Claude: `ANTHROPIC_API_KEY` env var (Claude Code reads it; kandev ACP probe uses it to populate the model list)
+- GitHub: enter a PAT in kandev's settings UI on first run (kandev's Go backend calls the GitHub API directly)
 
 **Volumes:**
 - `kandev-data` (compose-managed) — DB, worktrees, sessions at `/data`
-- `vibe-kanban-claude` (external, real name `dev_vibe-kanban-claude`) — **shared with vibe-kanban** so Claude Code creds, conversation history, skills, and CLAUDE.md carry over. Avoid running both stacks at once to prevent rare write conflicts on `~/.claude.json` / `.credentials.json`.
-- Host bind mounts `/home/koonan/.ssh` and `/home/koonan/.gitconfig` (`:ro`) into `/home/kandev/` so the in-container `kandev` user (uid 1000) can use existing git auth
-- Read-only mounts of arr/tools config volumes at `/mnt/configs/<svc>` (same set vibe-kanban exposes) for agent log/config inspection
+- `vibe-kanban-repos` (external) — pre-existing repos volume from the dev stack, mounted at `/repos`
 
-**Required env:** `GH_TOKEN` (mapped into the container as `GITHUB_TOKEN`, kandev's go-github default). Settings UI also accepts a PAT directly; the env-var path bypasses that step.
+**Networks:** `traefik_default` only. No socket-proxy access in the minimal config (kandev's Docker executor would need a writable socket anyway).
 
-**Optional env:** `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` — uncomment matching env lines in the compose file after setting
+**Required env:** `ANTHROPIC_API_KEY`
 
 **Updates:** `wud.watch: "false"` because WUD can't track digests for `build:` services. Refresh manually with `./nova.sh recreate kandev` to pull a newer base image and rebuild.
+
+**Extending later:** if you want the full agent toolkit, add back: SSH key + gitconfig bind mounts, the `dev_vibe-kanban-claude` volume to share Claude history with vibe-kanban, the read-only arr/tools config mounts at `/mnt/configs/*`, and `socket_proxy` network membership with `DOCKER_HOST=tcp://socket-proxy:2375`. See git history for the previous wiring.
 
 ---
 
