@@ -13,7 +13,6 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 | home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | docker-compose.dev.yaml | vibe-kanban |
-| kandev | docker-compose.kandev.yaml | kandev |
 | tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
 | backup | docker-compose.backup.yaml | backrest, duplicati |
 | gaming | docker-compose.gaming.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
@@ -201,31 +200,13 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
-## kandev stack (`docker-compose.kandev.yaml`)
+## kandev stack (`docker-compose.kandev.yaml`) — DEFERRED
 
-**Purpose:** AI kanban + dev environment — vibe-kanban alternative under evaluation since vibe-kanban is sunsetting (https://github.com/kdlbs/kandev, AGPL-3.0)
+**Status (May 2026):** evaluated as a vibe-kanban successor and shelved. The compose file and Dockerfile remain in the repo, but `kandev` is **not** in `nova.sh`'s `ALL_STACKS` and has no WUD trigger entries. To revive, follow `context/kandev-evaluation.md`.
 
-| Service | Image/Build | Port(s) | URL | Notes |
-|---------|-------------|---------|-----|-------|
-| kandev | local build (`./kandev`) | 38429 | kandev.NOVA_DOMAIN | Extends `ghcr.io/kdlbs/kandev:latest` with the Claude Code CLI; single port serves API + WebSocket + Web UI; SQLite + worktrees in `/data` |
+**Why deferred:** kandev is ~16 weeks old, designed for `npx kandev` on a developer laptop, and assumes uid-1000 ownership and `os.UserHomeDir()`-rooted repo discovery. Every problem we hit (image missing wget, agent CLI absent, repo discovery rejecting `/repos`, `git status` exit 128 from "dubious ownership", an open upstream "agent failing to connect" bug) traced to the laptop-vs-homelab-container mismatch. Verdict: the architecture is good, the project just isn't ready for our shape yet. Re-evaluate around v0.50.
 
-**Why a local build:** Kandev is an orchestrator that shells out to whatever agent CLIs are on `$PATH` — the upstream image ships none. `./kandev/Dockerfile` adds just `@anthropic-ai/claude-code` (npm).
-
-**Auth model (minimal first-time config):**
-- Claude: `ANTHROPIC_API_KEY` env var (Claude Code reads it; kandev ACP probe uses it to populate the model list)
-- GitHub: enter a PAT in kandev's settings UI on first run (kandev's Go backend calls the GitHub API directly)
-
-**Volumes:**
-- `kandev-data` (compose-managed) — DB, worktrees, sessions at `/data`
-- `vibe-kanban-repos` (external) — pre-existing repos volume from the dev stack, mounted at `/repos`
-
-**Networks:** `traefik_default` only. No socket-proxy access in the minimal config (kandev's Docker executor would need a writable socket anyway).
-
-**Required env:** `ANTHROPIC_API_KEY`
-
-**Updates:** `wud.watch: "false"` because WUD can't track digests for `build:` services. Refresh manually with `./nova.sh recreate kandev` to pull a newer base image and rebuild.
-
-**Extending later:** if you want the full agent toolkit, add back: SSH key + gitconfig bind mounts, the `dev_vibe-kanban-claude` volume to share Claude history with vibe-kanban, the read-only arr/tools config mounts at `/mnt/configs/*`, and `socket_proxy` network membership with `DOCKER_HOST=tcp://socket-proxy:2375`. See git history for the previous wiring.
+See `context/kandev-evaluation.md` for the full retrospective and revival recipe.
 
 ---
 
