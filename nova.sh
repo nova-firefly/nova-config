@@ -18,6 +18,7 @@
 #   reconcile Check all stacks for missing containers and recreate them (self-healing)
 #
 # Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test
+# (kandev exists as docker-compose.kandev.yaml but is deferred — see context/kandev-evaluation.md)
 # Omit stack name to apply to all stacks.
 #
 # Examples:

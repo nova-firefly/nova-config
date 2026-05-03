@@ -1,0 +1,823 @@
+# Media Stack - Plex, *arr apps, Gluetun + qBittorrent, Tautulli, Seerr
+# Usage: docker compose -f docker-compose.media.yaml up -d
+# Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*, NOVA_DOMAIN
+
+name: media
+
+networks:
+  media:
+    external: true
+    name: "media"
+  traefik_default:
+    external: true
+    name: "traefik_default"
+  internal_webhook:
+    external: true
+    name: "internal_webhook"
+
+services:
+
+  bazarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "bazarr"
+    environment:
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS http://localhost:6767/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "lscr.io/linuxserver/bazarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.bazarr.rule: "Host(`bazarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.bazarr.entrypoints: "websecure"
+      traefik.http.routers.bazarr.tls: "true"
+      traefik.http.routers.bazarr.middlewares: "authelia@file"
+      traefik.http.services.bazarr.loadbalancer.server.port: "6767"
+      homepage.group: "Downloads"
+      homepage.name: "Bazarr"
+      homepage.icon: "bazarr.svg"
+      homepage.href: "http://bazarr.${NOVA_DOMAIN}"
+      homepage.description: "Subtitle Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "6767:6767/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/movies:/plex_movies_1"
+      - "/data1/plex_data_1/_data/tv:/plex_tv_1"
+      - "/data2/movies:/plex_movies_2"
+      - "/data2/tv:/plex_tv_2"
+      - "/data3/movies:/plex_movies_3"
+      - "/data3/tv:/plex_tv_3"
+      - "/opt/subcleaner:/opt/subcleaner"
+      - "bazarr_config:/config"
+
+  seerr:
+    container_name: "seerr"
+    environment:
+      - "TZ=${TZ}"
+      - "LOG_LEVEL=debug"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5055/api/v1/status', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/seerr-team/seerr:latest"
+    init: true
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.seerr.rule: "Host(`seerr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.seerr.entrypoints: "websecure"
+      traefik.http.routers.seerr.tls: "true"
+      traefik.http.services.seerr.loadbalancer.server.port: "5055"
+      homepage.group: "Media"
+      homepage.name: "Seerr"
+      homepage.icon: "seerr.svg"
+      homepage.href: "http://seerr.${NOVA_DOMAIN}"
+      homepage.description: "Media Requests"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "5055:5055/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "seerr_config:/app/config"
+
+  plex:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      # SYS_NICE intentionally NOT dropped — Plex uses nice() for transcoding CPU priority
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "plex"
+    environment:
+      - "ADVERTISE_IP=http://${NOVA_HOST_IP}:32400/,https://plex.${NOVA_DOMAIN}/"
+      - "ALLOWED_NETWORKS=${PLEX_LAN_NETWORK:-192.168.1.0/24}"
+      - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
+      - "NVIDIA_VISIBLE_DEVICES=all"
+      - "PGID=${PGID}"
+      - "PLEX_CLAIM=${PLEX_CLAIM_TOKEN}"
+      - "PUID=${PUID}"
+      - "VERSION=docker"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    hostname: "${NOVA_HOSTNAME}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:32400/identity >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    image: "ghcr.io/linuxserver/plex:latest"
+    labels:
+      # Traefik routing is handled via traefik/dynamic.yaml (host-mode containers
+      # are not discoverable by Traefik's Docker provider)
+      homepage.group: "Media"
+      homepage.name: "Plex"
+      homepage.icon: "plex.svg"
+      homepage.href: "https://plex.${NOVA_DOMAIN}"
+      homepage.description: "Media Server"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    network_mode: "host"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_config/plex_config/_data:/config"
+      - "/data1/plex_data_1/_data:/library1"
+      - "/data2:/library2"
+      - "/data3/movies:/library3/movies"
+      - "/data3/tv:/library3/tv"
+
+  prowlarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "prowlarr"
+    environment:
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9696/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "lscr.io/linuxserver/prowlarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.prowlarr.rule: "Host(`prowlarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.prowlarr.entrypoints: "websecure"
+      traefik.http.routers.prowlarr.tls: "true"
+      traefik.http.routers.prowlarr.middlewares: "authelia@file"
+      traefik.http.services.prowlarr.loadbalancer.server.port: "9696"
+      traefik.http.routers.prowlarr-api.rule: "Host(`prowlarr.${NOVA_DOMAIN}`) && PathPrefix(`/api/`)"
+      traefik.http.routers.prowlarr-api.entrypoints: "websecure"
+      traefik.http.routers.prowlarr-api.tls: "true"
+      traefik.http.routers.prowlarr-api.service: "prowlarr"
+      homepage.group: "Downloads"
+      homepage.name: "Prowlarr"
+      homepage.icon: "prowlarr.svg"
+      homepage.href: "http://prowlarr.${NOVA_DOMAIN}"
+      homepage.description: "Indexer Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "media"
+      - "traefik_default"
+    ports:
+      - "9696:9696/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "prowlarr_config:/config"
+
+  radarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "radarr"
+    environment:
+      - "PGID=${PGID}"
+      - "PUID=${PUID}"
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7878/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/linuxserver/radarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.radarr.rule: "Host(`radarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.radarr.entrypoints: "websecure"
+      traefik.http.routers.radarr.tls: "true"
+      traefik.http.routers.radarr.middlewares: "authelia@file"
+      traefik.http.services.radarr.loadbalancer.server.port: "7878"
+      traefik.http.routers.radarr-api.rule: "Host(`radarr.${NOVA_DOMAIN}`) && PathPrefix(`/api/`)"
+      traefik.http.routers.radarr-api.entrypoints: "websecure"
+      traefik.http.routers.radarr-api.tls: "true"
+      traefik.http.routers.radarr-api.service: "radarr"
+      homepage.group: "Downloads"
+      homepage.name: "Radarr"
+      homepage.icon: "radarr.svg"
+      homepage.href: "http://radarr.${NOVA_DOMAIN}"
+      homepage.description: "Movie Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "media"
+      - "traefik_default"
+    ports:
+      - "7878:7878/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/movies:/plex_movies_1"
+      - "/data2/movies:/plex_movies_2"
+      - "/data3/movies:/plex_movies_3"
+      - "qbittorrent_data:/downloads"
+      - "radarr_config:/config"
+
+  sonarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "sonarr"
+    environment:
+      - "PGID=${PGID}"
+      - "PUID=${PUID}"
+      - "TZ=${TZ}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8989/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/linuxserver/sonarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.sonarr.rule: "Host(`sonarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.sonarr.entrypoints: "websecure"
+      traefik.http.routers.sonarr.tls: "true"
+      traefik.http.routers.sonarr.middlewares: "authelia@file"
+      traefik.http.services.sonarr.loadbalancer.server.port: "8989"
+      traefik.http.routers.sonarr-api.rule: "Host(`sonarr.${NOVA_DOMAIN}`) && PathPrefix(`/api/`)"
+      traefik.http.routers.sonarr-api.entrypoints: "websecure"
+      traefik.http.routers.sonarr-api.tls: "true"
+      traefik.http.routers.sonarr-api.service: "sonarr"
+      homepage.group: "Downloads"
+      homepage.name: "Sonarr"
+      homepage.icon: "sonarr.svg"
+      homepage.href: "http://sonarr.${NOVA_DOMAIN}"
+      homepage.description: "TV Show Management"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "media"
+      - "traefik_default"
+    ports:
+      - "8989:8989/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "/data1/plex_data_1/_data/tv:/plex_tv_1"
+      - "/data2/tv:/plex_tv_2"
+      - "/data3/tv:/plex_tv_3"
+      - "qbittorrent_data:/downloads"
+      - "sonarr_config:/config"
+
+  decluttarr:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "decluttarr"
+    environment:
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "SONARR_API_KEY=${SONARR_API_KEY}"
+      - "RADARR_API_KEY=${RADARR_API_KEY}"
+      - "QBITTORRENT_USER=${QBITTORRENT_USER}"
+      - "QBITTORRENT_PASS=${QBITTORRENT_PASS}"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f decluttarr >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/manimatter/decluttarr:latest"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "media"
+    restart: "unless-stopped"
+    volumes:
+      - "./decluttarr/config.yaml:/app/config/config.yaml:ro"
+
+  tautulli:
+    container_name: "tautulli"
+    environment:
+      - "PGID=${PGID}"
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8181/status >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/tautulli/tautulli:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.tautulli.rule: "Host(`tautulli.${NOVA_DOMAIN}`)"
+      traefik.http.routers.tautulli.entrypoints: "websecure"
+      traefik.http.routers.tautulli.tls: "true"
+      traefik.http.routers.tautulli.middlewares: "authelia@file"
+      traefik.http.services.tautulli.loadbalancer.server.port: "8181"
+      # API router: bypasses Authelia — Tautulli API is authenticated via apikey param
+      traefik.http.routers.tautulli-api.rule: "Host(`tautulli.${NOVA_DOMAIN}`) && PathPrefix(`/api`)"
+      traefik.http.routers.tautulli-api.entrypoints: "websecure"
+      traefik.http.routers.tautulli-api.tls: "true"
+      traefik.http.routers.tautulli-api.service: "tautulli"
+      homepage.group: "Media"
+      homepage.name: "Tautulli"
+      homepage.icon: "tautulli.svg"
+      homepage.href: "http://tautulli.${NOVA_DOMAIN}"
+      homepage.description: "Plex Monitoring"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "8181:8181/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "tautulli_config:/config"
+
+  kometa:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "kometa"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # -------------------------------------------------------------------------
+    # NON-STANDARD ENTRYPOINT — see kometa/trigger-wrapper.sh for details
+    #
+    # The default kometateam/kometa entrypoint is replaced with a thin bash
+    # wrapper (bind-mounted from ./kometa/trigger-wrapper.sh → /config/).
+    # The wrapper replicates the daily schedule controlled by KOMETA_TIME and
+    # ALSO watches for a sentinel file at /trigger/run (written by the
+    # internal-webhook container via the shared ./kometa-trigger/ bind-mount)
+    # to kick off an immediate on-demand run without Docker socket access.
+    #
+    # If you ever need to run plain kometa (e.g. for debugging), override the
+    # entrypoint temporarily:
+    #   docker run --rm -it --entrypoint python3 kometateam/kometa \
+    #     kometa.py --config /config/config.yml --run
+    # -------------------------------------------------------------------------
+    entrypoint: ["/bin/bash", "/config/trigger-wrapper.sh"]
+    environment:
+      - "TZ=${TZ}"
+      # Kometa secrets: KOMETA_<name> vars are injected as <<name>> in config.yml
+      # Note: no underscores allowed in secret names
+      - "KOMETA_TMDBKEY=${TMDB_API_KEY}"
+      - "KOMETA_PLEXTOKEN=${PLEX_TOKEN}"
+      - "KOMETA_RADARRKEY=${RADARR_API_KEY}"
+      - "KOMETA_SONARRKEY=${SONARR_API_KEY}"
+      - "KOMETA_SONARRFOLDER=${SONARR_ROOT_FOLDER}"
+      - "KOMETA_RADARRFOLDER=${RADARR_ROOT_FOLDER}"
+      - "KOMETA_RADARRPROFILE=${RADARR_QUALITY_PROFILE}"
+      - "KOMETA_SONARRPROFILE=${SONARR_QUALITY_PROFILE}"
+      - "KOMETA_MDBLISTKEY=${MDBLIST_API_KEY}"
+      - "KOMETA_TIME=${KOMETA_TIME:-05:00}"
+    healthcheck:
+      disable: true
+    image: "kometateam/kometa:latest"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "./kometa:/config"
+      - "kometa_trigger:/trigger"
+
+  homescreen-hero:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "homescreen-hero"
+    environment:
+      - "TZ=${TZ}"
+      # Plex — host-mode container; reached via host gateway
+      - "HSH_PLEX_URL=http://host.docker.internal:32400"
+      - "HSH_PLEX_TOKEN=${PLEX_TOKEN}"
+      # Tautulli — optional widget data
+      - "HSH_TAUTULLI_URL=http://tautulli:8181"
+      - "HSH_TAUTULLI_API_KEY=${TAUTULLI_API_KEY}"
+      # Seerr — optional request widget
+      - "HSH_SEERR_URL=http://seerr:5055"
+      - "HSH_SEERR_API_KEY=${SEERR_API_KEY}"
+      # Optional metadata enrichment
+      - "HSH_TMDB_API_KEY=${TMDB_API_KEY}"
+      - "HSH_MDBLIST_API_KEY=${MDBLIST_API_KEY}"
+      # Auth — password + JWT signing secret for session tokens
+      - "HSH_AUTH_PASSWORD=${HSH_AUTH_PASSWORD}"
+      - "HSH_AUTH_SECRET_KEY=${HSH_AUTH_SECRET_KEY}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "trentferguson/homescreen-hero:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.homescreen-hero.rule: "Host(`homescreen-hero.${NOVA_DOMAIN}`)"
+      traefik.http.routers.homescreen-hero.entrypoints: "websecure"
+      traefik.http.routers.homescreen-hero.tls: "true"
+      traefik.http.services.homescreen-hero.loadbalancer.server.port: "8000"
+      homepage.group: "Media"
+      homepage.name: "Homescreen Hero"
+      homepage.icon: "plex.svg"
+      homepage.href: "https://homescreen-hero.${NOVA_DOMAIN}"
+      homepage.description: "Plex Dashboard & Collection Manager"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "8000:8000/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "homescreen_hero_data:/data"
+
+  internal-webhook:
+    build:
+      context: ./internal-webhook
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "internal-webhook"
+    environment:
+      # Optional: set to require Bearer token auth on all POST requests.
+      # If unset, network isolation (internal Docker network) is the only guard.
+      - "WEBHOOK_SECRET=${INTERNAL_WEBHOOK_SECRET:-}"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - "internal_webhook"   # internal network shared only with authorised callers
+    read_only: true
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    tmpfs:
+      - "/tmp:size=1m,noexec,nosuid,nodev"
+    volumes:
+      - "kometa_trigger:/trigger"  # shared with kometa service; named volume avoids host permission issues
+
+  gluetun:
+    cap_add:
+      - "NET_ADMIN"
+    container_name: "gluetun"
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    environment:
+      - "SERVER_COUNTRIES=${MULLVAD_SERVER_COUNTRY:-Sweden}"
+      - "TZ=${TZ}"
+      - "VPN_SERVICE_PROVIDER=mullvad"
+      - "VPN_TYPE=wireguard"
+      - "WIREGUARD_ADDRESSES=${MULLVAD_WIREGUARD_ADDRESSES}"
+      - "WIREGUARD_PRIVATE_KEY=${MULLVAD_WIREGUARD_PRIVATE_KEY}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9999/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    image: "qmcgaw/gluetun:latest"
+    labels:
+      traefik.enable: "true"
+      # qBittorrent WebUI (port 8090 — set via WEBUI_PORT env in qbittorrent service)
+      traefik.http.routers.qbittorrent.rule: "Host(`qbittorrent.${NOVA_DOMAIN}`)"
+      traefik.http.routers.qbittorrent.entrypoints: "websecure"
+      traefik.http.routers.qbittorrent.tls: "true"
+      traefik.http.routers.qbittorrent.service: "qbittorrent"
+      traefik.http.routers.qbittorrent.middlewares: "authelia@file"
+      traefik.http.services.qbittorrent.loadbalancer.server.port: "8090"
+      traefik.http.routers.qbittorrent-api.rule: "Host(`qbittorrent.${NOVA_DOMAIN}`) && PathPrefix(`/api/`)"
+      traefik.http.routers.qbittorrent-api.entrypoints: "websecure"
+      traefik.http.routers.qbittorrent-api.tls: "true"
+      traefik.http.routers.qbittorrent-api.service: "qbittorrent"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+    networks:
+      - "media"
+      - "traefik_default"
+    ports:
+      - "127.0.0.1:8090:8090/tcp"   # qBittorrent WebUI (localhost only — Traefik handles external)
+    restart: "unless-stopped"
+    volumes:
+      - "gluetun_data:/gluetun"
+
+  qbittorrent:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "qbittorrent"
+    environment:
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "TZ=${TZ}"
+      - "WEBUI_PORT=8090"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8090/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: "lscr.io/linuxserver/qbittorrent:latest"
+    labels:
+      homepage.group: "Downloads"
+      homepage.name: "qBittorrent"
+      homepage.icon: "qbittorrent.svg"
+      homepage.href: "http://qbittorrent.${NOVA_DOMAIN}"
+      homepage.description: "Torrent Client"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    network_mode: "service:gluetun"
+    restart: "unless-stopped"
+    volumes:
+      - "qbittorrent_config:/config"
+      - "qbittorrent_data:/downloads"
+
+
+volumes:
+
+  bazarr_config:
+    external: true
+
+  prowlarr_config:
+    external: true
+
+  gluetun_data:
+    external: true
+
+  seerr_config:
+    external: true
+    name: overseerr_config
+
+  qbittorrent_config:
+    external: true
+
+  qbittorrent_data:
+    external: true
+
+  radarr_config:
+    external: true
+
+  sonarr_config:
+    external: true
+
+  tautulli_config:
+    external: true
+
+  homescreen_hero_data:
+    external: true
+
+  kometa_trigger:
+    # Shared IPC volume between kometa and internal-webhook.
+    # Not external — compose manages it; no data needs to survive stack removal.

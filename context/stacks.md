@@ -200,6 +200,16 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
+## kandev stack (`docker-compose.kandev.yaml`) — DEFERRED
+
+**Status (May 2026):** evaluated as a vibe-kanban successor and shelved. The compose file and Dockerfile remain in the repo, but `kandev` is **not** in `nova.sh`'s `ALL_STACKS` and has no WUD trigger entries. To revive, follow `context/kandev-evaluation.md`.
+
+**Why deferred:** kandev is ~16 weeks old, designed for `npx kandev` on a developer laptop, and assumes uid-1000 ownership and `os.UserHomeDir()`-rooted repo discovery. Every problem we hit (image missing wget, agent CLI absent, repo discovery rejecting `/repos`, `git status` exit 128 from "dubious ownership", an open upstream "agent failing to connect" bug) traced to the laptop-vs-homelab-container mismatch. Verdict: the architecture is good, the project just isn't ready for our shape yet. Re-evaluate around v0.50.
+
+See `context/kandev-evaluation.md` for the full retrospective and revival recipe.
+
+---
+
 ## tools stack (`docker-compose.tools.yaml`)
 
 | Service | Image | Port | URL | Notes |
