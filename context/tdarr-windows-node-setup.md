@@ -445,51 +445,55 @@ Apply to: **all libraries**.
 > any HDR re-encoding (10-bit + tone-mapping risk, and the 3080 NVENC
 > tonemap path isn't reliable enough for set-and-forget).
 
-#### 7a.iii. Importing community flows (faster than building from scratch)
+#### 7a.iii. Importing the three Nova flows from this repo
 
-If you want pre-built flows instead of clicking the canvas:
+Three importable flow JSON files live in `nova-config/tdarr/flows/`,
+encoding the three flows above as exact graphs:
 
-**Option 1 — Clone Tdarr's official community flow plugins (already on your
-server).** The flow *nodes* listed above are part of `Tdarr_Plugins`, which
-is auto-synced into the server on startup. They're already available — you
-just drag them onto the canvas. Nothing to install.
+| File | Flow |
+| --- | --- |
+| `audio-hygiene.json` | Flow A — Audio hygiene |
+| `legacy-codec-cleanup.json` | Flow B — Legacy codec cleanup (mpeg2/mpeg4/wmv3 → H.264 NVENC) |
+| `oversized-sdr-hevc.json` | Flow C — Oversized SDR HEVC capping (1080p > 4000kbps, 4K > 8000kbps) |
 
-**Option 2 — Import a community flow JSON.** Some users publish entire
-flows (the whole graph) as exportable JSON. Two paths:
+**Option 1 — Paste-import in the UI (fastest):**
 
-a) **From the Tdarr UI directly:**
-   - Flows tab → **Flow+** → if a community flow has been added to your
-     server, it appears in the dropdown alongside tutorial flows.
+1. Open one of the JSON files, copy the entire contents.
+2. Tdarr UI → **Flows** tab → **Flow+** → **Import flow** → paste → Save.
+3. Repeat for the other two.
+4. Each flow now appears in the flow list and can be assigned to a library
+   (Libraries → choose library → Transcode tab → set "Flow" = Nova flow).
 
-b) **From a GitHub flow repo:**
-   - Pick a flow JSON from a maintained repo, e.g.
-     <https://github.com/samssausages/Tdarr-One-Flow> (community-maintained
-     reference flows including HEVC NVENC pipelines, audio cleanup, HDR-safe
-     filters).
-   - Copy the JSON contents.
-   - Tdarr UI → Flows tab → **Add flow** → **Import JSON** → paste → Save.
-   - The imported flow now appears in your flow list and can be assigned to
-     a library.
-
-**Option 3 — Drop a flow JSON into the server volume.** For permanent /
-versioned community flows, place the file in the `tdarr_server` volume:
+**Option 2 — Drop into the server volume (versioned, survives recreates):**
 
 ```bash
-# On Nova host
-docker cp /path/to/community-flow.json \
-  tdarr-server:/app/server/Tdarr/Plugins/Local/community-flow.json
-docker exec tdarr-server chown 1000:1000 \
-  /app/server/Tdarr/Plugins/Local/community-flow.json
-# Click "Update plugins" in the Tdarr UI top toolbar to pick it up.
+# On Nova host, from the nova-config worktree
+for f in tdarr/flows/*.json; do
+  docker cp "$f" tdarr-server:/app/server/Tdarr/Plugins/Local/
+done
+docker exec tdarr-server chown -R 1000:1000 /app/server/Tdarr/Plugins/Local/
+# Click 🔄 Update plugins in the Tdarr UI top toolbar to pick them up.
 ```
 
-The flow now persists across container recreates because `tdarr_server` is
+The flows now persist across container recreates because `tdarr_server` is
 an external named volume.
+
+**Option 3 — Build from scratch.** The flow *nodes* (`checkVideoCodec`,
+`ffmpegCommandSetVideoEncoder`, etc.) are part of `Tdarr_Plugins`, which is
+auto-synced into the server on startup. You can drag them onto a blank
+canvas and rebuild any of the three flows by hand using the diagrams in
+§ 7a.ii as the reference.
 
 > The Tdarr "Update plugins" button (top toolbar, sync icon) re-pulls the
 > upstream `HaveAGitGat/Tdarr_Plugins` repo onto the server. Click it after
 > any flow node update is announced, and after dropping local flow JSON into
 > the server volume.
+
+> **Tweaking after import:** open a flow, click any node, edit values in
+> the side panel, save. The repo JSON is the *baseline* — the running
+> server keeps its own copy in `tdarr_server` once imported. Re-export
+> from the UI (… menu → Export) and overwrite the repo file when you make
+> a change worth committing.
 
 #### 7a.iv. If a flow node is missing
 
