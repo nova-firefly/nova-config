@@ -280,51 +280,84 @@ networking misconfig.
 
 ## 6. Run the node
 
-For a one-off bulk run, just double-click `C:\Tdarr\Tdarr_Node\Tdarr_Node.exe`.
-A console window opens; leave it running. Closing it stops the node. If a
-Windows update reboots the desktop mid-encode, in-flight jobs roll back to
-the queue and the next launch picks them up.
+> ⚠ **Windows logon-session gotcha — read before you launch.** Mapped
+> drives and SMB credentials in Windows are scoped to the **logon
+> session**, not the user account. A normal interactive session, an
+> elevated ("Run as Administrator") session, and a service session are
+> three *different* sessions even if they're "the same user". Drives
+> mapped in one are invisible to the others. Three things follow:
+>
+> 1. **Don't launch `Tdarr_Node.exe` from an elevated PowerShell** for
+>    interactive runs. The admin session can't see the `X:` `Y:` `Z:`
+>    drives you mapped from your normal session, and every job will fail
+>    with `ENOENT`. Use a regular non-admin PowerShell or just
+>    double-click the .exe.
+> 2. **Don't trust drive-letter creds saved with `New-SmbMapping
+>    -Persistent` to carry into a service** — even when the service runs
+>    as the same user. The service launches under a fresh logon session
+>    that doesn't inherit your interactive credential cache.
+> 3. **Pre-mount the drives in the service-startup script** so the
+>    service's own logon session has the SMB connections. See below.
 
-For unattended runs, register as a Windows Service via NSSM:
+### 6a. One-off bulk run (interactive)
+
+Open a **non-admin** PowerShell (or just double-click). Verify drives
+first:
+
+```powershell
+dir X:\plex_data_1\_data\movies | Select -First 3
+```
+
+If that shows files, launch the node:
+
+```powershell
+A:\Tdarr_Updater\Tdarr_Node\Tdarr_Node.exe
+# (or whatever path you installed to — C:\Tdarr\Tdarr_Node\Tdarr_Node.exe)
+```
+
+A console window opens; leave it running. Closing it stops the node. If
+a Windows update reboots the desktop mid-encode, in-flight jobs roll
+back to the queue and the next launch picks them up.
+
+### 6b. Unattended (service via NSSM)
+
+Register the service via a startup batch script that mounts the drives
+into the service's own logon session before launching the node. This
+sidesteps every credential-scope issue.
+
+Create `C:\Tdarr\start-tdarr-node.bat`:
+
+```bat
+@echo off
+net use X: \\nova\data1 <SMB_PASSWORD> /user:<SMB_USER> /persistent:no
+net use Y: \\nova\data2 <SMB_PASSWORD> /user:<SMB_USER> /persistent:no
+net use Z: \\nova\data3 <SMB_PASSWORD> /user:<SMB_USER> /persistent:no
+"A:\Tdarr_Updater\Tdarr_Node\Tdarr_Node.exe"
+```
+
+Substitute `<SMB_USER>` and `<SMB_PASSWORD>` with the Samba creds, and
+the Tdarr_Node.exe path with wherever you installed it. `/persistent:no`
+keeps these mappings out of your interactive sessions on next reboot.
+
+Then register with NSSM:
 
 ```powershell
 choco install nssm                 # or download from https://nssm.cc/
-nssm install Tdarr_Node "C:\Tdarr\Tdarr_Node\Tdarr_Node.exe"
-nssm set    Tdarr_Node AppDirectory "C:\Tdarr\Tdarr_Node"
-nssm set    Tdarr_Node ObjectName ".\<your-user>" "<your-password>"   # so SMB drives are visible
+nssm install Tdarr_Node "C:\Tdarr\start-tdarr-node.bat"
+nssm set    Tdarr_Node AppDirectory "A:\Tdarr_Updater\Tdarr_Node"
+nssm set    Tdarr_Node ObjectName ".\<your-user>" "<your-password>"
 nssm start  Tdarr_Node
 ```
 
-> ⚠ **The LocalSystem trap.** Windows services default to running as
-> `LocalSystem`, which **does not see drive letters mapped by your user
-> account**. If you skip the `ObjectName` line above (or install the service
-> via the GUI without overriding the account), every job will fail with
-> `ENOENT: no such file or directory` even though the path itself is
-> correct, because the service is looking at a drive letter that doesn't
-> exist in its session.
->
-> **Two ways to avoid this:**
->
-> 1. **Run the service as your user account** — set `ObjectName` as shown
->    above, or after the fact: `services.msc` → `Tdarr_Node` → Properties
->    → Log On tab → "This account" → enter your username and password,
->    then restart the service.
->
-> 2. **Switch pathTranslators to UNC paths** — works under LocalSystem
->    without any service reconfiguration, as long as the SMB share allows
->    the access (guest or saved credentials):
->
->    ```json
->    "pathTranslators": [
->      { "server": "/library1", "node": "\\\\NOVA\\data1\\plex_data_1\\_data" },
->      { "server": "/library2", "node": "\\\\NOVA\\data2" },
->      { "server": "/library3", "node": "\\\\NOVA\\data3" },
->      { "server": "/temp",     "node": "X:\\tdarr\\cache" }
->    ]
->    ```
->
->    (UNC needs four backslashes per `\\` due to JSON escaping. Forward
->    slashes do *not* work for UNC — must be backslashes.)
+The `ObjectName` line still matters — the service needs to run as a real
+user account, not `LocalSystem`, because `net use` requires a
+non-system context to authenticate to remote shares.
+
+Verify:
+
+```powershell
+sc.exe qc Tdarr_Node    # SERVICE_START_NAME should NOT be LocalSystem
+```
 
 In the Tdarr UI (Nodes panel, top right) you should now see two nodes:
 `NovaInternalCPU` and `Tdarr-Win-3080`.
