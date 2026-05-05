@@ -39,6 +39,15 @@
       }
     },
     {
+      "name": "Begin FFmpeg Command",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaAud-start",
+      "position": { "x": 600, "y": 380 },
+      "fpEnabled": true
+    },
+    {
       "name": "Ensure Audio Stream",
       "sourceRepo": "Community",
       "pluginName": "ffmpegCommandEnsureAudioStream",
@@ -102,9 +111,16 @@
     {
       "source": "novaAud-channels",
       "sourceHandle": "2",
-      "target": "novaAud-ensure",
+      "target": "novaAud-start",
       "targetHandle": null,
       "id": "novaAud-e3"
+    },
+    {
+      "source": "novaAud-start",
+      "sourceHandle": "1",
+      "target": "novaAud-ensure",
+      "targetHandle": null,
+      "id": "novaAud-e3b"
     },
     {
       "source": "novaAud-ensure",
