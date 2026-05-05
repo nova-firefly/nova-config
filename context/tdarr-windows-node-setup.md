@@ -207,7 +207,7 @@ Edit `C:\Tdarr\Tdarr_Node\configs\Tdarr_Node_Config.json`. Replace contents with
     { "server": "/library1", "node": "X:\\plex_data_1\\_data" },
     { "server": "/library2", "node": "Y:\\" },
     { "server": "/library3", "node": "Z:\\" },
-    { "server": "/temp",     "node": "X:\\tdarr\\cache" }
+    { "server": "/temp",     "node": "C:\\Tdarr\\cache" }
   ],
   "logsPath": "",
   "cronPluginUpdate": "",
@@ -241,6 +241,14 @@ can reach Nova on (`nova`, `nova.local`, `192.168.1.x`, etc).
 > directory layout on data1 nests an extra level — `/data1/plex_data_1/_data`
 > is what `tdarr-server` mounts as `/library1`. data2 and data3 are flat,
 > so the translators map directly to drive root.
+
+> **`/temp` should be a LOCAL Windows path, not on the Nova SMB share.**
+> The `/temp` translator points at the workDir — scratch space where Tdarr
+> writes the in-progress encode before atomic-replacing the original file.
+> If you put it on SMB, every read/write of the partial encode goes over
+> the network, killing throughput. Pick a directory on a fast local drive
+> (`C:\Tdarr\cache`, `A:\tdarr\cache`, etc.) and create it before starting
+> the node: `mkdir C:\Tdarr\cache`.
 
 ---
 
