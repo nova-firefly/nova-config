@@ -33,4 +33,7 @@ ENV PORT=4000
 EXPOSE 4000 4001
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["npx", "-y", "vibe-kanban"]
+# Pinned to v0.1.43 — the last release before v0.1.44 made Projects
+# export-only globally (upstream issue BloopAI/vibe-kanban#3396, no
+# maintainer response). Bump only when that regression is reverted.
+CMD ["npx", "-y", "vibe-kanban@0.1.43"]

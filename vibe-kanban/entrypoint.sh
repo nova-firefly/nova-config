@@ -28,7 +28,7 @@ node -e "
   config.mcpServers = config.mcpServers || {};
   config.mcpServers.vibe_kanban = {
     command: 'npx',
-    args: ['-y', 'vibe-kanban@latest', '--mcp']
+    args: ['-y', 'vibe-kanban@0.1.43', '--mcp']
   };
   fs.writeFileSync(path, JSON.stringify(config, null, 2));
 "
