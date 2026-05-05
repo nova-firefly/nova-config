@@ -1,0 +1,143 @@
+# yaml-language-server: $schema=https://schemas.recyclarr.dev/v8/config-schema.json
+#
+# Recyclarr v8 config — TRaSH Guides quality profile + custom format sync.
+#
+# Schedule: nightly via CRON_SCHEDULE env in docker-compose.media.yaml.
+# Run on demand:  docker exec recyclarr recyclarr sync
+# Dry run:        docker exec recyclarr recyclarr sync --preview
+#
+# Profiles synced:
+#   Radarr — HD Bluray + WEB   (720p enabled → upgrades to Bluray-1080p)
+#   Radarr — UHD Bluray + WEB  (extended with 1080p fallback; 2160p capped
+#                               ≈10 GB via global quality definitions)
+#   Sonarr — WEB-1080p         (TRaSH default for non-anime series)
+#   Sonarr — [Anime] Remux-1080p (TRaSH default; assign by setting
+#                                 Series Type = Anime in Sonarr)
+#
+# 4K size cap caveat: Radarr quality definitions are GLOBAL, not per-profile.
+# Capping 2160p tiers at ≈83 MB/min (≈10 GB for a 2-hour movie) only affects
+# the UHD profile because HD Bluray + WEB does not include 2160p qualities.
+#
+# Roku / Plex-web direct-play tuning:
+#   - HD profile leaves x265 (HD) rejected (TRaSH default) so 1080p stays x264.
+#     Avoids Chrome/Edge/Firefox HEVC transcodes on Plex web.
+#   - UHD profile permits x265 (no HDR/DV) since 4K is HEVC by nature; modern
+#     Rokus play HEVC natively.
+#   - Unwanted Formats group rejects AV1, BR-DISK, Upscaled, LQ, etc.
+# ─────────────────────────────────────────────────────────────────────────────
+
+radarr:
+  radarr_main:
+    base_url: http://radarr:7878
+    api_key: !env_var RADARR_API_KEY
+
+    delete_old_custom_formats: true
+    replace_existing_custom_formats: true
+
+    quality_definition:
+      type: movie
+      qualities:
+        # 10 GB / 120 min ≈ 83 MB/min — caps 4K downloads at user-specified
+        # ceiling. Only affects the UHD profile (HD profile excludes 2160p).
+        - name: Bluray-2160p
+          min: 1
+          preferred: 75
+          max: 83
+        - name: WEBDL-2160p
+          min: 1
+          preferred: 75
+          max: 83
+        - name: WEBRip-2160p
+          min: 1
+          preferred: 75
+          max: 83
+
+    quality_profiles:
+      # HD Bluray + WEB — https://trash-guides.info/Radarr/radarr-setup-quality-profiles/#hd-bluray-web
+      - trash_id: d1d67249d3890e49bc12e275d989a7e9
+        reset_unmatched_scores:
+          enabled: true
+
+      # UHD Bluray + WEB — https://trash-guides.info/Radarr/radarr-setup-quality-profiles/#uhd-bluray-web
+      # Extend with 1080p fallback so Radarr keeps a 1080p copy when no 4K
+      # release fits under the size cap.
+      - trash_id: 64fb5f9858489bdac2af690e27c8f42f
+        reset_unmatched_scores:
+          enabled: true
+        qualities:
+          - name: Bluray-2160p
+          - name: WEB 2160p
+            qualities:
+              - WEBDL-2160p
+              - WEBRip-2160p
+          - name: Bluray-1080p
+          - name: WEB 1080p
+            qualities:
+              - WEBDL-1080p
+              - WEBRip-1080p
+
+    custom_format_groups:
+      add:
+        # Allow x265 (no HDR/DV) for the UHD profile only — 4K is HEVC by
+        # nature. The HD profile keeps the default x265 (HD) rejection.
+        - trash_id: ff204bbcecdd487d1cefcefdbf0c278d  # [Optional] Golden Rule UHD
+          select:
+            - 839bea857ed2c0a8e084f3cbdbd65ecb  # x265 (no HDR/DV)
+
+        # Reject junk releases for both profiles
+        - trash_id: a3ac6af01d78e4f21fcb75f601ac96df  # [Unwanted] Unwanted Formats
+          select:
+            - b8cd450cbfa689c0259a01d9e29ba3d6  # 3D
+            - cae4ca30163749b891686f95532519bd  # AV1
+            - b6832f586342ef70d9c128d40c07b872  # Bad Dual Groups
+            - cc444569854e9de0b084ab2b8b1532b2  # Black and White Editions
+            - ed38b889b31be83fda192888e2286d83  # BR-DISK
+            - 0a3f082873eb454bde444150b70253cc  # Extras
+            - e6886871085226c3da1830830146846c  # Generated Dynamic HDR
+            - 90a6f9a284dff5103f6346090e6280c8  # LQ
+            - e204b80c87be9497a8a6eaff48f72905  # LQ (Release Title)
+            - 712d74cd88bceb883ee32f773656b1f5  # Sing-Along Versions
+            - bfd8eb01832d646a0a89c4deb46f8564  # Upscaled
+
+sonarr:
+  sonarr_main:
+    base_url: http://sonarr:8989
+    api_key: !env_var SONARR_API_KEY
+
+    delete_old_custom_formats: true
+    replace_existing_custom_formats: true
+
+    quality_definition:
+      type: series
+
+    quality_profiles:
+      # WEB-1080p — https://trash-guides.info/Sonarr/sonarr-setup-quality-profiles/#web-1080p
+      - trash_id: 72dae194fc92bf828f32cde7744e51a1
+        reset_unmatched_scores:
+          enabled: true
+
+      # [Anime] Remux-1080p — https://trash-guides.info/Sonarr/sonarr-setup-quality-profiles-anime/
+      # Assign per-series by setting Series Type = Anime in Sonarr.
+      - trash_id: 20e0fc959f1f1704bed501f23bdae76f
+        reset_unmatched_scores:
+          enabled: true
+
+    custom_format_groups:
+      add:
+        # Boost streaming-service releases (helps surface clean WEB-DL grabs)
+        - trash_id: 85fae4a2294965b75710ef2989c850eb  # [Streaming Services] HD/UHD boost
+          select:
+            - 218e93e5702f44a68ad9e3c6ba87d2f0  # HD Streaming Boost
+            - 43b3cf48cb385cd3eac608ee6bca7f09  # UHD Streaming Boost
+
+        # Reject junk releases
+        - trash_id: 59c3af66780d08332fdc64e68297098f  # [Unwanted] Unwanted Formats
+          select:
+            - 15a05bc7c1a36e2b57fd628f8977e2fc  # AV1
+            - 32b367365729d530ca1c124a0b180c64  # Bad Dual Groups
+            - 85c61753df5da1fb2aab6f2a47426b09  # BR-DISK
+            - 6f808933a71bd9666531610cb8c059cc  # BR-DISK (BTN)
+            - fbcb31d8dabd2a319072b84fc0b7249c  # Extras
+            - 9c11cd3f07101cdba90a2d81cf0e56b4  # LQ
+            - e2315f990da2e2cbfc9fa5b7a6fcfe48  # LQ (Release Title)
+            - 23297a736ca77c0fc8e70f8edd7ee56c  # Upscaled
