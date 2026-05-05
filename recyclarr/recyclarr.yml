@@ -1,0 +1,91 @@
+# Recyclarr — TRaSH Guides quality profile + custom format sync
+#
+# Schedule: nightly via CRON_SCHEDULE env in docker-compose.media.yaml.
+# Run on demand:  docker exec recyclarr recyclarr sync
+# Dry run:        docker exec recyclarr recyclarr sync --preview
+#
+# Profiles synced:
+#   Radarr — HD-1080p (TRaSH "HD Bluray + WEB", 720p→1080p upgrade)
+#   Radarr — UHD       (TRaSH "UHD Bluray + WEB" + 1080p fallback,
+#                       2160p capped ≈10 GB via quality definitions)
+#   Sonarr — WEB-1080p (TRaSH default for non-anime series)
+#   Sonarr — Anime     (TRaSH default — assign per-series in Sonarr by setting
+#                       Series Type = Anime)
+#
+# 4K size cap caveat: Radarr quality definitions are GLOBAL, not per-profile.
+# Capping 2160p at ≈83 MB/min (≈10 GB for a 2-hour movie) only affects the UHD
+# profile because HD-1080p does not include any 2160p qualities.
+# ─────────────────────────────────────────────────────────────────────────────
+
+radarr:
+  radarr_main:
+    base_url: http://radarr:7878
+    api_key: !env_var RADARR_API_KEY
+
+    delete_old_custom_formats: true
+    replace_existing_custom_formats: true
+
+    include:
+      # Global file-size limits (we override 2160p tiers below)
+      - template: radarr-quality-definition-movie
+
+      # 1080p tier
+      - template: radarr-quality-profile-hd-bluray-web
+      - template: radarr-custom-formats-hd-bluray-web
+
+      # 4K tier
+      - template: radarr-quality-profile-uhd-bluray-web
+      - template: radarr-custom-formats-uhd-bluray-web
+
+    quality_definition:
+      type: movie
+      qualities:
+        # 10 GB / 120 min ≈ 83 MB/min — caps 4K downloads at user-specified ceiling.
+        # Remux is left at TRaSH defaults; not used by either profile here.
+        - name: Bluray-2160p
+          min: 1
+          preferred: 75
+          max: 83
+        - name: WEBDL-2160p
+          min: 1
+          preferred: 75
+          max: 83
+        - name: WEBRip-2160p
+          min: 1
+          preferred: 75
+          max: 83
+
+    quality_profiles:
+      # Extend UHD profile with 1080p qualities so Radarr keeps a 1080p copy
+      # when no 4K release fits under the size cap.
+      - name: UHD Bluray + WEB
+        qualities:
+          - name: Bluray-2160p
+          - name: WEB 2160p
+            qualities:
+              - WEBDL-2160p
+              - WEBRip-2160p
+          - name: Bluray-1080p
+          - name: WEB 1080p
+            qualities:
+              - WEBDL-1080p
+              - WEBRip-1080p
+
+sonarr:
+  sonarr_main:
+    base_url: http://sonarr:8989
+    api_key: !env_var SONARR_API_KEY
+
+    delete_old_custom_formats: true
+    replace_existing_custom_formats: true
+
+    include:
+      - template: sonarr-quality-definition-series
+
+      # Default (non-anime) tier — 720p enabled, upgrade target WEBDL-1080p
+      - template: sonarr-v4-quality-profile-web-1080p
+      - template: sonarr-v4-custom-formats-web-1080p
+
+      # Anime tier — assign by setting Series Type = Anime in Sonarr UI
+      - template: sonarr-v4-quality-profile-anime
+      - template: sonarr-v4-custom-formats-anime
