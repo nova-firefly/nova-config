@@ -298,58 +298,211 @@ In the Tdarr UI, **Nodes** panel:
 > driver's session limit was lifted in the 530+ series). Bumping to 3 is
 > usually fine; 4+ trades quality for throughput.
 
-### 7a. Plugins / Flows to enable
+### 7a. Flows to enable
 
 This is the lightweight scope agreed for Path 2 — **no quality reductions, no
-1080p H264→HEVC**. Configure these flows (Tdarr UI → Flows tab → New flow):
+1080p H264→HEVC**. Tdarr's library transcoder is configured via **Flows**
+(visual node-based pipelines), not classic plugins. The classic
+`Tdarr_Plugin_MC93_Migz*` plugin names you may have seen elsewhere are a
+separate older system; ignore them — Flows is the actively-developed path
+and the only path documented here.
 
-#### Flow A — Audio hygiene (root cause of ~50% transcode rate)
+> **Quick orientation.** A Flow is a directed graph of nodes:
+> - **Filter nodes** (`checkVideoCodec`, `checkHdr`, `check10Bit`,
+>   `checkOverallBitrate`, `checkAudioCodec`, `checkChannelCount`) inspect a
+>   file and route it down the **`true`** or **`false`** path.
+> - **ffmpeg-command nodes** (`ffmpegCommandStart`, `ffmpegCommandSetVideoEncoder`,
+>   `ffmpegCommandSetVideoBitrate`, `ffmpegCommandEnsureAudioStream`,
+>   `ffmpegCommandRorderStreams`, `ffmpegCommandExecute`) build up an ffmpeg
+>   command pipeline and then run it.
+> - **Output nodes** decide what happens to the result (`Replace original
+>   file`, `Move to library`, etc.).
+>
+> A flow always starts at the `Input file` node and ends at one of the
+> output terminators. Filters that hit `false` typically connect to "Output
+> file: NoChange" — i.e. skip this file.
 
-**Goal:** every file has at least one English AAC or AC3 stereo track for
-client compatibility (Roku/webOS without DTS-HD pass-through, Chrome web).
+#### 7a.i. Get oriented with the built-in tutorial flows
 
-**No video re-encode** — pure audio remux/transcode.
+Before building anything custom, study the templates that ship with Tdarr:
 
-Plugins (community, in order):
-1. `Tdarr_Plugin_MC93_Migz4CleanAudio` — strips commentary / unknown
-   languages (configure to keep `eng` only, or `eng + und`).
-2. `Tdarr_Plugin_MC93_Migz3ConvertAudio` — adds AAC stereo if not present.
-   - Codec: `aac`, channels: `2`, bitrate: `192k`
-   - Preserve original tracks: yes
-3. `Tdarr_Plugin_MC93_Migz5OrderStreams` — moves the new AAC stereo to
-   index 1 so it's the default for clients without surround support.
+1. Tdarr UI → **Flows** tab (top nav).
+2. Click **Flow+** (top-left button on that tab).
+3. The dropdown lists tutorial templates — `Tutorial Flow 1 - Basic`,
+   `Tutorial Flow 2 - Branching`, `Tutorial Flow 3 - FFmpegCommand`, etc.
+   Pick `Tutorial Flow 3 - FFmpegCommand` and walk the canvas left-to-right.
+4. The same dropdown also has fully-formed templates such as
+   `Re-encode video to H264 / H265 NVENC`, `Re-encode video to H264 / H265
+   QSV`, etc. Spawning one creates a copy you can edit.
+
+> **None of these built-in templates exactly match Path 2's three flows**,
+> but `Re-encode video to H264 / H265 NVENC` is ~80% of Flow B (legacy codec
+> cleanup) and a reasonable starting point.
+
+#### 7a.ii. Three flows to build
+
+Build each as a separate flow (Flows tab → **Add flow** → name it). Then
+assign the appropriate flow to each library (Library card → Edit → switch
+**Transcode Mode** to **Flow** → pick the named flow).
+
+##### Flow A — Audio hygiene (root cause of ~50% transcode rate)
+
+**Goal:** every file has at least one English AAC stereo track. Pure audio
+remux — no video re-encode.
+
+Flow graph:
+
+```
+Input file
+  → ffmpegCommandStart
+  → checkAudioCodec   (does an AAC stereo English track already exist?)
+       │ true  → Output file: NoChange
+       └ false →
+  → ffmpegCommandEnsureAudioStream
+       (codec: aac, channels: 2, language: eng, sample rate: 48000, bitrate: 192k)
+  → ffmpegCommandRorderStreams
+       (push the new aac/2ch track ahead of legacy tracks)
+  → ffmpegCommandExecute
+  → Output file: Replace original
+```
+
+Settings on `checkAudioCodec`: configure for `audioCodec=aac` AND
+`channelCount=2` AND `language=eng`. Tdarr uses `AND` if you chain
+`checkAudioCodec` → `checkChannelCount` → `checkLanguage` filters; otherwise
+combine them in the single node's "must match all" mode.
+
+Settings on `ffmpegCommandEnsureAudioStream`:
+- `Audio encoder` = `aac`
+- `Channels` = `2`
+- `Bitrate` = `192k`
+- `Language` = `eng`
+- `Should add` = `true if not present`
 
 Apply to: **all libraries**.
 
-#### Flow B — Legacy codec cleanup
+##### Flow B — Legacy codec cleanup
 
 **Goal:** re-encode mpeg2 / vc1 / mpeg4 (xvid/divx) / wmv → H.264 NVENC.
 These are old, small, and rare; quality loss is irrelevant.
 
-Plugin:
-- `Tdarr_Plugin_MC93_Migz1FFMPEGNVENC` (or the flow-builder equivalent).
-  - Input codec filter: `mpeg2video,vc1,mpeg4,msmpeg4v3,wmv3,wmv2,wmv1`
-  - Target codec: `h264_nvenc`
-  - Preset: `slow`, CQ: `19`
-  - Skip if codec already h264/hevc/av1: yes
+Flow graph:
+
+```
+Input file
+  → checkVideoCodec   (codec in [mpeg2video, vc1, mpeg4, msmpeg4v3, wmv3, wmv2, wmv1])
+       │ false → Output file: NoChange
+       └ true  →
+  → ffmpegCommandStart
+  → ffmpegCommandSetVideoEncoder   (encoder: h264_nvenc, preset: slow, cq: 19)
+  → ffmpegCommandExecute
+  → Output file: Replace original
+```
+
+> **Why h264_nvenc not h265 here:** the source files are tiny (sub-2 GB)
+> and short-lived in importance. h264 keeps the broadest client compat.
+> h265 buys ~30% size but adds decode incompatibility on rare clients.
 
 Apply to: **all libraries**.
 
-#### Flow C — Oversized SDR HEVC capping
+##### Flow C — Oversized SDR HEVC capping
 
 **Goal:** re-encode SDR HEVC files exceeding Recyclarr's per-minute bitrate
-cap (≈83 MB/min for 2160p) down to that ceiling.
+cap (≈83 MB/min for 2160p) down to that ceiling. Skip HDR entirely.
 
-Plugin:
-- Flow-builder: filter (`codec == hevc AND bit_depth == 8 AND HDR == none AND bitrate > X`)
-  → `h265_nvenc` with target bitrate matching Recyclarr's UHD cap.
+Flow graph:
 
-Apply to: **all libraries**. Skip if flagged HDR/DV (the filter handles this).
+```
+Input file
+  → checkVideoCodec       (codec == hevc?)
+       │ false → Output: NoChange
+       └ true  →
+  → check10Bit             (10-bit?  HDR is always 10-bit; this filters HDR out)
+       │ true  → Output: NoChange
+       └ false →
+  → checkHdr               (extra safety belt for HDR-flagged 8-bit edge cases)
+       │ true  → Output: NoChange
+       └ false →
+  → checkOverallBitrate    (bitrate > 8000 kbps for 2160p, > 4000 for 1080p)
+       │ false → Output: NoChange
+       └ true  →
+  → ffmpegCommandStart
+  → ffmpegCommandSetVideoEncoder  (encoder: hevc_nvenc, preset: slow)
+  → ffmpegCommandSetVideoBitrate  (target: 8000k for 2160p / 4000k for 1080p)
+  → ffmpegCommandExecute
+  → Output: Replace original
+```
 
-> **Explicitly NOT enabled:** any flow that re-encodes 1080p H264→HEVC (would
+> **Why two separate libraries (or two flows):** the bitrate ceiling is
+> resolution-dependent. Easiest pattern is to clone Flow C as `C-2160p` and
+> `C-1080p` with different bitrate values, then assign each to libraries
+> filtered by resolution — or use `checkVideoResolution` filter inside one
+> flow and branch.
+
+Apply to: **all libraries**.
+
+> **Explicitly NOT built:** any flow that re-encodes 1080p H264→HEVC (would
 > trigger Recyclarr upgrade re-grabs because `x265 (HD)` scores -10000), and
 > any HDR re-encoding (10-bit + tone-mapping risk, and the 3080 NVENC
 > tonemap path isn't reliable enough for set-and-forget).
+
+#### 7a.iii. Importing community flows (faster than building from scratch)
+
+If you want pre-built flows instead of clicking the canvas:
+
+**Option 1 — Clone Tdarr's official community flow plugins (already on your
+server).** The flow *nodes* listed above are part of `Tdarr_Plugins`, which
+is auto-synced into the server on startup. They're already available — you
+just drag them onto the canvas. Nothing to install.
+
+**Option 2 — Import a community flow JSON.** Some users publish entire
+flows (the whole graph) as exportable JSON. Two paths:
+
+a) **From the Tdarr UI directly:**
+   - Flows tab → **Flow+** → if a community flow has been added to your
+     server, it appears in the dropdown alongside tutorial flows.
+
+b) **From a GitHub flow repo:**
+   - Pick a flow JSON from a maintained repo, e.g.
+     <https://github.com/samssausages/Tdarr-One-Flow> (community-maintained
+     reference flows including HEVC NVENC pipelines, audio cleanup, HDR-safe
+     filters).
+   - Copy the JSON contents.
+   - Tdarr UI → Flows tab → **Add flow** → **Import JSON** → paste → Save.
+   - The imported flow now appears in your flow list and can be assigned to
+     a library.
+
+**Option 3 — Drop a flow JSON into the server volume.** For permanent /
+versioned community flows, place the file in the `tdarr_server` volume:
+
+```bash
+# On Nova host
+docker cp /path/to/community-flow.json \
+  tdarr-server:/app/server/Tdarr/Plugins/Local/community-flow.json
+docker exec tdarr-server chown 1000:1000 \
+  /app/server/Tdarr/Plugins/Local/community-flow.json
+# Click "Update plugins" in the Tdarr UI top toolbar to pick it up.
+```
+
+The flow now persists across container recreates because `tdarr_server` is
+an external named volume.
+
+> The Tdarr "Update plugins" button (top toolbar, sync icon) re-pulls the
+> upstream `HaveAGitGat/Tdarr_Plugins` repo onto the server. Click it after
+> any flow node update is announced, and after dropping local flow JSON into
+> the server volume.
+
+#### 7a.iv. If a flow node is missing
+
+If a node listed above (e.g. `ffmpegCommandEnsureAudioStream`) doesn't
+appear in the flow-builder palette, your server hasn't synced plugins yet:
+
+1. Tdarr UI top toolbar → click **🔄 Update plugins**.
+2. Wait for the toast notification "Plugins updated".
+3. Refresh the flow editor.
+
+If the node still isn't there, check `docker logs tdarr-server | grep -i
+plugin` for sync errors, and confirm the server has internet egress
+(plugin updates pull from GitHub).
 
 ### 7b. Start the queue
 
