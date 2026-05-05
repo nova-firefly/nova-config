@@ -44,6 +44,14 @@ if [[ -f .env ]]; then
   set -o allexport; source .env; set +o allexport
 fi
 
+# WUD bind-mounts ${NOVA_CONFIG_PATH}:/compose to recreate containers via docker-compose triggers.
+# If it points elsewhere, WUD's recreated containers will have bind-mount sources from a
+# different directory than this script uses — silent and very confusing to debug.
+if [[ -n "${NOVA_CONFIG_PATH:-}" && "$(realpath "${NOVA_CONFIG_PATH}")" != "$(pwd)" ]]; then
+  echo "WARNING: NOVA_CONFIG_PATH=${NOVA_CONFIG_PATH} does not match nova.sh location $(pwd)" >&2
+  echo "         WUD and nova.sh will reference different compose paths. Fix .env." >&2
+fi
+
 ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test)
 
 # Stacks excluded from reconcile — intentionally transient or CI-only stacks

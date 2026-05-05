@@ -685,6 +685,9 @@ services:
   internal-webhook:
     build:
       context: ./internal-webhook
+    # Required: WUD's docker-compose trigger reads service.image on every service in the file
+    # and crashes on build-only services (getwud/wud Dockercompose.ts: service.image.includes()).
+    image: "internal-webhook:local"
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"
