@@ -220,6 +220,17 @@ can reach Nova on (`nova`, `nova.local`, `192.168.1.x`, etc).
 
 **Substitute the drive letters** (`X:`, `Y:`, `Z:`) with whichever you used in § 2.
 
+> **JSON escape gotcha — read this carefully.** Backslashes in JSON strings
+> must be doubled: `"X:\\plex_data_1\\_data"`. A single `\_` is an *invalid*
+> JSON escape and most parsers silently drop the backslash, so
+> `"X:\plex_data_1\_data"` becomes `X:\plex_data_1_data` at runtime — and
+> every job fails with `ENOENT: no such file or directory` because the
+> directory `\_data` is missing from the path.
+>
+> If you prefer to avoid escapes entirely, forward slashes also work on
+> Windows: `"X:/plex_data_1/_data"`. Either form is fine; just don't ship
+> single-backslash paths.
+
 > **Why the pathTranslators?** The server sees the data at Linux paths like
 > `/library1/movies/Movie (2020)/movie.mkv`. The node accesses the same file
 > at `X:\plex_data_1\_data\movies\Movie (2020)\movie.mkv`. Path translators
