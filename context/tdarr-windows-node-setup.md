@@ -287,9 +287,36 @@ nssm set    Tdarr_Node ObjectName ".\<your-user>" "<your-password>"   # so SMB d
 nssm start  Tdarr_Node
 ```
 
-> If you used SMB drive letters in § 2, the service MUST run as your user
-> (not LocalSystem). UNC path translators avoid this constraint at the cost
-> of slightly slower path resolution.
+> ⚠ **The LocalSystem trap.** Windows services default to running as
+> `LocalSystem`, which **does not see drive letters mapped by your user
+> account**. If you skip the `ObjectName` line above (or install the service
+> via the GUI without overriding the account), every job will fail with
+> `ENOENT: no such file or directory` even though the path itself is
+> correct, because the service is looking at a drive letter that doesn't
+> exist in its session.
+>
+> **Two ways to avoid this:**
+>
+> 1. **Run the service as your user account** — set `ObjectName` as shown
+>    above, or after the fact: `services.msc` → `Tdarr_Node` → Properties
+>    → Log On tab → "This account" → enter your username and password,
+>    then restart the service.
+>
+> 2. **Switch pathTranslators to UNC paths** — works under LocalSystem
+>    without any service reconfiguration, as long as the SMB share allows
+>    the access (guest or saved credentials):
+>
+>    ```json
+>    "pathTranslators": [
+>      { "server": "/library1", "node": "\\\\NOVA\\data1\\plex_data_1\\_data" },
+>      { "server": "/library2", "node": "\\\\NOVA\\data2" },
+>      { "server": "/library3", "node": "\\\\NOVA\\data3" },
+>      { "server": "/temp",     "node": "X:\\tdarr\\cache" }
+>    ]
+>    ```
+>
+>    (UNC needs four backslashes per `\\` due to JSON escaping. Forward
+>    slashes do *not* work for UNC — must be backslashes.)
 
 In the Tdarr UI (Nodes panel, top right) you should now see two nodes:
 `NovaInternalCPU` and `Tdarr-Win-3080`.
