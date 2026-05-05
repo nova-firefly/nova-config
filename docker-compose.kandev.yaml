@@ -1,0 +1,99 @@
+# Kandev Stack - AI Kanban & Development Environment (vibe-kanban alternative)
+# Usage: docker compose -f docker-compose.kandev.yaml up -d
+#
+# Upstream: https://github.com/kdlbs/kandev (AGPL-3.0)
+# Build: ./kandev/Dockerfile extends ghcr.io/kdlbs/kandev:latest with the
+#        Claude Code CLI — kandev itself is just an orchestrator and shells
+#        out to whatever agent CLIs are on $PATH.
+#
+# Auth model:
+#   - Claude Code reads ANTHROPIC_API_KEY from the env (set in .env)
+#   - GitHub PAT entered in kandev's settings UI on first run
+#
+# This is the minimal first-time config. Add SSH key mounts, gitconfig,
+# socket-proxy access, or read-only service config volumes later if needed.
+
+name: kandev
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  kandev:
+    build: "./kandev"
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "kandev"
+    environment:
+      - "TZ=${TZ}"
+      - "KANDEV_HOME_DIR=/data"
+      - "KANDEV_NO_BROWSER=1"
+      - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}"
+    healthcheck:
+      # Upstream kandev image has no wget/curl — use node's built-in http
+      # module (node is on PATH because the base is node:24-bookworm-slim).
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:38429/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    hostname: "${NOVA_HOSTNAME}"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.kandev.rule: "Host(`kandev.${NOVA_DOMAIN}`)"
+      traefik.http.routers.kandev.entrypoints: "websecure"
+      traefik.http.routers.kandev.tls: "true"
+      traefik.http.routers.kandev.middlewares: "authelia@file"
+      traefik.http.services.kandev.loadbalancer.server.port: "38429"
+      homepage.group: "Development"
+      homepage.name: "Kandev"
+      homepage.icon: "https://www.google.com/s2/favicons?domain=github.com/kdlbs/kandev&sz=128"
+      homepage.href: "https://kandev.${NOVA_DOMAIN}"
+      homepage.description: "AI Kanban & Dev Environment"
+      # Locally built image — WUD can't track digests for build:, mirror
+      # the vibe-kanban pattern. Update by running ./nova.sh recreate kandev.
+      wud.watch: "false"
+    networks:
+      - "traefik_default"
+    ports:
+      - "38429:38429/tcp"
+    restart: "unless-stopped"
+    volumes:
+      - "kandev-data:/data"
+      # Mount inside the kandev user's home so it falls within kandev's
+      # default repository-discovery allowed root (os.UserHomeDir() →
+      # /home/kandev). Mounting elsewhere yields "path is outside the
+      # allowed roots" in the Add Local Repository UI.
+      - "vibe-kanban-repos:/home/kandev/repos"
+
+volumes:
+
+  kandev-data:
+
+  vibe-kanban-repos:
+    external: true
