@@ -31,10 +31,10 @@ Reference for consistent patterns when editing compose files or adding new servi
       homepage.icon: "my-service.svg"   # or .png; see gethomepage.dev/icons
       homepage.href: "https://my-service.${NOVA_DOMAIN}"
       homepage.description: "Short description"
-      # WUD
+      # WUD (notify-only — no auto-recreate)
       wud.watch: "true"
       wud.watch.digest: "true"          # omit for versioned tags (e.g. postgres:15)
-      wud.trigger.include: "dockercompose.STACKNAME,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -62,10 +62,8 @@ Reference for consistent patterns when editing compose files or adding new servi
 - `wud.watch: "true"` — enable update watching
 - `wud.watch.digest: "true"` — add for floating tags like `latest` (detects digest changes)
 - `wud.watch: "false"` — explicitly disable (e.g. wud itself, volume-sharer)
-- `wud.trigger.include` — comma-separated list of triggers:
-  - `dockercompose.STACKNAME` — auto-update via compose pull+up
-  - `discord.notify` — send Discord notification
-  - Some services only get `discord.notify` (no auto-update) e.g. plex, traefik
+- `wud.trigger.include: "discord.notify"` — send Discord notification on detected update.
+  WUD is notify-only: actual deploys are manual (Arcane UI or `nova.sh update`).
 
 ## Security Hardening (cap_drop)
 
@@ -207,14 +205,8 @@ Each compose file begins with a comment block:
 
 1. Create `docker-compose.<name>.yaml` with the header comment block
 2. Add `<name>` to `ALL_STACKS` array in `nova.sh` line 27
-3. Add WUD trigger env vars to the `wud` service in `docker-compose.infra.yaml`:
-   ```yaml
-   - "WUD_TRIGGER_DOCKERCOMPOSE_NAME_FILE=/compose/docker-compose.name.yaml"
-   - "WUD_TRIGGER_DOCKERCOMPOSE_NAME_BACKUP=true"
-   - "WUD_TRIGGER_DOCKERCOMPOSE_NAME_PRUNE=true"
-   ```
-4. Add env vars to `.env.example` with `# Stack: name` annotation
-5. Update `context/stacks.md`
+3. Add env vars to `.env.example` with `# Stack: name` annotation
+4. Update `context/stacks.md`
 
 ## Adding a Host-Mode Service to Traefik
 

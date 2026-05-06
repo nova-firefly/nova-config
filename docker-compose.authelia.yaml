@@ -75,7 +75,7 @@ services:
       homepage.description: "Authentication Portal"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.authelia,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "authelia_internal"
       - "traefik_default"

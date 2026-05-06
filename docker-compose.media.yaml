@@ -68,7 +68,7 @@ services:
       homepage.description: "Subtitle Management"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -110,7 +110,7 @@ services:
       homepage.description: "Media Requests"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -244,7 +244,7 @@ services:
       homepage.description: "Indexer Management"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "media"
       - "traefik_default"
@@ -309,7 +309,7 @@ services:
       homepage.description: "Movie Management"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "media"
       - "traefik_default"
@@ -378,7 +378,7 @@ services:
       homepage.description: "TV Show Management"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "media"
       - "traefik_default"
@@ -436,7 +436,7 @@ services:
     labels:
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "media"
     restart: "unless-stopped"
@@ -488,7 +488,7 @@ services:
     labels:
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "media"
     restart: "unless-stopped"
@@ -527,7 +527,7 @@ services:
       homepage.description: "Plex Monitoring"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -600,7 +600,7 @@ services:
     labels:
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     restart: "unless-stopped"
@@ -673,7 +673,7 @@ services:
       homepage.description: "Plex Dashboard & Collection Manager"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -685,8 +685,6 @@ services:
   internal-webhook:
     build:
       context: ./internal-webhook
-    # Required: WUD's docker-compose trigger reads service.image on every service in the file
-    # and crashes on build-only services (getwud/wud Dockercompose.ts: service.image.includes()).
     image: "internal-webhook:local"
     cap_drop:
       - "AUDIT_CONTROL"
@@ -769,7 +767,7 @@ services:
       traefik.http.routers.qbittorrent-api.service: "qbittorrent"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     logging:
       driver: "json-file"
       options:
@@ -829,7 +827,7 @@ services:
       homepage.description: "Torrent Client"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.media,discord.notify"
+      wud.trigger.include: "discord.notify"
     depends_on:
       gluetun:
         condition: service_healthy

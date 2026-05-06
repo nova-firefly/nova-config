@@ -45,7 +45,7 @@ services:
     labels:
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.infra,discord.notify"
+      wud.trigger.include: "discord.notify"
     restart: "unless-stopped"
 
   homepage:
@@ -73,7 +73,7 @@ services:
       traefik.http.services.homepage.loadbalancer.server.port: "3000"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.infra,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
       - "socket_proxy"
@@ -114,7 +114,7 @@ services:
       homepage.description: "Container Management"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.infra,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -221,7 +221,7 @@ services:
       homepage.description: "System Monitoring"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.infra,discord.notify"
+      wud.trigger.include: "discord.notify"
     network_mode: "host"
     pid: "host"
     restart: "unless-stopped"
@@ -261,32 +261,9 @@ services:
       - "WUD_WATCHER_LOCAL_SOCKET=/var/run/docker.sock"
       - "WUD_WATCHER_LOCAL_CRON=0 4 * * *"
       - "WUD_WATCHER_LOCAL_WATCHBYDEFAULT=false"
-      # Docker Compose triggers - one per stack file
-      - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_FILE=/compose/docker-compose.infra.yaml"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_BACKUP=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_INFRA_PRUNE=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_MEDIA_FILE=/compose/docker-compose.media.yaml"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_MEDIA_BACKUP=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_MEDIA_PRUNE=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_BACKUP_FILE=/compose/docker-compose.backup.yaml"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_BACKUP_BACKUP=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_BACKUP_PRUNE=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_FILE=/compose/docker-compose.tools.yaml"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_BACKUP=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_PRUNE=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_AUTHELIA_FILE=/compose/docker-compose.authelia.yaml"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_AUTHELIA_BACKUP=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_AUTHELIA_PRUNE=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_FILE=/compose/docker-compose.dev.yaml"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_BACKUP=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_DEV_PRUNE=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_FILE=/compose/docker-compose.home.yaml"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_BACKUP=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_HOME_PRUNE=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_FILE=/compose/docker-compose.gaming.yaml"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_BACKUP=true"
-      - "WUD_TRIGGER_DOCKERCOMPOSE_GAMING_PRUNE=true"
-      # Discord notification trigger
+      # Notify-only mode: docker-compose auto-update triggers were removed in favour of
+      # manual deploys via Arcane (or `nova.sh update`). Pinning + intentional updates
+      # avoid silent recreates that fail when .env or bind-mount sources have drifted.
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
       # Registries - lscr.io (LinuxServer) images not auto-detected without this
@@ -352,7 +329,7 @@ services:
       homepage.description: "Hard Drive Health (S.M.A.R.T.)"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.infra,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:
