@@ -43,7 +43,7 @@ services:
       homepage.description: "Backup Management"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.backup,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "backrest_default"
       - "traefik_default"

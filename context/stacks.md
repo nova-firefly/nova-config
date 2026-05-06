@@ -40,7 +40,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **External networks:** `traefik_default` (shared)
 
-**WUD triggers configured (in wud service env):** infra, media, backup, tools, authelia, dev, gaming stacks
+**WUD mode:** notify-only (Discord). Manual deploys via Arcane UI or `nova.sh update`.
 
 ---
 
@@ -177,7 +177,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Routing:** Traefik routes `/graphql` to backend, everything else to frontend — both on `movienight.NOVA_DOMAIN`
 
-**Auto-deploy:** Both images are built by CI in the `kjsb25/movienight` repo on push to `master` and pushed to GHCR. WUD watches both images (`wud.watch: "true"`) and triggers `dockercompose.movienight` to pull and recreate when digests change. The CI's SSH deploy job also calls `nova.sh update movienight` immediately after the image push for same-push deployments.
+**Auto-deploy:** Both images are built by CI in the `kjsb25/movienight` repo on push to `master` and pushed to GHCR. The CI's SSH deploy job calls `nova.sh update movienight` after the image push. WUD watches both images and notifies on Discord when digests change but does not recreate.
 
 **Submodule:** `movienight/` is kept for local development reference only — no longer used for production builds.
 
@@ -194,7 +194,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | vibe-kanban | local build (`./vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
 | vibe-kanban-tools | ghcr.io/kjsb25/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
 
-**Auto-deploy (vibe-kanban-tools):** Image is built by CI in the `kjsb25/vibe-kanban-tools` repo on push to `main` and pushed to GHCR. The CI deploy job also SSH-deploys immediately via `nova.sh update dev`. WUD watches the image (`wud.watch: "true"`) and triggers `dockercompose.dev` to pull and recreate when the digest changes.
+**Auto-deploy (vibe-kanban-tools):** Image is built by CI in the `kjsb25/vibe-kanban-tools` repo on push to `main` and pushed to GHCR. The CI deploy job SSH-deploys immediately via `nova.sh update dev`. WUD watches the image and notifies on Discord when the digest changes but does not recreate.
 
 **Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`
 
@@ -245,7 +245,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Required env:** `PTERODACTYL_DB_PASSWORD`, `PTERODACTYL_DB_ROOT_PASSWORD`, `PTERODACTYL_APP_KEY`, `PTERODACTYL_HASHIDS_SALT`, `PTERODACTYL_APP_SERVICE_AUTHOR`
 
-**WUD trigger:** `dockercompose.gaming` — auto-updates panel and wings images
+**Updates:** WUD watches panel and wings images and sends Discord notifications; deploys are manual.
 
 **Note:** Wings runs with `privileged: true` and the host Docker socket mounted. It creates game server containers directly on the host Docker daemon. Game servers (including Minecraft) are managed through the Pterodactyl panel.
 

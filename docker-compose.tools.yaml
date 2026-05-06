@@ -36,7 +36,7 @@ services:
       homepage.description: "PDF Manipulation"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.tools,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:
@@ -99,7 +99,7 @@ services:
       homepage.description: "Budgeting"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.tools,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     restart: "unless-stopped"
@@ -132,7 +132,7 @@ services:
       homepage.description: "Push Notifications"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.tools,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     restart: "unless-stopped"
@@ -164,7 +164,7 @@ services:
       homepage.description: "Service Uptime Monitoring"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.tools,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:

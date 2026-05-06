@@ -119,7 +119,7 @@ services:
       homepage.description: "Quick-capture tasks for Vibe Kanban"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "dockercompose.dev,discord.notify"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     ports:

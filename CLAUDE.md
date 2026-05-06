@@ -44,8 +44,7 @@ See `context/docker-access.md` for what Docker commands are allowed from inside 
 ### Add a new stack
 1. Create `docker-compose.<stackname>.yaml`
 2. Add stack name to `ALL_STACKS` in `nova.sh` (line 27)
-3. Add WUD trigger env vars to the `wud` service in `docker-compose.infra.yaml`
-4. Update `context/stacks.md`
+3. Update `context/stacks.md`
 
 ### Add a host-mode service to Traefik
 Edit `traefik/dynamic.yaml` — add router + service pointing to `http://host.docker.internal:<port>`
