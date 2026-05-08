@@ -1,7 +1,7 @@
 # Docker Socket Access Policy
 
 All containers that need Docker API access connect through `socket-proxy`
-(`tecnativa/docker-socket-proxy` in `docker-compose.infra.yaml`), not directly to
+(`tecnativa/docker-socket-proxy` in `infra/compose.yaml`), not directly to
 `/var/run/docker.sock`. The vibe-kanban container is no exception — it uses
 `DOCKER_HOST=tcp://socket-proxy:2375`.
 
@@ -77,6 +77,6 @@ cat /mnt/configs/sonarr/config.xml
 
 ## Proxy Source
 
-`docker-compose.infra.yaml` → `socket-proxy` service (image: `tecnativa/docker-socket-proxy`).
+`infra/compose.yaml` → `socket-proxy` service (image: `tecnativa/docker-socket-proxy`).
 The proxy listens on `tcp://socket-proxy:2375` within the `socket_proxy` network, and also on
 `127.0.0.1:2375` on the host loopback for host-networked services (Glances, volume-sharer).

@@ -1,5 +1,5 @@
 # Media Stack - Plex, *arr apps, Gluetun + qBittorrent, Tautulli, Seerr
-# Usage: docker compose -f docker-compose.media.yaml up -d
+# Usage: ./nova.sh up media   (or: docker compose -f media/compose.yaml up -d)
 # Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*, NOVA_DOMAIN
 
 name: media
@@ -441,7 +441,7 @@ services:
       - "media"
     restart: "unless-stopped"
     volumes:
-      - "./decluttarr/config.yaml:/app/config/config.yaml:ro"
+      - "../decluttarr/config.yaml:/app/config/config.yaml:ro"
 
   recyclarr:
     cap_drop:
@@ -493,7 +493,7 @@ services:
       - "media"
     restart: "unless-stopped"
     volumes:
-      - "./recyclarr:/config"
+      - "../recyclarr:/config"
 
   tautulli:
     container_name: "tautulli"
@@ -605,7 +605,7 @@ services:
       - "traefik_default"
     restart: "unless-stopped"
     volumes:
-      - "./kometa:/config"
+      - "../kometa:/config"
       - "kometa_trigger:/trigger"
 
   homescreen-hero:
@@ -684,7 +684,7 @@ services:
 
   internal-webhook:
     build:
-      context: ./internal-webhook
+      context: ../internal-webhook
     image: "internal-webhook:local"
     cap_drop:
       - "AUDIT_CONTROL"

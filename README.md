@@ -6,14 +6,16 @@ Docker Compose configuration for managing self-hosted services, split into indep
 
 | Stack | File | Services |
 |-------|------|----------|
-| **Media** | `docker-compose.media.yaml` | Plex, Radarr, Sonarr, Bazarr, Prowlarr, Transmission (VPN), Tautulli, Seerr |
-| **Immich** | `docker-compose.immich.yaml` | Immich Server, Machine Learning, Postgres, Redis |
-| **Home** | `docker-compose.home.yaml` | Home Assistant, Z-Wave JS UI, Music Assistant |
-| **Infra** | `docker-compose.infra.yaml` | Traefik, Portainer, Dockge, WUD, DuckDNS, Homepage, Volume Sharer |
-| **Backup** | `docker-compose.backup.yaml` | Backrest, Duplicati |
-| **Gaming** | `docker-compose.gaming.yaml` | Minecraft |
-| **Dev** | `docker-compose.dev.yaml` | Vibe Kanban |
-| **Tools** | `docker-compose.tools.yaml` | Stirling PDF, Vikunja |
+| **Media** | `media/compose.yaml` | Plex, Radarr, Sonarr, Bazarr, Prowlarr, Tautulli, Seerr, Kometa, qBittorrent (Gluetun VPN) |
+| **Immich** | `immich/compose.yaml` | Immich Server, Machine Learning, Postgres, Redis |
+| **Home** | `home/compose.yaml` | Home Assistant, Z-Wave JS UI, Music Assistant, Matter |
+| **Infra** | `infra/compose.yaml` | Traefik, Authelia (separate stack), Arcane, Dockge, WUD, DuckDNS, Homepage, Glances, Scrutiny |
+| **Authelia** | `authelia/compose.yaml` | Authelia + Redis (forward-auth for protected services) |
+| **Backup** | `backup/compose.yaml` | Backrest, Duplicati |
+| **Gaming** | `gaming/compose.yaml` | Pterodactyl panel + Wings |
+| **Dev** | `dev/compose.yaml` | Vibe Kanban, Vibe Kanban Tools |
+| **Tools** | `tools/compose.yaml` | Stirling PDF, Vikunja, Uptime Kuma, ntfy, Actual |
+| **Movienight** | `movienight/compose.yaml` | Frontend + Backend + Postgres |
 
 ## Prerequisites
 
@@ -64,8 +66,8 @@ See `.env.example` for all required variables. Each variable is annotated with w
 | `DUPLICATI_SETTINGS_ENCRYPTION_KEY` | backup | `openssl rand -base64 32` |
 | `IMMICH_DB_PASSWORD` | immich | `openssl rand -base64 24` |
 | `PLEX_CLAIM_TOKEN` | media | https://www.plex.tv/claim/ |
-| `TRANSMISSION_OPENVPN_USERNAME` | media | https://mullvad.net/account/ |
-| `TRANSMISSION_OPENVPN_PASSWORD` | media | https://mullvad.net/account/ |
+| `WIREGUARD_PRIVATE_KEY` | media | https://mullvad.net/account/ (Gluetun) |
+| `WIREGUARD_ADDRESSES` | media | https://mullvad.net/account/ (Gluetun) |
 | `ZWAVE_SESSION_SECRET` | home | `openssl rand -base64 32` |
 
 ## Security Notes

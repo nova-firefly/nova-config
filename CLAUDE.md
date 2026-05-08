@@ -7,13 +7,17 @@ Nova is a self-hosted Docker Compose infrastructure for a personal homelab. All 
 ```
 nova-config/
 ├── nova.sh                        # Master CLI: up/down/pull/update/logs/ps/config
-├── .env / .env.example            # All secrets and shared settings
-├── docker-compose.<stack>.yaml    # One file per stack (9 stacks total)
+├── .env / .env.example            # All secrets and shared settings (root only)
+├── <stack>/compose.yaml           # One dir per stack — 11 total. compose.yaml is canonical name.
+├── <stack>/.env -> ../.env        # Symlink so docker compose finds shared env from each stack dir
 ├── traefik/dynamic.yaml           # Routes for host-mode services (not Docker-discoverable)
 ├── homepage/                      # Dashboard config (settings/services/widgets YAML)
 ├── vibe-kanban/Dockerfile         # Dev container with Claude Code, gh CLI, Docker CLI
-└── movienight/                    # Git submodule — separate repo for movie app
+└── movienight/                    # Stack dir; submodule lives at movienight/src
 ```
+
+Stack dirs (each contains `compose.yaml` + `.env` symlink):
+`infra`, `authelia`, `media`, `immich`, `home`, `backup`, `gaming`, `dev`, `tools`, `movienight`, `movienight-test`
 
 See `context/stacks.md` for full stack/service inventory and ports.
 See `context/patterns.md` for conventions to follow when editing compose files.
@@ -35,16 +39,17 @@ See `context/docker-access.md` for what Docker commands are allowed from inside 
 ## Common Tasks
 
 ### Add a new service to an existing stack
-1. Add service block to `docker-compose.<stack>.yaml` following patterns in `context/patterns.md`
+1. Add service block to `<stack>/compose.yaml` following patterns in `context/patterns.md`
 2. Add Traefik, Homepage, and WUD labels
 3. Declare any new external volumes at bottom of the file
 4. Add env vars to `.env.example` with stack annotation
 5. Update `context/stacks.md` with the new service
 
 ### Add a new stack
-1. Create `docker-compose.<stackname>.yaml`
-2. Add stack name to `ALL_STACKS` in `nova.sh` (line 27)
-3. Update `context/stacks.md`
+1. Create `<stackname>/compose.yaml`
+2. Add `<stackname>/.env` as a symlink to `../.env` (force-add: `git add -f`)
+3. Add stack name to `ALL_STACKS` in `nova.sh`
+4. Update `context/stacks.md`
 
 ### Add a host-mode service to Traefik
 Edit `traefik/dynamic.yaml` — add router + service pointing to `http://host.docker.internal:<port>`
@@ -57,6 +62,18 @@ Add `homepage.*` labels to the service (see patterns.md). Homepage reads Docker 
 Shared across stacks: `TZ`, `PUID`, `PGID`, `NOVA_HOSTNAME`, `NOVA_DOMAIN`
 
 Stack-specific vars documented in `.env.example` and `context/stacks.md`.
+
+The single source of truth is the root `.env`. Each stack dir has a `.env -> ../.env` symlink so that running `docker compose` from inside a stack dir (Dockge does this) picks up the same vars.
+
+## Stack management interfaces
+
+Three ways to manage stacks (overlapping but complementary):
+
+- **`nova.sh` CLI** — scripted/CI ops, init, reconcile, orphans, batch all-stacks, ntfy notifications.
+- **Dockge** at `dockge.${NOVA_DOMAIN}` — mobile-friendly per-stack UI: start/stop/restart/recreate, edit `compose.yaml` on disk, tail logs.
+- **Arcane** at `arcane.${NOVA_DOMAIN}` — per-container UI; finer-grained than Dockge.
+
+See `context/orchestration.md` for why we stay on plain Docker Compose vs. Swarm or k3s.
 
 ## Claude Skills
 

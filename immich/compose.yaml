@@ -1,5 +1,5 @@
 # Immich Stack - Photo management with ML, Postgres, and Redis
-# Usage: docker compose -f docker-compose.immich.yaml up -d
+# Usage: ./nova.sh up immich   (or: docker compose -f immich/compose.yaml up -d)
 # Requires .env file for: IMMICH_DB_PASSWORD, NOVA_DOMAIN, IMMICH_POWER_TOOLS_API_KEY
 
 name: immich

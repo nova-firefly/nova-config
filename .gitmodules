@@ -3,5 +3,5 @@
 	url = git@github.com:nova-firefly/vibe-kanban-tools.git
 	branch = main
 [submodule "movienight"]
-	path = movienight
+	path = movienight/src
 	url = git@github.com:nova-firefly/movienight.git

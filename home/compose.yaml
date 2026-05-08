@@ -1,5 +1,5 @@
 # Home Automation Stack - Home Assistant, Z-Wave, Music Assistant
-# Usage: docker compose -f docker-compose.home.yaml up -d
+# Usage: ./nova.sh up home   (or: docker compose -f home/compose.yaml up -d)
 # Requires .env file for: ZWAVE_SESSION_SECRET, NOVA_DOMAIN
 
 name: home

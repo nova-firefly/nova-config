@@ -1,8 +1,8 @@
 # MovieNight Stack - Movie suggestion app
-# Usage: docker compose -f docker-compose.movienight.yaml up -d
+# Usage: ./nova.sh up movienight   (or: docker compose -f movienight/compose.yaml up -d)
 # Requires .env file for: NOVA_DOMAIN, MOVIENIGHT_DB_PASSWORD, MOVIENIGHT_JWT_SECRET,
 #   MOVIENIGHT_ADMIN_PASSWORD, MOVIENIGHT_SMTP_HOST, MOVIENIGHT_SMTP_USER, MOVIENIGHT_SMTP_PASS
-# Note: movienight submodule must be initialized (git submodule update --init)
+# Note: movienight submodule lives at movienight/src — initialize with `git submodule update --init`
 
 name: movienight
 
@@ -84,7 +84,7 @@ services:
       - "internal_webhook"   # can reach internal-webhook; no internet egress from this network
     restart: "unless-stopped"
     volumes:
-      - "./kometa/collections:/kometa-collections"
+      - "../kometa/collections:/kometa-collections"
 
   movienight-frontend:
     container_name: "movienight-frontend"

@@ -1,42 +1,44 @@
 # Stack & Service Inventory
 
-All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) controls startup order.
+All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAIN}`). Stack order in `ALL_STACKS` (nova.sh) controls startup order. Each stack lives in its own directory containing `compose.yaml` and a `.env` symlink to the shared root `.env`.
 
 ## Stack Summary
 
 | Stack | File | Services |
 |-------|------|----------|
-| infra | docker-compose.infra.yaml | traefik, homepage, arcane, duckdns, glances, volume-sharer, wud |
-| authelia | docker-compose.authelia.yaml | authelia, redis |
-| media | docker-compose.media.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent, decluttarr, recyclarr |
-| immich | docker-compose.immich.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis |
-| home | docker-compose.home.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
-| movienight | docker-compose.movienight.yaml | movienight-frontend, movienight-backend, movienight-db |
-| dev | docker-compose.dev.yaml | vibe-kanban |
-| tools | docker-compose.tools.yaml | actual, stirling-pdf, vikunja, ntfy |
-| backup | docker-compose.backup.yaml | backrest, duplicati |
-| gaming | docker-compose.gaming.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
+| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy |
+| authelia | authelia/compose.yaml | authelia, redis |
+| media | media/compose.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent, decluttarr, recyclarr, homescreen-hero |
+| immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
+| home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
+| movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
+| dev | dev/compose.yaml | vibe-kanban, vibe-kanban-tools |
+| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy |
+| backup | backup/compose.yaml | backrest |
+| gaming | gaming/compose.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
+| movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
 
 ---
 
-## infra stack (`docker-compose.infra.yaml`)
+## infra stack (`infra/compose.yaml`)
 
 **Purpose:** Core infrastructure — reverse proxy, DNS, dashboard, monitoring, updates
 
 | Service | Image | Port(s) | URL | Notes |
 |---------|-------|---------|-----|-------|
 | traefik | traefik:v3.6 | 80, 443 | traefik.NOVA_DOMAIN | Wildcard TLS via DuckDNS DNS-01 challenge |
-| homepage | ghcr.io/gethomepage/homepage | 3000 | home.NOVA_DOMAIN | Dashboard; reads Docker labels + ./homepage/ config |
-| arcane | ghcr.io/getarcaneapp/arcane | 3552 | arcane.NOVA_DOMAIN | Container management UI |
+| homepage | ghcr.io/gethomepage/homepage | 3000 | home.NOVA_DOMAIN | Dashboard; reads Docker labels + `../homepage/` config (root-level dir) |
+| arcane | ghcr.io/getarcaneapp/arcane | 3552 | arcane.NOVA_DOMAIN | Container management UI (per-container) |
+| dockge | louislam/dockge:1 | 5001 | dockge.NOVA_DOMAIN | Compose stack manager (per-stack); mobile-friendly; reads/writes `<stack>/compose.yaml` on disk via `${NOVA_CONFIG_PATH}:/opt/stacks` mount |
 | duckdns | lscr.io/linuxserver/duckdns | — | — | Dynamic DNS updater |
 | glances | nicolargo/glances:latest-full | 61208 (host) | glances.NOVA_DOMAIN | System monitor; host network mode → routed via traefik/dynamic.yaml |
 | volume-sharer | gdiepen/volume-sharer | 139, 445 (host) | — | Samba share of Docker volumes |
-| wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; triggers per-stack docker-compose pull+up |
+| wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; notify-only (Discord). Manual deploys via Dockge / Arcane / `nova.sh update` |
 | scrutiny | ghcr.io/analogj/scrutiny:master-omnibus | 8082→8080 | scrutiny.NOVA_DOMAIN | S.M.A.R.T. hard drive health monitoring; needs SYS_RAWIO + device passthrough |
 
-**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_data`
+**External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_data`, `dockge_data`
 
-**Config files (bind-mounted):** `./scrutiny/scrutiny.yaml` — device labels and web config
+**Config files (bind-mounted):** `../scrutiny/scrutiny.yaml` (root-level `scrutiny/` dir; path is `..` from the infra stack dir)
 
 **External networks:** `traefik_default` (shared)
 
@@ -44,7 +46,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 ---
 
-## authelia stack (`docker-compose.authelia.yaml`)
+## authelia stack (`authelia/compose.yaml`)
 
 **Purpose:** Central authentication portal; provides forward-auth middleware for all protected services via Traefik
 
@@ -55,9 +57,9 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 
 **External volumes:** `authelia_data` (SQLite DB at `/config/data/db.sqlite3`), `authelia_redis` (Redis persistence)
 
-**Config files (bind-mounted):**
-- `./authelia/configuration.yml` — Main config (read-only); uses Go template syntax via `X_AUTHELIA_CONFIG_FILTERS=template`
-- `./authelia/users_database.yml` — User accounts (writable — Authelia updates on password change)
+**Config files (bind-mounted):** sit alongside `compose.yaml` inside the `authelia/` dir
+- `./configuration.yml` (i.e. `authelia/configuration.yml`) — Main config (read-only); uses Go template syntax via `X_AUTHELIA_CONFIG_FILTERS=template`
+- `./users_database.yml` (i.e. `authelia/users_database.yml`) — User accounts (writable — Authelia updates on password change)
 
 **Middleware reference:** `authelia@file` — defined in `traefik/dynamic.yaml`; add to any router with: `traefik.http.routers.<name>.middlewares: "authelia@file"`
 
@@ -78,7 +80,7 @@ All stacks managed via `./nova.sh`. Stack order in `ALL_STACKS` (nova.sh:27) con
 # Generate secrets
 openssl rand -hex 64  # run 3x for JWT_SECRET, SESSION_SECRET, STORAGE_ENCRYPTION_KEY
 
-# Generate password hash (replace placeholder in authelia/users_database.yml)
+# Generate password hash (replace placeholder in authelia/users_database.yml — alongside compose.yaml)
 docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password 'YourPassword'
 
 # Create volumes
@@ -94,7 +96,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
-## media stack (`docker-compose.media.yaml`)
+## media stack (`media/compose.yaml`)
 
 **Purpose:** Media server and content acquisition pipeline
 
@@ -108,13 +110,13 @@ docker volume create authelia_data && docker volume create authelia_redis
 | tautulli | ghcr.io/tautulli/tautulli | 8181 | tautulli.NOVA_DOMAIN | Plex stats/monitoring |
 | seerr | ghcr.io/seerr-team/seerr | 5055 | seerr.NOVA_DOMAIN | Media request management |
 | homescreen-hero | trentferguson/homescreen-hero | 8000 | homescreen-hero.NOVA_DOMAIN | Plex dashboard: collection rotation, Tautulli/Seerr widgets, watch history tools |
-| kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00 via trigger-wrapper.sh; config in `./kometa/`; no web UI |
-| kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `./kometa/` bind-mount to write config.yml |
-| internal-webhook | local build (`./internal-webhook/`) | 9000 (internal only) | — | Internal webhook server for container-to-container triggers; only reachable from `internal_webhook` internal Docker network; currently handles `/kometa/trigger` |
+| kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00 via trigger-wrapper.sh; config in `../kometa/` (root-level dir, mounted from media stack); no web UI |
+| kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `../kometa/` bind-mount to write config.yml |
+| internal-webhook | local build (`../internal-webhook/`) | 9000 (internal only) | — | Internal webhook server for container-to-container triggers; only reachable from `internal_webhook` internal Docker network; currently handles `/kometa/trigger` |
 | gluetun | qmcgaw/gluetun | 8090 | qbittorrent.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes qBittorrent through it |
 | qbittorrent | lscr.io/linuxserver/qbittorrent | (via gluetun) 8090 | qbittorrent.NOVA_DOMAIN | Torrent client; `network_mode: service:gluetun`; WebUI on 8090 (WEBUI_PORT=8090) |
-| decluttarr | ghcr.io/manimatter/decluttarr | — | — | Auto-cleans stalled / failed / slow downloads from *arr queues; config in `./decluttarr/config.yaml`; no UI |
-| recyclarr | ghcr.io/recyclarr/recyclarr | — | — | Syncs TRaSH Guides quality profiles + custom formats to Sonarr & Radarr; config in `./recyclarr/recyclarr.yml`; cron via `CRON_SCHEDULE` (default 04:00 daily); no UI |
+| decluttarr | ghcr.io/manimatter/decluttarr | — | — | Auto-cleans stalled / failed / slow downloads from *arr queues; config in `../decluttarr/config.yaml` (root-level dir); no UI |
+| recyclarr | ghcr.io/recyclarr/recyclarr | — | — | Syncs TRaSH Guides quality profiles + custom formats to Sonarr & Radarr; config in `../recyclarr/recyclarr.yml`; cron via `CRON_SCHEDULE` (default 04:00 daily); no UI |
 
 **Key:** qbittorrent runs inside gluetun's network namespace (`network_mode: service:gluetun`). Traefik labels are on gluetun, not the sidecar.
 
@@ -128,7 +130,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
-## immich stack (`docker-compose.immich.yaml`)
+## immich stack (`immich/compose.yaml`)
 
 **Purpose:** Photo/video management with ML-based organization
 
@@ -146,7 +148,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
-## home stack (`docker-compose.home.yaml`)
+## home stack (`home/compose.yaml`)
 
 **Purpose:** Home automation and smart devices
 
@@ -163,7 +165,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
-## movienight stack (`docker-compose.movienight.yaml`)
+## movienight stack (`movienight/compose.yaml`)
 
 **Purpose:** Movie suggestion web app (custom-built)
 
@@ -179,19 +181,19 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Auto-deploy:** Both images are built by CI in the `kjsb25/movienight` repo on push to `master` and pushed to GHCR. The CI's SSH deploy job calls `nova.sh update movienight` after the image push. WUD watches both images and notifies on Discord when digests change but does not recreate.
 
-**Submodule:** `movienight/` is kept for local development reference only — no longer used for production builds.
+**Submodule:** lives at `movienight/src/` (the `movienight/` dir itself is the stack dir holding `compose.yaml`). Kept for local development reference only — no longer used for production builds. Initialize with `git submodule update --init`.
 
 **Required env:** `MOVIENIGHT_DB_PASSWORD`
 
 ---
 
-## dev stack (`docker-compose.dev.yaml`)
+## dev stack (`dev/compose.yaml`)
 
 **Purpose:** Development environment
 
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
-| vibe-kanban | local build (`./vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
+| vibe-kanban | local build (`../vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
 | vibe-kanban-tools | ghcr.io/kjsb25/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
 
 **Auto-deploy (vibe-kanban-tools):** Image is built by CI in the `kjsb25/vibe-kanban-tools` repo on push to `main` and pushed to GHCR. The CI deploy job SSH-deploys immediately via `nova.sh update dev`. WUD watches the image and notifies on Discord when the digest changes but does not recreate.
@@ -202,7 +204,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
-## tools stack (`docker-compose.tools.yaml`)
+## tools stack (`tools/compose.yaml`)
 
 | Service | Image | Port | URL | Notes |
 |---------|-------|------|-----|-------|
@@ -218,7 +220,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
-## backup stack (`docker-compose.backup.yaml`)
+## backup stack (`backup/compose.yaml`)
 
 | Service | Notes |
 |---------|-------|
@@ -228,7 +230,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 ---
 
-## gaming stack (`docker-compose.gaming.yaml`)
+## gaming stack (`gaming/compose.yaml`)
 
 | Service | Image | Port(s) | URL | Notes |
 |---------|-------|---------|-----|-------|
@@ -241,7 +243,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **External volumes:** `pterodactyl_db`, `pterodactyl_panel_var`, `pterodactyl_panel_logs`
 
-**Config files (bind-mounted):** `./pterodactyl/config.yml` — Wings node config generated by the panel on first setup
+**Config files (bind-mounted):** `../pterodactyl/config.yml` (root-level dir) — Wings node config generated by the panel on first setup
 
 **Required env:** `PTERODACTYL_DB_PASSWORD`, `PTERODACTYL_DB_ROOT_PASSWORD`, `PTERODACTYL_APP_KEY`, `PTERODACTYL_HASHIDS_SALT`, `PTERODACTYL_APP_SERVICE_AUTHOR`
 
@@ -256,8 +258,8 @@ docker volume create pterodactyl_db
 docker volume create pterodactyl_panel_var
 docker volume create pterodactyl_panel_logs
 
-# 2. Create Wings config directory
-mkdir -p ./pterodactyl
+# 2. Create Wings config directory at repo root
+mkdir -p pterodactyl
 
 # 3. Start the stack (Wings will restart-loop until config.yml is placed)
 ./nova.sh up gaming
@@ -267,7 +269,7 @@ docker exec -it pterodactyl-panel php artisan p:user:make
 
 # 5. In panel admin: Settings → Nodes → Create Node
 #    FQDN: wings.NOVA_DOMAIN  Scheme: https  Port: 443  Daemon SFTP: 2022
-#    Copy the generated config block → save to ./pterodactyl/config.yml
+#    Copy the generated config block → save to pterodactyl/config.yml (at repo root)
 
 # 6. Wings picks up config.yml on next restart and connects to the panel
 ```
