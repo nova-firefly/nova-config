@@ -130,7 +130,12 @@ services:
     environment:
       - "DOCKGE_STACKS_DIR=/opt/stacks"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5001/ >/dev/null || exit 1"]
+      # Dockge image is Node-based and ships without wget/curl; use node http instead.
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://localhost:5001/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3
