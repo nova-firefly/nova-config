@@ -2,7 +2,7 @@
 #
 # Recyclarr v8 config — TRaSH Guides quality profile + custom format sync.
 #
-# Schedule: nightly via CRON_SCHEDULE env in docker-compose.media.yaml.
+# Schedule: nightly via CRON_SCHEDULE env in media/compose.yaml.
 # Run on demand:  docker exec recyclarr recyclarr sync
 # Dry run:        docker exec recyclarr recyclarr sync --preview
 #

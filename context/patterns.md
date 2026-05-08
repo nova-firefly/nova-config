@@ -161,7 +161,7 @@ The sidecar inherits the gateway service's network namespace. Put Traefik labels
 Each compose file begins with a comment block:
 ```yaml
 # Stack Name Stack - Brief description
-# Usage: docker compose -f docker-compose.STACK.yaml up -d
+# Usage: ./nova.sh up STACK   (or: docker compose -f STACK/compose.yaml up -d)
 # Requires .env file for: VAR1, VAR2
 ```
 

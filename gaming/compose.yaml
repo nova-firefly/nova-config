@@ -1,5 +1,5 @@
 # Gaming Stack - Game Server Management
-# Usage: docker compose -f docker-compose.gaming.yaml up -d
+# Usage: ./nova.sh up gaming   (or: docker compose -f gaming/compose.yaml up -d)
 #
 # Pterodactyl setup (first run):
 #   1. Boot the stack: ./nova.sh up gaming
@@ -142,7 +142,7 @@ services:
       - "/var/lib/pterodactyl:/var/lib/pterodactyl"
       - "/tmp/pterodactyl:/tmp/pterodactyl"
       - "/run/wings:/run/wings"
-      - "./pterodactyl:/etc/pterodactyl"
+      - "../pterodactyl:/etc/pterodactyl"
       - "/etc/ssl/certs:/etc/ssl/certs:ro"
 
 networks:

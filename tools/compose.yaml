@@ -1,5 +1,5 @@
 # Tools Stack - Stirling PDF, Vikunja, Uptime Kuma, ntfy
-# Usage: docker compose -f docker-compose.tools.yaml up -d
+# Usage: ./nova.sh up tools   (or: docker compose -f tools/compose.yaml up -d)
 # Requires .env file for: NOVA_DOMAIN
 
 name: tools

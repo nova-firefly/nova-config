@@ -1,5 +1,5 @@
 # Backup Stack - Backrest and Duplicati
-# Usage: docker compose -f docker-compose.backup.yaml up -d
+# Usage: ./nova.sh up backup   (or: docker compose -f backup/compose.yaml up -d)
 # Requires .env file for: DUPLICATI_SETTINGS_ENCRYPTION_KEY, NOVA_DOMAIN
 
 name: backup
@@ -58,7 +58,7 @@ services:
       - "/var/lib/docker/volumes:/volumes:ro"
       # nova-config bind-mount directories (homepage, kometa, traefik, decluttarr)
       # are not inside Docker volumes so they need an explicit mount for backup.
-      - "${NOVA_CONFIG_PATH:-.}:/nova-config:ro"
+      - "${NOVA_CONFIG_PATH:-..}:/nova-config:ro"
       - "backrest_backrest_cache:/cache"
       - "backrest_backrest_config:/config"
       - "backrest_backrest_data:/data"

@@ -1,5 +1,5 @@
 # Authelia Stack - Forward authentication for all protected services
-# Usage: docker compose -f docker-compose.authelia.yaml up -d
+# Usage: ./nova.sh up authelia   (or: docker compose -f authelia/compose.yaml up -d)
 # Requires .env file for: AUTHELIA_JWT_SECRET, AUTHELIA_SESSION_SECRET, AUTHELIA_STORAGE_ENCRYPTION_KEY,
 #   AUTHELIA_NOTIFIER_SMTP_HOST, AUTHELIA_NOTIFIER_SMTP_USERNAME, AUTHELIA_NOTIFIER_SMTP_PASSWORD
 
@@ -81,8 +81,8 @@ services:
       - "traefik_default"
     restart: "unless-stopped"
     volumes:
-      - "./authelia/configuration.yml:/config/configuration.yml"
-      - "./authelia/users_database.yml:/config/users_database.yml"
+      - "./configuration.yml:/config/configuration.yml"
+      - "./users_database.yml:/config/users_database.yml"
       - "authelia_data:/config/data"
 
   redis:

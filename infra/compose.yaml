@@ -1,5 +1,5 @@
 # Infrastructure Stack - Traefik, Arcane, WUD, DuckDNS, Homepage, Glances, Volume Sharer, Scrutiny
-# Usage: docker compose -f docker-compose.infra.yaml up -d
+# Usage: ./nova.sh up infra   (or: docker compose -f infra/compose.yaml up -d)
 # Requires .env file for: DUCKDNS_TOKEN, NOVA_DOMAIN
 
 name: infra
@@ -81,7 +81,7 @@ services:
       - "3000:3000/tcp"
     restart: "unless-stopped"
     volumes:
-      - "./homepage:/app/config"
+      - "../homepage:/app/config"
       - "/data1:/data1:ro"
       - "/data2:/data2:ro"
       - "/data3:/data3:ro"
@@ -123,6 +123,40 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "arcane_data:/app/data"
+
+  dockge:
+    container_name: "dockge"
+    image: "louislam/dockge:1"
+    environment:
+      - "DOCKGE_STACKS_DIR=/opt/stacks"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5001/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.dockge.rule: "Host(`dockge.${NOVA_DOMAIN}`)"
+      traefik.http.routers.dockge.entrypoints: "websecure"
+      traefik.http.routers.dockge.tls: "true"
+      traefik.http.routers.dockge.middlewares: "authelia@file"
+      traefik.http.services.dockge.loadbalancer.server.port: "5001"
+      homepage.group: "Infrastructure"
+      homepage.name: "Dockge"
+      homepage.icon: "dockge.png"
+      homepage.href: "https://dockge.${NOVA_DOMAIN}"
+      homepage.description: "Compose stack manager"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "dockge_data:/app/data"
+      - "${NOVA_CONFIG_PATH:-..}:/opt/stacks"
 
   traefik:
     command:
@@ -195,7 +229,7 @@ services:
       - "443:443/tcp"
     restart: "unless-stopped"
     volumes:
-      - "./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml:ro"
+      - "../traefik/dynamic.yaml:/etc/traefik/dynamic.yaml:ro"
       - "traefik_acme:/letsencrypt"
 
   glances:
@@ -294,7 +328,6 @@ services:
       - "3003:3000/tcp"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "${NOVA_CONFIG_PATH:-.}:/compose"
 
   scrutiny:
     container_name: "scrutiny"
@@ -336,7 +369,7 @@ services:
       - "8082:8080/tcp"
     restart: "unless-stopped"
     volumes:
-      - "./scrutiny/scrutiny.yaml:/opt/scrutiny/config/scrutiny.yaml:ro"
+      - "../scrutiny/scrutiny.yaml:/opt/scrutiny/config/scrutiny.yaml:ro"
       - "scrutiny_data:/opt/scrutiny/data"
       - "/run/udev:/run/udev:ro"
 
@@ -352,3 +385,5 @@ volumes:
     external: true
 
   arcane_data:
+
+  dockge_data:

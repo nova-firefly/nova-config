@@ -122,7 +122,7 @@ get_external_volumes() {
 
 get_defined_containers() {
   for s in "${ALL_STACKS[@]}"; do
-    local file="docker-compose.${s}.yaml"
+    local file="${s}/compose.yaml"
     [[ -f "$file" ]] || continue
     grep 'container_name:' "$file" \
       | sed 's/.*container_name: *"\?\([^"]*\)"\?.*/\1/'
@@ -137,7 +137,7 @@ get_defined_containers() {
 
 remove_conflicting_containers() {
   local stack="$1"
-  local file="docker-compose.${stack}.yaml"
+  local file="${stack}/compose.yaml"
   [[ -f "$file" ]] || return 0
 
   # Derive project name from the 'name:' field in the compose file
@@ -162,7 +162,7 @@ remove_conflicting_containers() {
 
 get_compose_args() {
   local stack="$1"
-  local base_file="docker-compose.${stack}.yaml"
+  local base_file="${stack}/compose.yaml"
 
   if [[ ! -f "$base_file" ]]; then
     echo "Error: Stack '$stack' not found ($base_file)" >&2
@@ -345,7 +345,7 @@ case "$CMD" in
     ensure_internal_webhook_network
     echo "==> Creating external volumes for all stacks..."
     for s in "${ALL_STACKS[@]}"; do
-      file="docker-compose.${s}.yaml"
+      file="${s}/compose.yaml"
       [[ ! -f "$file" ]] && continue
       while IFS= read -r vol; do
         [[ -z "$vol" ]] && continue
@@ -436,7 +436,7 @@ case "$CMD" in
         continue
       }
 
-      file="docker-compose.${s}.yaml"
+      file="${s}/compose.yaml"
       [[ -f "$file" ]] || continue
 
       # Derive the compose project name (matches com.docker.compose.project label)

@@ -1,5 +1,5 @@
 # Dev/Utility Stack - Vibe Kanban, Vibe Kanban Tools
-# Usage: docker compose -f docker-compose.dev.yaml up -d
+# Usage: ./nova.sh up dev   (or: docker compose -f dev/compose.yaml up -d)
 
 name: dev
 
@@ -14,7 +14,7 @@ networks:
 services:
 
   vibe-kanban:
-    build: "./vibe-kanban"
+    build: "../vibe-kanban"
     cap_drop:
       - "AUDIT_CONTROL"
       - "BLOCK_SUSPEND"

@@ -1,6 +1,6 @@
 ---
 # Authelia Configuration
-# X_AUTHELIA_CONFIG_FILTERS=template is set in docker-compose.authelia.yaml,
+# X_AUTHELIA_CONFIG_FILTERS=template is set in authelia/compose.yaml,
 # enabling {{ env "VAR" }} Go template interpolation in this file.
 #
 # Secrets are NOT stored here — they are injected via environment variables:
