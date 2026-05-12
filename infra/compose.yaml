@@ -127,8 +127,14 @@ services:
   dockge:
     container_name: "dockge"
     image: "louislam/dockge:1"
+    # Identity-mapped stacks dir: the host path is mounted at the SAME path
+    # inside the container so that relative bind-mounts in stack compose files
+    # (e.g. ../decluttarr/config.yaml) resolve to a path that exists on the
+    # host too. Without this, Dockge resolves ../foo against /opt/stacks/,
+    # which the host docker daemon then auto-creates as an empty dir, silently
+    # breaking any bind-mounted config files.
     environment:
-      - "DOCKGE_STACKS_DIR=/opt/stacks"
+      - "DOCKGE_STACKS_DIR=${NOVA_CONFIG_PATH}"
     healthcheck:
       # Dockge image is Node-based and ships without wget/curl; use node http instead.
       test:
@@ -161,7 +167,7 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "dockge_data:/app/data"
-      - "${NOVA_CONFIG_PATH:-..}:/opt/stacks"
+      - "${NOVA_CONFIG_PATH}:${NOVA_CONFIG_PATH}"
 
   traefik:
     command:

@@ -156,6 +156,22 @@ Services in host mode cannot use Traefik Docker labels — add routes to `traefi
 ```
 The sidecar inherits the gateway service's network namespace. Put Traefik labels on the gateway service, not the sidecar.
 
+**Gotcha — recreating the gateway:** Docker resolves `service:gluetun` to a concrete container ID (`container:<id>`) at create-time. If gluetun is recreated standalone (e.g. via Dockge "recreate"), the sidecar's network namespace pointer becomes a dead reference and the sidecar fails with `joining network namespace of container: No such container: <id>` (exit 128). Always **force-recreate the sidecar together with the gateway**: `./nova.sh recreate media qbittorrent` after recreating gluetun, or recreate the whole stack at once.
+
+## Relative Bind-Mount Paths
+
+Stack compose files use `../<dir>` to reach sibling stack directories (e.g. `../decluttarr/config.yaml:/app/config/config.yaml:ro`). For this to work under both invocation paths — `nova.sh` (cwd = repo root) and Dockge (cwd = `<stack>/`) — Dockge is configured with an **identity-mapped** stacks dir:
+
+```yaml
+# infra/compose.yaml — dockge service
+environment:
+  - "DOCKGE_STACKS_DIR=${NOVA_CONFIG_PATH}"
+volumes:
+  - "${NOVA_CONFIG_PATH}:${NOVA_CONFIG_PATH}"
+```
+
+The host path is mounted at the same path inside Dockge's container, so `../foo` resolves to the same absolute path everywhere. Without this, Dockge would resolve `../foo` to a non-existent path on the host; the host docker daemon would then silently auto-create empty directories at the bogus location and bind-mount those into the container — breaking config-file mounts (manifests as `IsADirectoryError`, `command not found`, or empty config dirs).
+
 ## Stack File Header
 
 Each compose file begins with a comment block:
