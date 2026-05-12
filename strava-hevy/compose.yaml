@@ -1,0 +1,74 @@
+# Strava-Hevy Stack - Always-on Strava → Hevy workout import service
+# Usage: ./nova.sh up strava-hevy   (or: docker compose -f strava-hevy/compose.yaml up -d)
+# Requires .env file for: NOVA_DOMAIN, STRAVA_HEVY_SOURCE_REF (optional, defaults below)
+#
+# Source is built directly from the underthebar repo on GitHub via BuildKit's
+# git context. No submodule needed; rebuilds pull the latest commit of the ref.
+#   ./nova.sh recreate strava-hevy   # rebuild from the configured branch/tag/sha
+#
+# Bootstrap (after first `nova.sh up strava-hevy`):
+#   1. Visit https://strava-hevy.${NOVA_DOMAIN}/ (gated by Authelia)
+#   2. Settings → paste Strava client ID/secret (from strava.com/settings/api)
+#   3. Set Strava app's Authorization Callback Domain to `strava-hevy.${NOVA_DOMAIN}`
+#   4. Auth → Authorize Strava (completes OAuth)
+#   5. Auth → Hevy → paste access_token + refresh_token from ~/.underthebar/session.json
+#   6. Settings → enable polling
+
+name: strava-hevy
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  strava-hevy:
+    build:
+      # BuildKit git context: <repo>#<ref>:<subdir>
+      # Override the ref with STRAVA_HEVY_SOURCE_REF in .env to pin to a tag or sha.
+      context: "https://github.com/kjsb25/underthebar.git#${STRAVA_HEVY_SOURCE_REF:-90bc-always-on-strava}:server"
+    image: "strava-hevy:local"
+    container_name: "strava-hevy"
+    environment:
+      - "DATA_DIR=/data"
+      - "LOG_LEVEL=${STRAVA_HEVY_LOG_LEVEL:-INFO}"
+      - "PUBLIC_BASE_URL=https://strava-hevy.${NOVA_DOMAIN}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/healthz >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    read_only: true
+    tmpfs:
+      - "/tmp:size=16M,noexec,nosuid,nodev"
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - "ALL"
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "traefik_default"
+      traefik.http.routers.strava-hevy.rule: "Host(`strava-hevy.${NOVA_DOMAIN}`)"
+      traefik.http.routers.strava-hevy.entrypoints: "websecure"
+      traefik.http.routers.strava-hevy.tls: "true"
+      traefik.http.routers.strava-hevy.middlewares: "authelia@file"
+      traefik.http.services.strava-hevy.loadbalancer.server.port: "8000"
+      homepage.group: "Tools"
+      homepage.name: "Strava → Hevy"
+      homepage.icon: "strava.svg"
+      homepage.href: "https://strava-hevy.${NOVA_DOMAIN}"
+      homepage.description: "Always-on Strava → Hevy import"
+      # No WUD watch — image is locally built from the submodule source.
+      wud.watch: "false"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "strava_hevy_data:/data"
+
+volumes:
+
+  strava_hevy_data:
+    external: true

@@ -17,6 +17,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
 | movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
+| strava-hevy | strava-hevy/compose.yaml | strava-hevy |
 
 ---
 
@@ -273,6 +274,36 @@ docker exec -it pterodactyl-panel php artisan p:user:make
 
 # 6. Wings picks up config.yml on next restart and connects to the panel
 ```
+
+---
+
+## strava-hevy stack (`strava-hevy/compose.yaml`)
+
+**Purpose:** Always-on Strava → Hevy workout import service. Polls Strava on a schedule and pushes matching activities into Hevy. Companion to the desktop `underthebar` app — same import logic, different deployment.
+
+| Service | Image/Build | Port | URL | Notes |
+|---------|-------------|------|-----|-------|
+| strava-hevy | local build from `github.com/kjsb25/underthebar#90bc-always-on-strava:server` | 8000 | strava-hevy.NOVA_DOMAIN | FastAPI; SQLite state at `/data/state.db`; protected by Authelia |
+
+**Source:** Built via BuildKit's git context — no submodule. Override the ref with `STRAVA_HEVY_SOURCE_REF` in `.env` to pin a tag/sha. Rebuild with `./nova.sh recreate strava-hevy`.
+
+**External volumes:** `strava_hevy_data` (SQLite + persistent state — rotating Hevy refresh tokens, imported activity IDs, event log)
+
+**Required env:** none — all secrets are entered through the web UI on first run and persisted in the volume. Optional: `STRAVA_HEVY_SOURCE_REF`, `STRAVA_HEVY_LOG_LEVEL`.
+
+**Auth model:** Authelia (forwardAuth via `authelia@file`). The Strava OAuth callback is browser-initiated and carries the Authelia session cookie (domain set to `NOVA_DOMAIN`), so the callback passes through cleanly.
+
+**Security hardening:** runs as non-root (uid 1000), read-only rootfs, `cap_drop: ALL`, `no-new-privileges`, `/tmp` tmpfs. Only `/data` is writable.
+
+**Bootstrap (one-time, after `nova.sh up strava-hevy`):**
+1. Create a Strava API app at <https://www.strava.com/settings/api>; set **Authorization Callback Domain** to `strava-hevy.${NOVA_DOMAIN}`.
+2. Visit `https://strava-hevy.${NOVA_DOMAIN}/`, authenticate via Authelia.
+3. Settings → paste Strava Client ID/Secret.
+4. Auth → Authorize Strava (completes OAuth, refresh token stored).
+5. Auth → Hevy → paste `access_token` + `refresh_token` from your desktop's `~/.underthebar/session.json`.
+6. Settings → enable polling, set interval (default 10 min).
+
+**Recovery:** if Strava or Hevy refresh tokens are revoked, re-do the matching auth step. To wipe state, remove the `strava_hevy_data` volume; already-imported Hevy workouts are not duplicated because Hevy 409s and the service then PUTs to the same deterministic workout ID.
 
 ---
 
