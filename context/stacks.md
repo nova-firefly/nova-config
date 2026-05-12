@@ -29,7 +29,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | traefik | traefik:v3.6 | 80, 443 | traefik.NOVA_DOMAIN | Wildcard TLS via DuckDNS DNS-01 challenge |
 | homepage | ghcr.io/gethomepage/homepage | 3000 | home.NOVA_DOMAIN | Dashboard; reads Docker labels + `../homepage/` config (root-level dir) |
 | arcane | ghcr.io/getarcaneapp/arcane | 3552 | arcane.NOVA_DOMAIN | Container management UI (per-container) |
-| dockge | louislam/dockge:1 | 5001 | dockge.NOVA_DOMAIN | Compose stack manager (per-stack); mobile-friendly; reads/writes `<stack>/compose.yaml` on disk via `${NOVA_CONFIG_PATH}:/opt/stacks` mount |
+| dockge | louislam/dockge:1 | 5001 | dockge.NOVA_DOMAIN | Compose stack manager (per-stack); mobile-friendly; reads/writes `<stack>/compose.yaml` on disk via **identity-mapped** `${NOVA_CONFIG_PATH}:${NOVA_CONFIG_PATH}` mount (host path = in-container path) so `../foo` bind-mounts in stack files resolve identically inside Dockge and on the host |
 | duckdns | lscr.io/linuxserver/duckdns | — | — | Dynamic DNS updater |
 | glances | nicolargo/glances:latest-full | 61208 (host) | glances.NOVA_DOMAIN | System monitor; host network mode → routed via traefik/dynamic.yaml |
 | volume-sharer | gdiepen/volume-sharer | 139, 445 (host) | — | Samba share of Docker volumes |
