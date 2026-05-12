@@ -1,10 +1,12 @@
 # Strava-Hevy Stack - Always-on Strava → Hevy workout import service
 # Usage: ./nova.sh up strava-hevy   (or: docker compose -f strava-hevy/compose.yaml up -d)
-# Requires .env file for: NOVA_DOMAIN, STRAVA_HEVY_SOURCE_REF (optional, defaults below)
+# Requires .env file for: NOVA_DOMAIN
 #
-# Source is built directly from the underthebar repo on GitHub via BuildKit's
-# git context. No submodule needed; rebuilds pull the latest commit of the ref.
-#   ./nova.sh recreate strava-hevy   # rebuild from the configured branch/tag/sha
+# Source lives at strava-hevy/src — submodule of kjsb25/underthebar, branch
+# 90bc-always-on-strava. Initialize once with:
+#   git submodule update --init strava-hevy/src
+# To bump to the latest upstream commit:
+#   git submodule update --remote strava-hevy/src && git add strava-hevy/src && git commit
 #
 # Bootstrap (after first `nova.sh up strava-hevy`):
 #   1. Visit https://strava-hevy.${NOVA_DOMAIN}/ (gated by Authelia)
@@ -24,10 +26,7 @@ networks:
 services:
 
   strava-hevy:
-    build:
-      # BuildKit git context: <repo>#<ref>:<subdir>
-      # Override the ref with STRAVA_HEVY_SOURCE_REF in .env to pin to a tag or sha.
-      context: "https://github.com/kjsb25/underthebar.git#${STRAVA_HEVY_SOURCE_REF:-90bc-always-on-strava}:server"
+    build: "./src/server"
     image: "strava-hevy:local"
     container_name: "strava-hevy"
     environment:

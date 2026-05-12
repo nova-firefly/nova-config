@@ -283,13 +283,13 @@ docker exec -it pterodactyl-panel php artisan p:user:make
 
 | Service | Image/Build | Port | URL | Notes |
 |---------|-------------|------|-----|-------|
-| strava-hevy | local build from `github.com/kjsb25/underthebar#90bc-always-on-strava:server` | 8000 | strava-hevy.NOVA_DOMAIN | FastAPI; SQLite state at `/data/state.db`; protected by Authelia |
+| strava-hevy | local build (`./src/server`) | 8000 | strava-hevy.NOVA_DOMAIN | FastAPI; SQLite state at `/data/state.db`; protected by Authelia |
 
-**Source:** Built via BuildKit's git context — no submodule. Override the ref with `STRAVA_HEVY_SOURCE_REF` in `.env` to pin a tag/sha. Rebuild with `./nova.sh recreate strava-hevy`.
+**Submodule:** `strava-hevy/src` → `kjsb25/underthebar` (branch `90bc-always-on-strava`). Initialize with `git submodule update --init strava-hevy/src`. To pull upstream changes: `git submodule update --remote strava-hevy/src && git add strava-hevy/src && git commit`. Rebuild with `./nova.sh recreate strava-hevy`.
 
 **External volumes:** `strava_hevy_data` (SQLite + persistent state — rotating Hevy refresh tokens, imported activity IDs, event log)
 
-**Required env:** none — all secrets are entered through the web UI on first run and persisted in the volume. Optional: `STRAVA_HEVY_SOURCE_REF`, `STRAVA_HEVY_LOG_LEVEL`.
+**Required env:** none — all secrets are entered through the web UI on first run and persisted in the volume. Optional: `STRAVA_HEVY_LOG_LEVEL`.
 
 **Auth model:** Authelia (forwardAuth via `authelia@file`). The Strava OAuth callback is browser-initiated and carries the Authelia session cookie (domain set to `NOVA_DOMAIN`), so the callback passes through cleanly.
 
