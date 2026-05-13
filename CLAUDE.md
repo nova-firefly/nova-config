@@ -13,7 +13,7 @@ nova-config/
 ├── traefik/dynamic.yaml           # Routes for host-mode services (not Docker-discoverable)
 ├── homepage/                      # Dashboard config (settings/services/widgets YAML)
 ├── vibe-kanban/Dockerfile         # Dev container with Claude Code, gh CLI, Docker CLI
-└── movienight/                    # Stack dir; submodule lives at movienight/src
+└── movienight/                    # Stack dir; images pulled from GHCR (built by CI in upstream repo)
 ```
 
 Stack dirs (each contains `compose.yaml` + `.env` symlink):
