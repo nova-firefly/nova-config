@@ -31,7 +31,7 @@ Reference for consistent patterns when editing compose files or adding new servi
       homepage.icon: "my-service.svg"   # or .png; see gethomepage.dev/icons
       homepage.href: "https://my-service.${NOVA_DOMAIN}"
       homepage.description: "Short description"
-      # WUD (notify-only — no auto-recreate)
+      # WUD (notify-only for third-party images; see WUD section below for own-repo auto-update)
       wud.watch: "true"
       wud.watch.digest: "true"          # omit for versioned tags (e.g. postgres:15)
       wud.trigger.include: "discord.notify"
@@ -62,8 +62,14 @@ Reference for consistent patterns when editing compose files or adding new servi
 - `wud.watch: "true"` — enable update watching
 - `wud.watch.digest: "true"` — add for floating tags like `latest` (detects digest changes)
 - `wud.watch: "false"` — explicitly disable (e.g. wud itself, volume-sharer)
-- `wud.trigger.include: "discord.notify"` — send Discord notification on detected update.
-  WUD is notify-only: actual deploys are manual (Arcane UI or `nova.sh update`).
+- **Trigger policy** — pick based on who owns the image:
+  - Third-party images → `wud.trigger.include: "discord.notify"`. Notify-only; deploy manually
+    via Arcane UI or `nova.sh update`. Keeps a human in the loop for upstream surprises.
+  - Images we publish (`ghcr.io/nova-firefly/*`, `ghcr.io/kjsb25/*`) →
+    `wud.trigger.include: "docker.local,discord.notify"`. Auto-recreates the container via
+    the Docker API when the digest changes, and still posts to Discord. Safe because CI gates
+    when changes ship. Env/bind-mount drift is still your responsibility — recreate uses the
+    existing container's config, not the on-disk compose file.
 
 ## Security Hardening (cap_drop)
 

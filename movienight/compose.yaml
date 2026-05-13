@@ -5,7 +5,8 @@
 #
 # Images are built by CI in nova-firefly/movienight (.github/workflows) on push to
 # main and published to ghcr.io/nova-firefly/movienight{,-backend}. WUD watches the
-# digest of `:latest` and notifies on Discord; redeploy with `./nova.sh update movienight`.
+# digest of `:latest` and auto-recreates the container (docker.local trigger)
+# in addition to notifying on Discord — we own the image so CI gates the changes.
 
 name: movienight
 
@@ -83,7 +84,7 @@ services:
       traefik.http.services.movienight-api.loadbalancer.server.port: "4000"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "docker.local,discord.notify"
     networks:
       - "traefik_default"
       - "movienight_internal"
@@ -112,7 +113,7 @@ services:
       homepage.description: "Movie Suggestion App"
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
+      wud.trigger.include: "docker.local,discord.notify"
     networks:
       - "traefik_default"
     restart: "unless-stopped"
