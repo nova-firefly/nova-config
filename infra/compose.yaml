@@ -306,11 +306,16 @@ services:
       - "WUD_WATCHER_LOCAL_SOCKET=/var/run/docker.sock"
       - "WUD_WATCHER_LOCAL_CRON=0 4 * * *"
       - "WUD_WATCHER_LOCAL_WATCHBYDEFAULT=false"
-      # Notify-only mode: docker-compose auto-update triggers were removed in favour of
-      # manual deploys via Arcane (or `nova.sh update`). Pinning + intentional updates
-      # avoid silent recreates that fail when .env or bind-mount sources have drifted.
+      # Triggers:
+      #   discord.notify — default for third-party images; human-in-the-loop deploys via
+      #     Arcane UI or `nova.sh update`. Avoids silent breakage from upstream surprises
+      #     (see commit f5f901c for the history that motivated this).
+      #   docker.local   — opt-in auto-recreate for images we publish ourselves
+      #     (ghcr.io/nova-firefly/*, ghcr.io/kjsb25/*). Safe because we control when
+      #     changes ship via CI.
       - "WUD_TRIGGER_DISCORD_NOTIFY_URL=${DISCORD_WEBHOOK_URL}"
       - "WUD_TRIGGER_DISCORD_NOTIFY_ONCE=true"
+      - "WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true"
       # Registries - lscr.io (LinuxServer) images not auto-detected without this
       - "WUD_REGISTRY_LSCR_PUBLIC_URL=https://lscr.io"
     healthcheck:
