@@ -283,9 +283,9 @@ docker exec -it pterodactyl-panel php artisan p:user:make
 
 | Service | Image/Build | Port | URL | Notes |
 |---------|-------------|------|-----|-------|
-| strava-hevy | local build (`./src/server`) | 8000 | strava-hevy.NOVA_DOMAIN | FastAPI; SQLite state at `/data/state.db`; protected by Authelia |
+| strava-hevy | ghcr.io/kjsb25/underthebar-server:latest | 8000 | strava-hevy.NOVA_DOMAIN | FastAPI; SQLite state at `/data/state.db`; protected by Authelia |
 
-**Submodule:** `strava-hevy/src` → `kjsb25/underthebar` (branch `90bc-always-on-strava`). Initialize with `git submodule update --init strava-hevy/src`. To pull upstream changes: `git submodule update --remote strava-hevy/src && git add strava-hevy/src && git commit`. Rebuild with `./nova.sh recreate strava-hevy`.
+**Image:** Built by CI in [`kjsb25/underthebar`](https://github.com/kjsb25/underthebar) (`.github/workflows/build-server.yml`) on every push to `main` that touches `server/**`. Tags: `:latest` and `:sha-<short>`. WUD watches the digest and notifies on Discord; redeploy with `./nova.sh update strava-hevy`.
 
 **External volumes:** `strava_hevy_data` (SQLite + persistent state — rotating Hevy refresh tokens, imported activity IDs, event log)
 

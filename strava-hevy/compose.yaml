@@ -2,11 +2,9 @@
 # Usage: ./nova.sh up strava-hevy   (or: docker compose -f strava-hevy/compose.yaml up -d)
 # Requires .env file for: NOVA_DOMAIN
 #
-# Source lives at strava-hevy/src — submodule of kjsb25/underthebar, branch
-# 90bc-always-on-strava. Initialize once with:
-#   git submodule update --init strava-hevy/src
-# To bump to the latest upstream commit:
-#   git submodule update --remote strava-hevy/src && git add strava-hevy/src && git commit
+# Image is built by CI in kjsb25/underthebar (.github/workflows/build-server.yml)
+# on push to main and published to ghcr.io/kjsb25/underthebar-server. WUD watches
+# the digest of `:latest` and notifies on Discord; redeploy with `./nova.sh update strava-hevy`.
 #
 # Bootstrap (after first `nova.sh up strava-hevy`):
 #   1. Visit https://strava-hevy.${NOVA_DOMAIN}/ (gated by Authelia)
@@ -26,8 +24,7 @@ networks:
 services:
 
   strava-hevy:
-    build: "./src/server"
-    image: "strava-hevy:local"
+    image: "ghcr.io/kjsb25/underthebar-server:latest"
     container_name: "strava-hevy"
     environment:
       - "DATA_DIR=/data"
@@ -59,8 +56,9 @@ services:
       homepage.icon: "strava.svg"
       homepage.href: "https://strava-hevy.${NOVA_DOMAIN}"
       homepage.description: "Always-on Strava → Hevy import"
-      # No WUD watch — image is locally built from the submodule source.
-      wud.watch: "false"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     restart: "unless-stopped"

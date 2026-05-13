@@ -5,7 +5,3 @@
 [submodule "movienight"]
 	path = movienight/src
 	url = git@github.com:nova-firefly/movienight.git
-[submodule "strava-hevy/src"]
-	path = strava-hevy/src
-	url = git@github.com:kjsb25/underthebar.git
-	branch = 90bc-always-on-strava
