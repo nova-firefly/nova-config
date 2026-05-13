@@ -1,0 +1,163 @@
+{
+  "_id": "novaLegCodec1",
+  "name": "Nova - Legacy codec cleanup",
+  "description": "Re-encode obsolete codecs (MPEG-2, MPEG-4 part 2, WMV3) to H.264 using NVENC at the slow preset, qp=19. Other codecs are left untouched. Designed for the Windows RTX 3080 ad-hoc node; on a CPU-only worker, edit the Set Video Encoder node to disable hardware encoding.",
+  "tags": "nova,video,legacy",
+  "flowPlugins": [
+    {
+      "name": "Input File",
+      "sourceRepo": "Community",
+      "pluginName": "inputFile",
+      "version": "1.0.0",
+      "id": "novaLeg-input",
+      "position": { "x": 600, "y": 80 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Is mpeg2video?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaLeg-mpeg2",
+      "position": { "x": 600, "y": 200 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "codec": "mpeg2video"
+      }
+    },
+    {
+      "name": "Is mpeg4?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaLeg-mpeg4",
+      "position": { "x": 850, "y": 320 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "codec": "mpeg4"
+      }
+    },
+    {
+      "name": "Is wmv3?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaLeg-wmv3",
+      "position": { "x": 1100, "y": 440 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "codec": "wmv3"
+      }
+    },
+    {
+      "name": "Begin FFmpeg Command",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaLeg-start",
+      "position": { "x": 350, "y": 560 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Encode H.264 NVENC slow qp=19",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoEncoder",
+      "version": "1.0.0",
+      "id": "novaLeg-encoder",
+      "position": { "x": 350, "y": 680 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "outputCodec": "h264",
+        "ffmpegPresetEnabled": "true",
+        "ffmpegPreset": "slow",
+        "ffmpegQualityEnabled": "true",
+        "ffmpegQuality": "19",
+        "hardwareEncoding": "true",
+        "hardwareType": "nvenc"
+      }
+    },
+    {
+      "name": "Execute",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaLeg-exec",
+      "position": { "x": 350, "y": 800 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Replace Original File",
+      "sourceRepo": "Community",
+      "pluginName": "replaceOriginalFile",
+      "version": "1.0.0",
+      "id": "novaLeg-replace",
+      "position": { "x": 350, "y": 920 },
+      "fpEnabled": true
+    }
+  ],
+  "flowEdges": [
+    {
+      "source": "novaLeg-input",
+      "sourceHandle": "1",
+      "target": "novaLeg-mpeg2",
+      "targetHandle": null,
+      "id": "novaLeg-e1"
+    },
+    {
+      "source": "novaLeg-mpeg2",
+      "sourceHandle": "1",
+      "target": "novaLeg-start",
+      "targetHandle": null,
+      "id": "novaLeg-e2"
+    },
+    {
+      "source": "novaLeg-mpeg2",
+      "sourceHandle": "2",
+      "target": "novaLeg-mpeg4",
+      "targetHandle": null,
+      "id": "novaLeg-e3"
+    },
+    {
+      "source": "novaLeg-mpeg4",
+      "sourceHandle": "1",
+      "target": "novaLeg-start",
+      "targetHandle": null,
+      "id": "novaLeg-e4"
+    },
+    {
+      "source": "novaLeg-mpeg4",
+      "sourceHandle": "2",
+      "target": "novaLeg-wmv3",
+      "targetHandle": null,
+      "id": "novaLeg-e5"
+    },
+    {
+      "source": "novaLeg-wmv3",
+      "sourceHandle": "1",
+      "target": "novaLeg-start",
+      "targetHandle": null,
+      "id": "novaLeg-e6"
+    },
+    {
+      "source": "novaLeg-start",
+      "sourceHandle": "1",
+      "target": "novaLeg-encoder",
+      "targetHandle": null,
+      "id": "novaLeg-e7"
+    },
+    {
+      "source": "novaLeg-encoder",
+      "sourceHandle": "1",
+      "target": "novaLeg-exec",
+      "targetHandle": null,
+      "id": "novaLeg-e8"
+    },
+    {
+      "source": "novaLeg-exec",
+      "sourceHandle": "1",
+      "target": "novaLeg-replace",
+      "targetHandle": null,
+      "id": "novaLeg-e9"
+    }
+  ]
+}

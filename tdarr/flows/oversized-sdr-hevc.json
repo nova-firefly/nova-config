@@ -1,0 +1,309 @@
+{
+  "_id": "novaOvHevc1",
+  "name": "Nova - Oversized SDR HEVC capping",
+  "description": "Re-encode 8-bit SDR HEVC files that exceed a per-resolution bitrate ceiling: 4000kbps for 1080p, 8000kbps for 4K UHD. HDR, 10-bit, non-HEVC, and other resolutions are skipped. Output uses NVENC HEVC at the slow preset with a target bitrate. Designed for the Windows RTX 3080 ad-hoc node.",
+  "tags": "nova,video,hevc",
+  "flowPlugins": [
+    {
+      "name": "Input File",
+      "sourceRepo": "Community",
+      "pluginName": "inputFile",
+      "version": "1.0.0",
+      "id": "novaOv-input",
+      "position": { "x": 600, "y": 80 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Is hevc?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaOv-hevc",
+      "position": { "x": 600, "y": 200 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "codec": "hevc"
+      }
+    },
+    {
+      "name": "Is 10-bit?",
+      "sourceRepo": "Community",
+      "pluginName": "check10Bit",
+      "version": "1.0.0",
+      "id": "novaOv-10bit",
+      "position": { "x": 600, "y": 320 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Is HDR?",
+      "sourceRepo": "Community",
+      "pluginName": "checkHdr",
+      "version": "1.0.0",
+      "id": "novaOv-hdr",
+      "position": { "x": 600, "y": 440 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Resolution?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoResolution",
+      "version": "1.0.0",
+      "id": "novaOv-res",
+      "position": { "x": 600, "y": 560 },
+      "fpEnabled": true
+    },
+    {
+      "name": "1080p > 4000kbps?",
+      "sourceRepo": "Community",
+      "pluginName": "checkOverallBitrate",
+      "version": "1.0.0",
+      "id": "novaOv-br1080",
+      "position": { "x": 350, "y": 680 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "unit": "kbps",
+        "greaterThan": "4000",
+        "lessThan": "999999"
+      }
+    },
+    {
+      "name": "4K > 8000kbps?",
+      "sourceRepo": "Community",
+      "pluginName": "checkOverallBitrate",
+      "version": "1.0.0",
+      "id": "novaOv-br4k",
+      "position": { "x": 850, "y": 680 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "unit": "kbps",
+        "greaterThan": "8000",
+        "lessThan": "999999"
+      }
+    },
+    {
+      "name": "Begin FFmpeg Command (1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaOv-start1080",
+      "position": { "x": 350, "y": 800 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Encode HEVC NVENC slow (1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoEncoder",
+      "version": "1.0.0",
+      "id": "novaOv-enc1080",
+      "position": { "x": 350, "y": 920 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "outputCodec": "hevc",
+        "ffmpegPresetEnabled": "true",
+        "ffmpegPreset": "slow",
+        "ffmpegQualityEnabled": "false",
+        "ffmpegQuality": "25",
+        "hardwareEncoding": "true",
+        "hardwareType": "nvenc"
+      }
+    },
+    {
+      "name": "Bitrate cap 4000kbps",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoBitrate",
+      "version": "1.0.0",
+      "id": "novaOv-br1080-set",
+      "position": { "x": 350, "y": 1040 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "useInputBitrate": "false",
+        "bitrate": "4000",
+        "targetBitratePercent": "50",
+        "fallbackBitrate": "4000"
+      }
+    },
+    {
+      "name": "Execute (1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaOv-exec1080",
+      "position": { "x": 350, "y": 1160 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Begin FFmpeg Command (4K)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaOv-start4k",
+      "position": { "x": 850, "y": 800 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Encode HEVC NVENC slow (4K)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoEncoder",
+      "version": "1.0.0",
+      "id": "novaOv-enc4k",
+      "position": { "x": 850, "y": 920 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "outputCodec": "hevc",
+        "ffmpegPresetEnabled": "true",
+        "ffmpegPreset": "slow",
+        "ffmpegQualityEnabled": "false",
+        "ffmpegQuality": "25",
+        "hardwareEncoding": "true",
+        "hardwareType": "nvenc"
+      }
+    },
+    {
+      "name": "Bitrate cap 8000kbps",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoBitrate",
+      "version": "1.0.0",
+      "id": "novaOv-br4k-set",
+      "position": { "x": 850, "y": 1040 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "useInputBitrate": "false",
+        "bitrate": "8000",
+        "targetBitratePercent": "50",
+        "fallbackBitrate": "8000"
+      }
+    },
+    {
+      "name": "Execute (4K)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaOv-exec4k",
+      "position": { "x": 850, "y": 1160 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Replace Original File",
+      "sourceRepo": "Community",
+      "pluginName": "replaceOriginalFile",
+      "version": "1.0.0",
+      "id": "novaOv-replace",
+      "position": { "x": 600, "y": 1280 },
+      "fpEnabled": true
+    }
+  ],
+  "flowEdges": [
+    {
+      "source": "novaOv-input",
+      "sourceHandle": "1",
+      "target": "novaOv-hevc",
+      "targetHandle": null,
+      "id": "novaOv-e1"
+    },
+    {
+      "source": "novaOv-hevc",
+      "sourceHandle": "1",
+      "target": "novaOv-10bit",
+      "targetHandle": null,
+      "id": "novaOv-e2"
+    },
+    {
+      "source": "novaOv-10bit",
+      "sourceHandle": "2",
+      "target": "novaOv-hdr",
+      "targetHandle": null,
+      "id": "novaOv-e3"
+    },
+    {
+      "source": "novaOv-hdr",
+      "sourceHandle": "2",
+      "target": "novaOv-res",
+      "targetHandle": null,
+      "id": "novaOv-e4"
+    },
+    {
+      "source": "novaOv-res",
+      "sourceHandle": "4",
+      "target": "novaOv-br1080",
+      "targetHandle": null,
+      "id": "novaOv-e5"
+    },
+    {
+      "source": "novaOv-res",
+      "sourceHandle": "6",
+      "target": "novaOv-br4k",
+      "targetHandle": null,
+      "id": "novaOv-e6"
+    },
+    {
+      "source": "novaOv-br1080",
+      "sourceHandle": "1",
+      "target": "novaOv-start1080",
+      "targetHandle": null,
+      "id": "novaOv-e7"
+    },
+    {
+      "source": "novaOv-start1080",
+      "sourceHandle": "1",
+      "target": "novaOv-enc1080",
+      "targetHandle": null,
+      "id": "novaOv-e8"
+    },
+    {
+      "source": "novaOv-enc1080",
+      "sourceHandle": "1",
+      "target": "novaOv-br1080-set",
+      "targetHandle": null,
+      "id": "novaOv-e9"
+    },
+    {
+      "source": "novaOv-br1080-set",
+      "sourceHandle": "1",
+      "target": "novaOv-exec1080",
+      "targetHandle": null,
+      "id": "novaOv-e10"
+    },
+    {
+      "source": "novaOv-exec1080",
+      "sourceHandle": "1",
+      "target": "novaOv-replace",
+      "targetHandle": null,
+      "id": "novaOv-e11"
+    },
+    {
+      "source": "novaOv-br4k",
+      "sourceHandle": "1",
+      "target": "novaOv-start4k",
+      "targetHandle": null,
+      "id": "novaOv-e12"
+    },
+    {
+      "source": "novaOv-start4k",
+      "sourceHandle": "1",
+      "target": "novaOv-enc4k",
+      "targetHandle": null,
+      "id": "novaOv-e13"
+    },
+    {
+      "source": "novaOv-enc4k",
+      "sourceHandle": "1",
+      "target": "novaOv-br4k-set",
+      "targetHandle": null,
+      "id": "novaOv-e14"
+    },
+    {
+      "source": "novaOv-br4k-set",
+      "sourceHandle": "1",
+      "target": "novaOv-exec4k",
+      "targetHandle": null,
+      "id": "novaOv-e15"
+    },
+    {
+      "source": "novaOv-exec4k",
+      "sourceHandle": "1",
+      "target": "novaOv-replace",
+      "targetHandle": null,
+      "id": "novaOv-e16"
+    }
+  ]
+}
