@@ -172,17 +172,15 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
-| movienight-frontend | ghcr.io/kjsb25/movienight:latest | React frontend; routes all non-/graphql traffic |
-| movienight-backend | ghcr.io/kjsb25/movienight-backend:latest | GraphQL API on port 4000; built by CI in movienight repo |
+| movienight-frontend | ghcr.io/nova-firefly/movienight:latest | React frontend; routes all non-/graphql traffic |
+| movienight-backend | ghcr.io/nova-firefly/movienight-backend:latest | GraphQL API on port 4000; built by CI in movienight repo |
 | movienight-db | postgres:15-alpine | Internal network only |
 
 **Networks:** `movienight_internal` (internal: true) isolates DB from Traefik; `internal_webhook` (external, internal: true) connects backend to `internal-webhook` in media stack
 
 **Routing:** Traefik routes `/graphql` to backend, everything else to frontend — both on `movienight.NOVA_DOMAIN`
 
-**Auto-deploy:** Both images are built by CI in the `kjsb25/movienight` repo on push to `master` and pushed to GHCR. The CI's SSH deploy job calls `nova.sh update movienight` after the image push. WUD watches both images and notifies on Discord when digests change but does not recreate.
-
-**Submodule:** lives at `movienight/src/` (the `movienight/` dir itself is the stack dir holding `compose.yaml`). Kept for local development reference only — no longer used for production builds. Initialize with `git submodule update --init`.
+**Image:** Both images are built by CI in [`nova-firefly/movienight`](https://github.com/nova-firefly/movienight) on push to `main` and published to GHCR. The CI's SSH deploy job calls `nova.sh update movienight` after the image push. WUD watches the digest of `:latest` and notifies on Discord; redeploy with `./nova.sh update movienight`.
 
 **Required env:** `MOVIENIGHT_DB_PASSWORD`
 

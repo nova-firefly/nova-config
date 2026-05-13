@@ -27,4 +27,3 @@ jobs:
             cd ${{ secrets.NOVA_CONFIG_PATH }}
             git fetch origin
             git reset --hard origin/main
-            git submodule update --init --recursive

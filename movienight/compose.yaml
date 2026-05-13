@@ -2,7 +2,10 @@
 # Usage: ./nova.sh up movienight   (or: docker compose -f movienight/compose.yaml up -d)
 # Requires .env file for: NOVA_DOMAIN, MOVIENIGHT_DB_PASSWORD, MOVIENIGHT_JWT_SECRET,
 #   MOVIENIGHT_ADMIN_PASSWORD, MOVIENIGHT_SMTP_HOST, MOVIENIGHT_SMTP_USER, MOVIENIGHT_SMTP_PASS
-# Note: movienight submodule lives at movienight/src — initialize with `git submodule update --init`
+#
+# Images are built by CI in nova-firefly/movienight (.github/workflows) on push to
+# main and published to ghcr.io/nova-firefly/movienight{,-backend}. WUD watches the
+# digest of `:latest` and notifies on Discord; redeploy with `./nova.sh update movienight`.
 
 name: movienight
 
@@ -78,6 +81,9 @@ services:
       traefik.http.routers.movienight-api.entrypoints: "websecure"
       traefik.http.routers.movienight-api.tls: "true"
       traefik.http.services.movienight-api.loadbalancer.server.port: "4000"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
       - "movienight_internal"
@@ -104,6 +110,9 @@ services:
       homepage.icon: "mdi-popcorn"
       homepage.href: "https://movienight.${NOVA_DOMAIN}"
       homepage.description: "Movie Suggestion App"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
     networks:
       - "traefik_default"
     restart: "unless-stopped"

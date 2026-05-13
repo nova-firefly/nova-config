@@ -1,7 +1,0 @@
-[submodule "vibe-kanban-tools"]
-	path = vibe-kanban-tools
-	url = git@github.com:nova-firefly/vibe-kanban-tools.git
-	branch = main
-[submodule "movienight"]
-	path = movienight/src
-	url = git@github.com:nova-firefly/movienight.git
