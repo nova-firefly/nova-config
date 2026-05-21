@@ -239,6 +239,58 @@ services:
       - "snapotter_data:/data"
       - "snapotter_workspace:/tmp/workspace"
 
+  # Browser terminal -> host sshd. Three independent auth layers stack:
+  #   1. Traefik TLS at the edge
+  #   2. Authelia 2FA (default policy is two_factor; inherited by `shell.` subdomain)
+  #   3. ttyd basic-auth (separate credential store; gate before terminal opens)
+  #   4. host sshd (password / key / PAM-TOTP — whatever sshd is configured for)
+  # No SSH credentials are stored in the image: ttyd spawns `ssh` and the user
+  # types their host secret in the browser. A ttyd CVE alone yields no host access.
+  # Built locally (./shell/Dockerfile) because we want a fresh ttyd base — the
+  # upstream wettyoss/wetty image hasn't been rebuilt since 2022.
+  shell:
+    container_name: "shell"
+    build:
+      context: "../shell"
+    command:
+      - "ttyd"
+      - "--writable"
+      - "--port=7681"
+      - "--credential=${SHELL_BASIC_USER}:${SHELL_BASIC_PASS}"
+      - "--max-clients=2"
+      - "ssh"
+      - "-o"
+      - "StrictHostKeyChecking=accept-new"
+      - "-o"
+      - "UserKnownHostsFile=/tmp/known_hosts"
+      - "-t"
+      - "${SHELL_SSH_USER}@host.docker.internal"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.shell.rule: "Host(`shell.${NOVA_DOMAIN}`)"
+      traefik.http.routers.shell.entrypoints: "websecure"
+      traefik.http.routers.shell.tls: "true"
+      traefik.http.routers.shell.middlewares: "authelia@file"
+      traefik.http.services.shell.loadbalancer.server.port: "7681"
+      homepage.group: "Infrastructure"
+      homepage.name: "Shell"
+      homepage.icon: "mdi-console-line"
+      homepage.href: "https://shell.${NOVA_DOMAIN}"
+      homepage.description: "Browser terminal (Authelia + ttyd basic-auth + sshd)"
+      wud.watch: "false"  # locally-built image; rebuild via `./nova.sh recreate tools shell`
+    networks:
+      - "traefik_default"
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - "ALL"
+    read_only: true
+    tmpfs:
+      - "/tmp"
+    restart: "unless-stopped"
+
   uptime-kuma:
     container_name: "uptime-kuma"
     environment:

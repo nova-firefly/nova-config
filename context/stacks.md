@@ -13,7 +13,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | dev/compose.yaml | vibe-kanban, vibe-kanban-tools |
-| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy, habitica, habitica-db, snapotter |
+| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy, habitica, habitica-db, snapotter, shell |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
 | movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
@@ -215,12 +215,29 @@ docker volume create authelia_data && docker volume create authelia_redis
 | uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
 | ntfy | binwiederhier/ntfy | 80 | ntfy.NOVA_DOMAIN | Push notification server; no Authelia — must be reachable by webhooks. Also used by nova.sh to notify on up/down/update/recreate/restart (topic: `$NTFY_TOPIC`) |
 | snapotter | ghcr.io/snapotter-hq/snapotter | 1349 | snapotter.NOVA_DOMAIN | Self-hosted image manipulation (50+ tools, local AI). Behind Authelia; internal auth also on with default `admin`/`admin` (change on first login). `/tmp/workspace` is a compose-managed volume — auto-cleaned by the app |
+| shell | local build (`../shell/`) | 7681 | shell.NOVA_DOMAIN | Browser SSH terminal to host. ttyd (alpine) + openssh-client; reaches host sshd via `host.docker.internal:22` (docker bridge gateway). No SSH creds in the image — user types host secret in browser. |
 
 **External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `habitica_db`, `snapotter_data`
 
 **Internal networks:** `habitica_internal` (Mongo ↔ Habitica only; not externally reachable)
 
 **Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose), `snapotter_workspace` (ephemeral processing dir; safe to wipe)
+
+**Shell auth model (defense in depth — four independent layers):**
+1. Traefik TLS at the edge.
+2. **Authelia 2FA** (default policy is `two_factor`, inherited automatically by `shell.NOVA_DOMAIN`).
+3. **ttyd basic-auth** (`SHELL_BASIC_USER:SHELL_BASIC_PASS`) — a credential store separate from Authelia, so an Authelia-session hijack still hits a gate.
+4. **Host sshd** validates with whatever sshd is configured for (password, key, or key + PAM-TOTP).
+
+Image is built locally from `../shell/Dockerfile` (just `tsl0922/ttyd:alpine` + `openssh-client` + `tini`). Reason: the upstream `wettyoss/wetty` image hasn't been rebuilt since 2022; `tsl0922/ttyd` is rebuilt every few weeks.
+
+Container hardening: `cap_drop: ALL`, `no-new-privileges`, `read_only: true` with `/tmp` tmpfs (ssh's `UserKnownHostsFile` is pointed at `/tmp/known_hosts`).
+
+Recommended host hardening once `shell` is up (see `.env.example` Shell section for commands):
+- Bind sshd to `127.0.0.1` + `172.17.0.1` only so it's unreachable from LAN / WAN.
+- Add `pam_google_authenticator` to `$SHELL_SSH_USER` for a TOTP factor at the sshd layer.
+
+**Required env (for shell):** `SHELL_SSH_USER`, `SHELL_BASIC_USER`, `SHELL_BASIC_PASS`
 
 ---
 
