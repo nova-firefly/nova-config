@@ -90,6 +90,9 @@ services:
       - "stirling_config:/mnt/configs/stirling:ro"
       - "samba_config:/mnt/configs/samba:ro"
       - "backrest_backrest_config:/mnt/configs/backrest:ro"
+      # Host logs (read-only) — for debugging host-level issues (sshd, ufw, fail2ban).
+      # journalctl access: `journalctl -D /host/var/log/journal -u ssh.service`
+      - "/var/log:/host/var/log:ro"
 
   vibe-kanban-tools:
     image: "ghcr.io/kjsb25/vibe-kanban-tools:latest"
