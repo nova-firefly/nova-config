@@ -210,12 +210,12 @@ docker volume create authelia_data && docker volume create authelia_redis
 | actual | actualbudget/actual-server | 5006 | actual.NOVA_DOMAIN | Personal budgeting |
 | stirling-pdf | stirlingtools/stirling-pdf | 8080 | stirling-pdf.NOVA_DOMAIN | PDF manipulation tool |
 | vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management |
-| habitica | awinterstein/habitica | 3000 | habitica.NOVA_DOMAIN | Self-hosted Habitica (gamified habit tracker). Community image — bundles client + Node API. Talks to `habitica-db` over `habitica_internal` (non-routable). Mongo major pinned to 5.0 |
-| habitica-db | mongo:5.0 | 27017 (internal) | — | Mongo backing Habitica. No external network. Requires AVX-capable CPU |
+| habitica | awinterstein/habitica-server | 3000 | habitica.NOVA_DOMAIN | Self-hosted Habitica (gamified habit tracker). Community fork that rebases onto each upstream Habitica release via CI; bundles server + client. Talks to `habitica-db` over `habitica_internal` (non-routable). First-registered user becomes admin; set `HABITICA_INVITE_ONLY=true` after seeding |
+| habitica-db | mongo:7.0 | 27017 (internal) | — | Mongo backing Habitica. **Single-node replica set** (`--replSet rs`) — required because Habitica uses transactions. Healthcheck auto-runs `rs.initiate()` on first start. No external network |
 | uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
 | ntfy | binwiederhier/ntfy | 80 | ntfy.NOVA_DOMAIN | Push notification server; no Authelia — must be reachable by webhooks. Also used by nova.sh to notify on up/down/update/recreate/restart (topic: `$NTFY_TOPIC`) |
 
-**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `habitica_db`
+**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `habitica_db`, `habitica_db_config`
 
 **Internal networks:** `habitica_internal` (Mongo ↔ Habitica only; not externally reachable)
 

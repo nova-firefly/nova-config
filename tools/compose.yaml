@@ -148,15 +148,20 @@ services:
         condition: service_healthy
     environment:
       - "BASE_URL=https://habitica.${NOVA_DOMAIN}"
-      - "NODE_DB_URI=mongodb://habitica-db:27017/habitica"
+      - "NODE_DB_URI=mongodb://habitica-db/habitica"
       - "ADMIN_EMAIL=${ACME_EMAIL}"
+      - "INVITE_ONLY=${HABITICA_INVITE_ONLY:-false}"
+      - "EMAIL_SERVER_URL=${AUTHELIA_NOTIFIER_SMTP_HOST}"
+      - "EMAIL_SERVER_PORT=587"
+      - "EMAIL_SERVER_AUTH_USER=${AUTHELIA_NOTIFIER_SMTP_USERNAME}"
+      - "EMAIL_SERVER_AUTH_PASSWORD=${AUTHELIA_NOTIFIER_SMTP_PASSWORD}"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --tries=1 --spider http://localhost:3000/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 90s
-    image: "awinterstein/habitica:latest"
+    image: "awinterstein/habitica-server:latest"
     labels:
       traefik.enable: "true"
       traefik.http.routers.habitica.rule: "Host(`habitica.${NOVA_DOMAIN}`)"
@@ -179,26 +184,30 @@ services:
 
   habitica-db:
     container_name: "habitica-db"
-    image: "mongo:5.0"
-    command: ["--quiet", "--logpath", "/dev/null"]
+    image: "mongo:7.0"
+    # Habitica uses Mongo transactions, which require a replica set. We run a single-node
+    # replset named "rs"; the healthcheck below auto-`rs.initiate()`s on first start, then
+    # just reports rs.status() on subsequent runs.
+    command: ["--replSet", "rs", "--bind_ip_all", "--port", "27017"]
     healthcheck:
-      test: ["CMD", "mongo", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      test: ["CMD-SHELL", "echo 'try { rs.status() } catch (err) { rs.initiate() }' | mongosh --port 27017 --quiet"]
+      interval: 10s
+      timeout: 30s
+      retries: 30
+      start_period: 0s
     labels:
-      # Pinned major (mongo 5.0) — Habitica's schema migrations are tied to specific Mongo
-      # versions; do not let WUD auto-bump. Notify on digest changes within 5.0 only.
+      # Pinned major (mongo 7.0) — matches Habitica's upstream dev compose. Notify only on
+      # digest changes within 7.0.x; major bumps are deliberate via PR.
       wud.watch: "true"
       wud.watch.digest: "true"
-      wud.tag.include: "^5\\.0(\\..*)?$"
+      wud.tag.include: "^7\\.0(\\..*)?$"
       wud.trigger.include: "discord.notify"
     networks:
       - "habitica_internal"
     restart: "unless-stopped"
     volumes:
       - "habitica_db:/data/db"
+      - "habitica_db_config:/data/configdb"
 
   uptime-kuma:
     container_name: "uptime-kuma"
@@ -251,6 +260,9 @@ volumes:
   actual_data: {}
 
   habitica_db:
+    external: true
+
+  habitica_db_config:
     external: true
 
   stirling_config:
