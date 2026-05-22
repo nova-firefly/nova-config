@@ -157,8 +157,10 @@ services:
       - "EMAIL_SERVER_AUTH_PASSWORD=${AUTHELIA_NOTIFIER_SMTP_PASSWORD}"
     healthcheck:
       # awinterstein/habitica-server is based on node:20 (Debian) with only `cron` apt-installed —
-      # no wget/curl. Use Node itself (always present) and hit Habitica's documented status endpoint.
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v3/status', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      # no wget/curl. Use Node itself (always present). Accept any non-5xx response: Habitica
+      # redirects plain-http to its canonical https BASE_URL, so localhost probes get a 302.
+      # The 302 still proves the process is alive and serving requests.
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v3/status', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
