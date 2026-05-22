@@ -13,7 +13,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | dev/compose.yaml | vibe-kanban, vibe-kanban-tools |
-| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy |
+| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy, habitica, habitica-db, snapotter |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
 | movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
@@ -214,12 +214,13 @@ docker volume create authelia_data && docker volume create authelia_redis
 | habitica-db | mongo:5.0 | 27017 (internal) | — | Mongo backing Habitica. No external network. Requires AVX-capable CPU |
 | uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
 | ntfy | binwiederhier/ntfy | 80 | ntfy.NOVA_DOMAIN | Push notification server; no Authelia — must be reachable by webhooks. Also used by nova.sh to notify on up/down/update/recreate/restart (topic: `$NTFY_TOPIC`) |
+| snapotter | ghcr.io/snapotter-hq/snapotter | 1349 | snapotter.NOVA_DOMAIN | Self-hosted image manipulation (50+ tools, local AI). Behind Authelia; internal auth also on with default `admin`/`admin` (change on first login). `/tmp/workspace` is a compose-managed volume — auto-cleaned by the app |
 
-**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `habitica_db`
+**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `habitica_db`, `snapotter_data`
 
 **Internal networks:** `habitica_internal` (Mongo ↔ Habitica only; not externally reachable)
 
-**Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose)
+**Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose), `snapotter_workspace` (ephemeral processing dir; safe to wipe)
 
 ---
 
