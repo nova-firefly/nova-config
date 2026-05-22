@@ -1,4 +1,4 @@
-# Tools Stack - Stirling PDF, Vikunja, Actual, ntfy, Uptime Kuma, Habitica
+# Tools Stack - Stirling PDF, Vikunja, Actual, ntfy, Uptime Kuma, Habitica, SnapOtter
 # Usage: ./nova.sh up tools   (or: docker compose -f tools/compose.yaml up -d)
 # Requires .env file for: NOVA_DOMAIN, TZ, ACME_EMAIL (Habitica admin)
 
@@ -200,6 +200,45 @@ services:
     volumes:
       - "habitica_db:/data/db"
 
+  snapotter:
+    container_name: "snapotter"
+    environment:
+      - "TZ=${TZ}"
+      - "AUTH_ENABLED=true"
+      - "DEFAULT_USERNAME=admin"
+      - "DEFAULT_PASSWORD=admin"
+      - "TRUST_PROXY=true"
+      - "EXTERNAL_URL=https://snapotter.${NOVA_DOMAIN}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1349/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    image: "ghcr.io/snapotter-hq/snapotter:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.snapotter.rule: "Host(`snapotter.${NOVA_DOMAIN}`)"
+      traefik.http.routers.snapotter.entrypoints: "websecure"
+      traefik.http.routers.snapotter.tls: "true"
+      traefik.http.routers.snapotter.middlewares: "authelia@file"
+      traefik.http.services.snapotter.loadbalancer.server.port: "1349"
+      homepage.group: "Tools"
+      homepage.name: "SnapOtter"
+      homepage.icon: "mdi-image-edit"
+      homepage.href: "https://snapotter.${NOVA_DOMAIN}"
+      homepage.description: "Self-hosted image manipulation"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    shm_size: "2gb"
+    volumes:
+      - "snapotter_data:/data"
+      - "snapotter_workspace:/tmp/workspace"
+
   uptime-kuma:
     container_name: "uptime-kuma"
     environment:
@@ -255,3 +294,8 @@ volumes:
 
   stirling_config:
     external: true
+
+  snapotter_data:
+    external: true
+
+  snapotter_workspace: {}
