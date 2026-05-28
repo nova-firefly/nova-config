@@ -79,17 +79,56 @@ services:
       - "vibe-kanban-data:/root/.local/share/vibe-kanban"
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
-      # Config volumes (read-only) — for log/config inspection and debugging
-      - "bazarr_config:/mnt/configs/bazarr:ro"
-      - "prowlarr_config:/mnt/configs/prowlarr:ro"
-      - "seerr_config:/mnt/configs/seerr:ro"
-      - "qbittorrent_config:/mnt/configs/qbittorrent:ro"
-      - "radarr_config:/mnt/configs/radarr:ro"
-      - "sonarr_config:/mnt/configs/sonarr:ro"
-      - "tautulli_config:/mnt/configs/tautulli:ro"
-      - "stirling_config:/mnt/configs/stirling:ro"
-      - "samba_config:/mnt/configs/samba:ro"
-      - "backrest_backrest_config:/mnt/configs/backrest:ro"
+      # All named volumes (read-only) — for log/config inspection and debugging
+      - "authelia_data:/mnt/volumes/authelia_data:ro"
+      - "authelia_redis:/mnt/volumes/authelia_redis:ro"
+      - "backrest_backrest_cache:/mnt/volumes/backrest_backrest_cache:ro"
+      - "backrest_backrest_config:/mnt/volumes/backrest_backrest_config:ro"
+      - "backrest_backrest_data:/mnt/volumes/backrest_backrest_data:ro"
+      - "bazarr_config:/mnt/volumes/bazarr_config:ro"
+      - "gluetun_data:/mnt/volumes/gluetun_data:ro"
+      - "ha_config:/mnt/volumes/ha_config:ro"
+      - "habitica_db:/mnt/volumes/habitica_db:ro"
+      - "habitica_db_config:/mnt/volumes/habitica_db_config:ro"
+      - "homescreen_hero_data:/mnt/volumes/homescreen_hero_data:ro"
+      - "immich_immich-ml-model-cache:/mnt/volumes/immich_immich-ml-model-cache:ro"
+      - "immich_power_tools_data:/mnt/volumes/immich_power_tools_data:ro"
+      - "infra_arcane_data:/mnt/volumes/infra_arcane_data:ro"
+      - "infra_dockge_data:/mnt/volumes/infra_dockge_data:ro"
+      - "kandev_kandev-data:/mnt/volumes/kandev_kandev-data:ro"
+      - "matter_server_data:/mnt/volumes/matter_server_data:ro"
+      - "media_kometa_trigger:/mnt/volumes/media_kometa_trigger:ro"
+      - "minecraft_data:/mnt/volumes/minecraft_data:ro"
+      - "movienight_db:/mnt/volumes/movienight_db:ro"
+      - "movienight_test_db:/mnt/volumes/movienight_test_db:ro"
+      - "ntfy_data:/mnt/volumes/ntfy_data:ro"
+      - "overseerr_config:/mnt/volumes/overseerr_config:ro"
+      - "plex_data_1:/mnt/volumes/plex_data_1:ro"
+      - "prowlarr_config:/mnt/volumes/prowlarr_config:ro"
+      - "pterodactyl_db:/mnt/volumes/pterodactyl_db:ro"
+      - "pterodactyl_panel_logs:/mnt/volumes/pterodactyl_panel_logs:ro"
+      - "pterodactyl_panel_var:/mnt/volumes/pterodactyl_panel_var:ro"
+      - "qbittorrent_config:/mnt/volumes/qbittorrent_config:ro"
+      - "qbittorrent_data:/mnt/volumes/qbittorrent_data:ro"
+      - "radarr_config:/mnt/volumes/radarr_config:ro"
+      - "samba_config:/mnt/volumes/samba_config:ro"
+      - "scrutiny_data:/mnt/volumes/scrutiny_data:ro"
+      - "seerr_config:/mnt/volumes/seerr_config:ro"
+      - "snapotter_data:/mnt/volumes/snapotter_data:ro"
+      - "sonarr_config:/mnt/volumes/sonarr_config:ro"
+      - "stirling_config:/mnt/volumes/stirling_config:ro"
+      - "strava_hevy_data:/mnt/volumes/strava_hevy_data:ro"
+      - "tautulli_config:/mnt/volumes/tautulli_config:ro"
+      - "tdarr_configs:/mnt/volumes/tdarr_configs:ro"
+      - "tdarr_logs:/mnt/volumes/tdarr_logs:ro"
+      - "tdarr_server:/mnt/volumes/tdarr_server:ro"
+      - "tools_actual_data:/mnt/volumes/tools_actual_data:ro"
+      - "tools_snapotter_workspace:/mnt/volumes/tools_snapotter_workspace:ro"
+      - "traefik_acme:/mnt/volumes/traefik_acme:ro"
+      - "uptime_kuma_data:/mnt/volumes/uptime_kuma_data:ro"
+      - "vikunja_db:/mnt/volumes/vikunja_db:ro"
+      - "vikunja_files:/mnt/volumes/vikunja_files:ro"
+      - "zwave-js-ui:/mnt/volumes/zwave-js-ui:ro"
 
   vibe-kanban-tools:
     image: "ghcr.io/kjsb25/vibe-kanban-tools:latest"
@@ -130,30 +169,109 @@ volumes:
 
   vibe-kanban-repos:
     external: true
-  # Config volumes — read-only access for log/config inspection
-  bazarr_config:
-    external: true
-  prowlarr_config:
-    external: true
-  seerr_config:
-    external: true
-  qbittorrent_config:
-    external: true
-  radarr_config:
-    external: true
-  sonarr_config:
-    external: true
-  tautulli_config:
-    external: true
-  stirling_config:
-    external: true
-  samba_config:
-    external: true
-  backrest_backrest_config:
-    external: true
 
   vibe-kanban-claude:
 
   vibe-kanban-cache:
 
   vibe-kanban-data:
+
+  # External volumes — read-only access for log/config inspection across all stacks
+  authelia_data:
+    external: true
+  authelia_redis:
+    external: true
+  backrest_backrest_cache:
+    external: true
+  backrest_backrest_config:
+    external: true
+  backrest_backrest_data:
+    external: true
+  bazarr_config:
+    external: true
+  gluetun_data:
+    external: true
+  ha_config:
+    external: true
+  habitica_db:
+    external: true
+  habitica_db_config:
+    external: true
+  homescreen_hero_data:
+    external: true
+  immich_immich-ml-model-cache:
+    external: true
+  immich_power_tools_data:
+    external: true
+  infra_arcane_data:
+    external: true
+  infra_dockge_data:
+    external: true
+  kandev_kandev-data:
+    external: true
+  matter_server_data:
+    external: true
+  media_kometa_trigger:
+    external: true
+  minecraft_data:
+    external: true
+  movienight_db:
+    external: true
+  movienight_test_db:
+    external: true
+  ntfy_data:
+    external: true
+  overseerr_config:
+    external: true
+  plex_data_1:
+    external: true
+  prowlarr_config:
+    external: true
+  pterodactyl_db:
+    external: true
+  pterodactyl_panel_logs:
+    external: true
+  pterodactyl_panel_var:
+    external: true
+  qbittorrent_config:
+    external: true
+  qbittorrent_data:
+    external: true
+  radarr_config:
+    external: true
+  samba_config:
+    external: true
+  scrutiny_data:
+    external: true
+  seerr_config:
+    external: true
+  snapotter_data:
+    external: true
+  sonarr_config:
+    external: true
+  stirling_config:
+    external: true
+  strava_hevy_data:
+    external: true
+  tautulli_config:
+    external: true
+  tdarr_configs:
+    external: true
+  tdarr_logs:
+    external: true
+  tdarr_server:
+    external: true
+  tools_actual_data:
+    external: true
+  tools_snapotter_workspace:
+    external: true
+  traefik_acme:
+    external: true
+  uptime_kuma_data:
+    external: true
+  vikunja_db:
+    external: true
+  vikunja_files:
+    external: true
+  zwave-js-ui:
+    external: true

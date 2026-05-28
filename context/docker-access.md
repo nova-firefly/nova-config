@@ -43,36 +43,47 @@ or because all POST/DELETE methods are disabled by default.
 - Services that need full socket access (Arcane, WUD) mount `/var/run/docker.sock` directly
   and do **not** go through the proxy — they are explicitly excluded from this policy.
 
-## Config Volume Access (Read-Only)
+## Volume Access (Read-Only)
 
-In addition to the Docker socket, vibe-kanban has **read-only** bind access to the config
-volumes of services across all stacks. This is useful for inspecting application logs and
-config files directly without needing `docker exec`.
+In addition to the Docker socket, vibe-kanban has **read-only** bind access to every named
+Docker volume on the host. This is useful for inspecting application logs, config files, and
+on-disk state directly without needing `docker exec`.
+
+Each external volume is mounted at `/mnt/volumes/<volume_name>:ro`, where `<volume_name>` is
+the exact name shown by `docker volume ls`. For example:
 
 | Mount path | Volume | Service |
 |---|---|---|
-| `/ha-config` | `ha_config` | Home Assistant |
-| `/mnt/configs/bazarr` | `bazarr_config` | Bazarr |
-| `/mnt/configs/prowlarr` | `prowlarr_config` | Prowlarr |
-| `/mnt/configs/seerr` | `seerr_config` | Seerr (Overseerr) |
-| `/mnt/configs/qbittorrent` | `qbittorrent_config` | qBittorrent |
-| `/mnt/configs/radarr` | `radarr_config` | Radarr |
-| `/mnt/configs/sonarr` | `sonarr_config` | Sonarr |
-| `/mnt/configs/tautulli` | `tautulli_config` | Tautulli |
-| `/mnt/configs/stirling` | `stirling_config` | Stirling PDF |
-| `/mnt/configs/samba` | `samba_config` | Samba |
-| `/mnt/configs/backrest` | `backrest_backrest_config` | Backrest |
+| `/mnt/volumes/ha_config` | `ha_config` | Home Assistant |
+| `/mnt/volumes/zwave-js-ui` | `zwave-js-ui` | Z-Wave JS UI (driver logs in `logs/`) |
+| `/mnt/volumes/radarr_config` | `radarr_config` | Radarr |
+| `/mnt/volumes/sonarr_config` | `sonarr_config` | Sonarr |
+| `/mnt/volumes/bazarr_config` | `bazarr_config` | Bazarr |
+| `/mnt/volumes/prowlarr_config` | `prowlarr_config` | Prowlarr |
+| `/mnt/volumes/qbittorrent_config` | `qbittorrent_config` | qBittorrent |
+| `/mnt/volumes/seerr_config` | `seerr_config` | Seerr (Overseerr) |
+| `/mnt/volumes/tautulli_config` | `tautulli_config` | Tautulli |
+| ... | ... | ... |
+
+See `dev/compose.yaml` for the full list. To add a new volume, declare it as `external: true`
+under `volumes:` and add the corresponding `:ro` bind mount to the `vibe-kanban` service.
 
 All mounts are declared with `:ro` — write operations will be rejected by the kernel.
 Application logs are typically found in `logs/` subdirectories within each mount.
 
+> **Note on secrets:** This grants read access to database files, session stores, ACME
+> certs, and other sensitive material. Be careful what you ask Claude to inspect.
+
 Example usage:
 ```bash
 # Tail Radarr logs
-tail -f /mnt/configs/radarr/logs/radarr.txt
+tail -f /mnt/volumes/radarr_config/logs/radarr.txt
+
+# Read today's Z-Wave driver log
+tail -200 /mnt/volumes/zwave-js-ui/logs/zwavejs_$(date +%F).log
 
 # Check Sonarr config
-cat /mnt/configs/sonarr/config.xml
+cat /mnt/volumes/sonarr_config/config.xml
 ```
 
 ## Proxy Source
