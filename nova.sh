@@ -21,7 +21,7 @@
 #             A failing stack does not stop the run — the rest are still healed and
 #             the command exits 1 at the end, naming the failures.
 #
-# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test, strava-hevy, todoassist
+# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test, strava-hevy, todoassist, hermes
 # Omit stack name to apply to all stacks.
 #
 # Examples:
@@ -57,7 +57,7 @@ if [[ -n "${NOVA_CONFIG_PATH:-}" && "$(realpath "${NOVA_CONFIG_PATH}")" != "$(pw
   echo "         WUD and nova.sh will reference different compose paths. Fix .env." >&2
 fi
 
-ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test strava-hevy todoassist)
+ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test strava-hevy todoassist hermes)
 
 # Stacks excluded from reconcile — intentionally transient or CI-only stacks
 RECONCILE_SKIP_STACKS=(movienight-test)
