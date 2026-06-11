@@ -223,13 +223,12 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose), `snapotter_workspace` (ephemeral processing dir; safe to wipe)
 
-**Shell auth model (defense in depth — four independent layers):**
+**Shell auth model (defense in depth):**
 1. Traefik TLS at the edge.
 2. **Authelia 2FA** (default policy is `two_factor`, inherited automatically by `shell.NOVA_DOMAIN`).
-3. **ttyd basic-auth** (`SHELL_BASIC_USER:SHELL_BASIC_PASS`) — a credential store separate from Authelia, so an Authelia-session hijack still hits a gate.
-4. **Host sshd** validates with whatever sshd is configured for (password, key, or key + PAM-TOTP).
+3. **Host sshd** validates with whatever sshd is configured for (password, key, or key + PAM-TOTP).
 
-Image is built locally from `../shell/Dockerfile` (just `tsl0922/ttyd:alpine` + `openssh-client` + `tini`). Reason: the upstream `wettyoss/wetty` image hasn't been rebuilt since 2022; `tsl0922/ttyd` is rebuilt every few weeks.
+Image is built locally from `../shell/Dockerfile` (just `tsl0922/ttyd:alpine` + `openssh-client`). Reason: the upstream `wettyoss/wetty` image hasn't been rebuilt since 2022; `tsl0922/ttyd` is rebuilt every few weeks.
 
 Container hardening: `cap_drop: ALL`, `no-new-privileges`, `read_only: true` with `/tmp` tmpfs (ssh's `UserKnownHostsFile` is pointed at `/tmp/known_hosts`).
 
@@ -237,7 +236,7 @@ Recommended host hardening once `shell` is up (see `.env.example` Shell section 
 - Bind sshd to `127.0.0.1` + `172.17.0.1` only so it's unreachable from LAN / WAN.
 - Add `pam_google_authenticator` to `$SHELL_SSH_USER` for a TOTP factor at the sshd layer.
 
-**Required env (for shell):** `SHELL_SSH_USER`, `SHELL_BASIC_USER`, `SHELL_BASIC_PASS`
+**Required env (for shell):** `SHELL_SSH_USER` (stack refuses to start without it).
 
 ---
 
