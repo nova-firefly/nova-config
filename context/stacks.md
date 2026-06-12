@@ -18,6 +18,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | gaming | gaming/compose.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
 | movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
 | strava-hevy | strava-hevy/compose.yaml | strava-hevy |
+| hermes | hermes/compose.yaml | hermes-gateway, hermes-dashboard |
 
 ---
 
@@ -323,6 +324,61 @@ docker exec -it pterodactyl-panel php artisan p:user:make
 6. Settings → enable polling, set interval (default 10 min).
 
 **Recovery:** if Strava or Hevy refresh tokens are revoked, re-do the matching auth step. To wipe state, remove the `strava_hevy_data` volume; already-imported Hevy workouts are not duplicated because Hevy 409s and the service then PUTs to the same deterministic workout ID.
+
+---
+
+## hermes stack (`hermes/compose.yaml`)
+
+**Purpose:** Self-hosted [NousResearch Hermes Agent](https://github.com/NousResearch/hermes-agent) — persistent AI agent with web dashboard, messaging gateways (Telegram/Discord/Slack/WhatsApp/Signal/Email), built-in cron scheduler, durable memory, and an agent-first Kanban (separate from Vibe Kanban).
+
+| Service | Image/Build | Port | URL | Notes |
+|---------|-------------|------|-----|-------|
+| hermes-gateway | local build (`hermes-nova:latest`) | — | — | Long-running agent process; talks to LLM providers and messaging platforms; no HTTP surface |
+| hermes-dashboard | local build (`hermes-nova:latest`) | 9119 (container only) | hermes.NOVA_DOMAIN | Web UI: status, chat, config, API keys, sessions, logs, analytics, cron, skills, MCP, channels, system ops |
+
+**Image build:** Two-step, done on the host with `./hermes/build.sh`:
+1. Builds upstream as `hermes-agent:upstream` from `https://github.com/NousResearch/hermes-agent.git`.
+2. Builds the Nova wrapper `hermes-nova:latest` from `hermes/Dockerfile` — adds `docker-ce-cli` + `docker-compose-plugin` so the agent can run read-only docker commands via the socket-proxy.
+
+Re-run `./hermes/build.sh` after upstream releases or after editing `hermes/Dockerfile`. WUD is set to `wud.watch: "false"` because there is nothing on a public registry to watch.
+
+**Deviation from upstream's `docker-compose.yml`:** Upstream uses `network_mode: host`. Nova drops host mode so both services can sit on `traefik_default` (Traefik label routing) and `socket_proxy` (gateway only). The dashboard binds `0.0.0.0:9119` inside its container with `--insecure` to skip the built-in OAuth-to-Nous-Portal gate; Authelia at the Traefik edge provides auth instead.
+
+**Docker access:** Gateway has `DOCKER_HOST=tcp://socket-proxy:2375` and joins the `socket_proxy` network. Read-only verbs only (see `context/docker-access.md`) — Hermes physically cannot `exec`, `stop`, `rm`, `restart`, `pull`, etc. even if prompt-injected.
+
+**Repo + config read access:** Same `:ro` mounts as `dev/vibe-kanban` — the working tree at `/repos:ro` and *arr/tools configs at `/mnt/configs/*:ro`. Tail `radarr.txt`, grep `compose.yaml`, etc. without `docker exec`.
+
+**External volumes:** `hermes_data` (persistent agent state — sessions, memory, skills, `.env`, kanban SQLite). Plus all the existing config volumes mounted `:ro` and `vibe-kanban-repos:ro`.
+
+**Required env:** `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`. At least one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY` (bare names so the same key is shared with any other host tooling that talks to the same provider — or configure Nous Portal interactively from the dashboard).
+
+**Security:**
+- Dashboard stores API keys on disk in `hermes_data` — never expose port 9119 directly to the LAN.
+- Authelia `authelia@file` middleware gates the route.
+- Approval mode: by default Hermes prompts before every shell command. Pre-allowlist the read-only docker verbs in the dashboard's *System → Approval* panel (or in `~/.hermes/config.yaml` inside the volume) — list documented in `.env.example`.
+
+**Cost:** Unlike Claude Code in vibe-kanban (per-task), the gateway is always-on; every chat or cron-triggered prompt costs LLM tokens. Cap with a provider on a flat-rate plan (Nous Portal subscription) or a tight messaging allowlist.
+
+**First-run bootstrap:**
+```bash
+# 1. Create the persistent volume
+docker volume create hermes_data
+
+# 2. Build the images (must be run on the host, not from inside vibe-kanban)
+./hermes/build.sh
+
+# 3. Set at least one provider key in .env (ANTHROPIC_API_KEY etc.)
+
+# 4. Bring the stack up
+./nova.sh up hermes
+
+# 5. Visit https://hermes.${NOVA_DOMAIN}, sign in via Authelia, then:
+#    - Settings → Model → pick provider
+#    - Channels → configure Telegram / Discord / etc. as desired
+#    - System → Approval → add read-only docker verbs to the allowlist
+```
+
+**How this differs from Vibe Kanban:** Vibe Kanban + Claude Code is a *human-driven* PM board that spawns per-task Claude Code workers in git worktrees. Hermes is an *always-on* agent reachable from chat platforms with persistent memory and scheduled jobs. They are complementary — Vibe Kanban for explicit ticket-style dispatch, Hermes for ambient "DM me an answer" / "run X every morning" workflows.
 
 ---
 
