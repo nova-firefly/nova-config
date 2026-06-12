@@ -43,7 +43,7 @@ All four consuming repos use the same five GitHub secrets. Auditable from outsid
 | `NOVA_USER` | all 4 | **Removed** |
 | `NOVA_SSH_KEY` | all 4 | **Removed** — key no longer exists |
 | `NOVA_SSH_PORT` | all 4 | **Removed** |
-| `NOVA_CONFIG_PATH` | all 4 | **Demoted to repo `vars.NOVA_CONFIG_PATH`** (it's a filesystem path, not sensitive). For nova-config it can be hard-coded in the systemd unit's `WorkingDirectory`. |
+| `NOVA_CONFIG_PATH` | all 4 | **Demoted to repo `vars.NOVA_CONFIG_PATH`** (it's a filesystem path, not sensitive). From the runner's perspective this is the in-container mount path of the bind-mounted nova-config repo (e.g. `/nova-config`). |
 
 New repo variables introduced by the new pattern: `vars.COMPOSE_FILE` (movienight only — selects `movienight/compose.yaml` or `movienight-test/compose.yaml`).
 
@@ -52,8 +52,7 @@ New repo variables introduced by the new pattern: `vars.COMPOSE_FILE` (movienigh
 The vibe-kanban container reaches the host only through the read-only Docker socket proxy (see `context/docker-access.md`). From in here we cannot directly observe `iptables`, `nft`, or `~deploy/.ssh/authorized_keys` — the audit of those must happen on the host as part of Phase 1. What we *can* confirm:
 
 - The vibe-kanban container itself does not run sshd and exposes no listeners that matter.
-- No `gh-runner` user exists in this container's namespace (it shouldn't — runner is for the host).
-- `getent passwd gh-runner` → not present, confirming we're starting from a clean slate for Phase 1.
+- Nothing currently runs as a `gh-runner` host user — and per the architecture decision below, nothing will. The runners are containerised.
 
 **To capture from the host before Phase 3** (so we have a rollback baseline):
 ```bash
@@ -68,21 +67,100 @@ Save the output to `nova-config/context/ssh-pre-migration-snapshot.txt` before P
 
 ## 5. Phase-1 standard pattern (single source of truth)
 
-Lifted from the parent issue and consolidated here so per-repo migrations don't drift:
+**Architecture decision (2026-06-05): runners are containerised**, not bare-metal systemd units. Rationale: every other service on nova lives in a compose stack; the privilege boundary that matters (docker write access) is enforced by the socket proxy regardless of host vs. container; lifecycle/observability/update tooling (Dockge, Arcane, WUD, Homepage, ntfy) already exists for compose services and we don't have to reinvent any of it for a one-off `gh-runner@` systemd unit.
 
-### Runner host layout
-- One `gh-runner` system user: `useradd -r -m -d /srv/gh-runner -s /usr/sbin/nologin gh-runner`
-- Per-repo tree: `/srv/gh-runner/<repo>/{runner,_work}`
-- Group: `gh-runner` is a member of the docker-socket-proxy access group, **not** the raw `docker` group, **not** sudoers.
-- systemd unit template: `nova-config/systemd/gh-runner@.service` — `User=gh-runner`, `Restart=always`, runs `./run.sh --once` so each job is a fresh ephemeral process. Hardening: `ProtectSystem=strict`, `ProtectHome=true`, `NoNewPrivileges=true`, `PrivateTmp=true`, `ReadWritePaths=/srv/gh-runner/<repo>` plus whichever compose-data paths the deploy touches. Bounded by `MemoryMax`, `TasksMax`, `CPUQuota`.
+The runners live in a new `runners/` stack alongside the existing ones.
 
-### Runner labels
-Workflows target `runs-on: [self-hosted, nova, <repo-name>]`. A compromised repo cannot dequeue jobs intended for another runner.
+### Stack layout
 
-### Registration tokens
-GitHub registration tokens TTL is 1h. Generated at install time only, stored at `/etc/gh-runner/<repo>.token` (mode 600, root-owned). The install script in `nova-config/scripts/install-gh-runner.sh` will own this rotation.
+```
+nova-config/
+├── runners/
+│   ├── compose.yaml             # one service per repo + dedicated socket-proxy
+│   ├── Dockerfile               # thin image: actions/runner + docker CLI + git, pinned by SHA
+│   ├── entrypoint.sh            # registers via PAT → runs ./run.sh --once → exits
+│   └── .env -> ../.env
+```
 
-### Workflow shape (canonical)
+### Per-repo service block (canonical)
+
+```yaml
+services:
+  runner-movienight:
+    build: .
+    image: ghcr.io/nova-firefly/gh-runner:latest   # built locally, pushed for WUD
+    container_name: runner-movienight
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/runner/_work        # job workspace; vanishes on restart (ephemeral)
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [runners_proxy, traefik_default]
+    environment:
+      REPO_URL: https://github.com/nova-firefly/movienight
+      RUNNER_NAME: nova-movienight
+      RUNNER_LABELS: self-hosted,nova,movienight
+      RUNNER_SCOPE: repo
+      EPHEMERAL: "true"
+      DOCKER_HOST: tcp://runners-socket-proxy:2375
+      GH_PAT_FILE: /run/secrets/gh_pat
+    secrets: [gh_pat]
+    volumes:
+      - /srv/nova-config:/nova-config:rw            # so the runner can `git reset --hard`
+      - runner_movienight_state:/runner             # persisted runner config (registration)
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512M }
+    labels:
+      - wud.tag.include=^latest$
+      - homepage.group=Infra
+      - homepage.name=Runner — movienight
+```
+
+One block per repo: `runner-nova-config`, `runner-vibe-kanban-tools`, `runner-movienight`, `runner-movienight-test`. Labels differ; everything else is templated.
+
+### Dedicated socket proxy (separate from the read-only one)
+
+Decision on §7 Q1: **second proxy instance**, not extending the read-only one used by vibe-kanban. The runners get their own `tecnativa/docker-socket-proxy` with a narrow write-verb allowlist:
+
+```yaml
+runners-socket-proxy:
+  image: tecnativa/docker-socket-proxy:latest
+  container_name: runners-socket-proxy
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  cap_add: [CHOWN, SETGID, SETUID]
+  networks: [runners_proxy]
+  environment:
+    # Read (needed for inspect + status verification)
+    CONTAINERS: 1
+    NETWORKS: 1
+    VOLUMES: 1
+    INFO: 1
+    VERSION: 1
+    # Write — narrow allowlist for `compose pull && up -d`
+    IMAGES: 1               # /images/create (pull) — required
+    POST: 1                 # allow POST verbs on the above resources only
+    # Explicitly NOT allowed (defaults are 0): EXEC, BUILD, SERVICES, TASKS, NODES, SECRETS, PLUGINS, SYSTEM
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+> **Note:** `tecnativa/docker-socket-proxy` toggles by resource, not verb. `POST=1` + `CONTAINERS=1` lets the runner start/stop/recreate containers but **cannot** `exec` (separate `EXEC` toggle, kept off) or build images. The blast radius for a compromised runner: it can start/stop/recreate containers managed by compose. It cannot get a shell, cannot mount arbitrary host paths, cannot create new containers with `privileged: true` (because it can't `POST /containers/create` without `CONTAINERS=1` + `POST=1` *and* the runner's payload is a known compose file the runner doesn't control). Acceptable.
+
+### Runner labels (GitHub side)
+Workflows target `runs-on: [self-hosted, nova, <repo-name>]`. A compromised repo cannot dequeue jobs intended for another runner because each container registers with its own repo URL and labels.
+
+### Registration & PAT
+- One GitHub PAT (`repo` scope) stored as a docker secret: `secrets/gh_pat` mounted at `/run/secrets/gh_pat` (mode 0400, owned by runner uid).
+- `entrypoint.sh` exchanges the PAT for a 1h registration token at container start, registers the runner, then `exec`s `./run.sh --once`. After the job, the runner exits, `restart: unless-stopped` brings the container back up, and re-registration happens again — fresh state every job.
+- PAT lifetime: 90 days, rotation via a calendar reminder and `runners/.env` update. (Open Q for §7: 1Password CLI sidecar to fetch at start vs. static secret file.)
+
+### Workflow shape (canonical, unchanged from bare-metal proposal)
 Only the deploy job moves. Build/push jobs stay on `ubuntu-latest`.
 
 ```yaml
@@ -96,8 +174,8 @@ deploy:
   steps:
     - name: Deploy
       env:
-        NOVA_DIR: ${{ vars.NOVA_CONFIG_PATH }}
-        COMPOSE_FILE: ${{ vars.COMPOSE_FILE }}    # optional, per-repo
+        NOVA_DIR: ${{ vars.NOVA_CONFIG_PATH }}     # in-container path, e.g. /nova-config
+        COMPOSE_FILE: ${{ vars.COMPOSE_FILE }}     # optional, per-repo
       run: |
         cd "$NOVA_DIR"
         git fetch origin
@@ -109,12 +187,14 @@ deploy:
 ```
 
 ### Hardening checklist (must pass per repo before closing the child issue)
-- [ ] Runner is `--ephemeral`.
-- [ ] Runner is repo-scoped, not org-scoped.
-- [ ] Runner user has no sudo and no login shell.
-- [ ] Runner uses the socket proxy, not `/var/run/docker.sock` directly. **Note:** the current proxy is read-only — Phase 1 must either (a) extend `socket-proxy` env with the narrowest possible write verb allowlist for compose-restart, or (b) deploy a second proxy instance dedicated to `gh-runner`. **Decision needed** before Phase 1 PR.
-- [ ] systemd unit has `ProtectSystem=strict`, `NoNewPrivileges=true`, `PrivateTmp=true`, scoped `ReadWritePaths`.
-- [ ] All third-party actions pinned to commit SHA.
+- [ ] Runner runs in `EPHEMERAL=true` mode — one job per container lifetime.
+- [ ] Runner is repo-scoped (`RUNNER_SCOPE=repo`), not org-scoped.
+- [ ] Runner container has `cap_drop: [ALL]`, `read_only: true`, `security_opt: [no-new-privileges:true]`, `init: true`.
+- [ ] Job workspace is `tmpfs` — no state survives the job.
+- [ ] `DOCKER_HOST` points at the dedicated `runners-socket-proxy`, never raw `/var/run/docker.sock`.
+- [ ] Bind mounts limited to `/srv/nova-config:/nova-config:rw` and the runner's own state volume. No other host paths.
+- [ ] Resource limits set (`cpus`, `memory`) so a runaway job can't starve the host.
+- [ ] All third-party actions in workflows pinned to commit SHA.
 - [ ] Workflow `permissions:` set to the narrowest scope needed.
 - [ ] Deploy workflow `on:` does not allow untrusted forks to trigger deploys.
 - [ ] Branch protection on `master`/`main`.
@@ -126,7 +206,7 @@ Each row below is the proposed unit of work (one PR + one kanban child issue).
 
 | # | Phase | Repo | What lands | Blocks | Blocked by |
 |---|-------|------|------------|--------|------------|
-| **A** | 1 | `nova-config` | Install script (`scripts/install-gh-runner.sh`), systemd template (`systemd/gh-runner@.service`), docs (`context/gh-runner.md`), socket-proxy write-verb decision + config | B, C, D | — |
+| **A** | 1 | `nova-config` | New `runners/` stack: `compose.yaml` (one runner service per repo + dedicated socket-proxy), `Dockerfile`, `entrypoint.sh`, secrets wiring, docs (`context/runners.md`), `runners` added to `ALL_STACKS` in `nova.sh` | B, C, D | — |
 | **B** | 2 | `nova-config` | Migrate `sync.yml` to self-hosted runner (or replace with host-side systemd timer — see §1 note) | E | A |
 | **C** | 2 | `Vibe-kanban-tools` | Migrate `deploy.yml` to self-hosted runner | E | A |
 | **D** | 2 | `movienight` | Migrate `deploy.yml` + `deploy-test.yml` to self-hosted runner; fix compose path mismatch | E | A |
@@ -141,16 +221,23 @@ Ordering rationale:
 
 ## 7. Open questions for the user before Phase 1
 
-1. **Socket-proxy strategy** — extend the existing read-only proxy with a narrow write verb allowlist for `gh-runner`, or run a second dedicated proxy instance? Second instance is cleaner from a blast-radius standpoint and avoids weakening the read-only guarantee currently relied on by vibe-kanban.
-2. **Replace `nova-config/sync.yml` entirely?** — With the runner on nova, the workflow's whole purpose (`git fetch && reset`) becomes redundant: a systemd timer on the host does the same thing without ever talking to GitHub Actions. Drop the workflow, or migrate it as-is for symmetry?
-3. **GitHub PAT for registration-token generation** — needs `repo` scope and lives on the host. Where stored (1Password CLI lookup at install time, vs. plaintext in `/etc/gh-runner/`)? PAT TTL?
-4. **Runner host monitoring** — add `node_exporter` textfile collector + Prometheus alert for `gh-runner@*.service` in `failed` state >5m, or rely on ntfy from a wrapper script? (nova already publishes ntfy from `nova.sh` — same channel makes sense.)
+1. ~~**Socket-proxy strategy.**~~ **Decided 2026-06-05:** dedicated second `tecnativa/docker-socket-proxy` instance for the runners stack (see §5). The existing read-only proxy used by vibe-kanban is untouched.
+2. **Replace `nova-config/sync.yml` entirely?** — With a runner container on nova, the workflow's whole purpose (`git fetch && reset`) is redundant. Two options:
+   - **Drop the workflow** and bake the same `git fetch && reset --hard` into the runner image's startup loop, or into a tiny separate `nova-config-sync` container with a cron entrypoint. Saves one runner job pickup per hour and removes the workflow entirely.
+   - **Migrate it** to the self-hosted runner for symmetry with the other migrations.
+3. **PAT delivery to the runner containers** — three options for `gh_pat` secret:
+   - **Plain docker secret from a file** under `runners/secrets/gh_pat` (gitignored; mode 0400). Simple, reproducible. PAT rotation = edit file + `docker compose up -d`.
+   - **1Password CLI sidecar** that fetches the PAT at container start and writes it to a tmpfs path. Stronger (no PAT on disk at rest), more moving parts.
+   - **GitHub App + JWT** instead of PAT. Best practice; biggest scope of work. Probably overkill for a homelab.
+4. **Runner monitoring** — pick one:
+   - WUD already watches container exits; pair with ntfy on `oom_killed` / repeated restart loops via existing `nova.sh` ntfy hook.
+   - Add a Prometheus `cadvisor` rule that pages when a runner container is in `restarting` state for >5m.
 
 ## 8. References
 
 - Parent kanban issue: "Close inbound SSH on nova: migrate all repo deploys to self-hosted GitHub Actions runners" — defines pattern, threat model, acceptance criteria.
 - `context/docker-access.md` — current socket-proxy config (read-only).
-- `context/patterns.md` — compose conventions; new compose-data `ReadWritePaths` for the systemd unit must follow these.
+- `context/patterns.md` — compose conventions; the `runners/` stack must follow these (Traefik labels not needed since runners aren't HTTP-exposed; Homepage + WUD labels still apply).
 - GitHub docs:
   - <https://docs.github.com/en/actions/hosting-your-own-runners>
   - <https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#hardening-for-self-hosted-runners>
