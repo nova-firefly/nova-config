@@ -1,7 +1,7 @@
 # Hermes Agent Stack - Self-hosted NousResearch agent with web dashboard
 # Usage: ./nova.sh up hermes   (or: docker compose -f hermes/compose.yaml up -d)
 # Requires .env file for: NOVA_DOMAIN, TZ, PUID, PGID, and at least one LLM provider key
-#                         (HERMES_ANTHROPIC_API_KEY / HERMES_OPENAI_API_KEY / etc.)
+#                         (ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY)
 #
 # Prereqs:
 #   1. Build the images once:  ./hermes/build.sh
@@ -40,10 +40,11 @@ services:
       - "HERMES_GID=${PGID}"
       # Talk to the read-only socket proxy for `docker ps/logs/inspect`.
       - "DOCKER_HOST=tcp://socket-proxy:2375"
-      # LLM provider keys — set whichever you use in .env.
-      - "ANTHROPIC_API_KEY=${HERMES_ANTHROPIC_API_KEY:-}"
-      - "OPENAI_API_KEY=${HERMES_OPENAI_API_KEY:-}"
-      - "OPENROUTER_API_KEY=${HERMES_OPENROUTER_API_KEY:-}"
+      # LLM provider keys — bare names so they're shared with anything else
+      # on the host that uses the same providers. Set whichever you use in .env.
+      - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
+      - "OPENAI_API_KEY=${OPENAI_API_KEY:-}"
+      - "OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}"
     labels:
       # Gateway has no HTTP surface by default — no Traefik route.
       wud.watch: "false"

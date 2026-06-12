@@ -334,7 +334,7 @@ Re-run `./hermes/build.sh` after upstream releases or after editing `hermes/Dock
 
 **External volumes:** `hermes_data` (persistent agent state — sessions, memory, skills, `.env`, kanban SQLite). Plus all the existing config volumes mounted `:ro` and `vibe-kanban-repos:ro`.
 
-**Required env:** `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`. At least one of `HERMES_ANTHROPIC_API_KEY` / `HERMES_OPENAI_API_KEY` / `HERMES_OPENROUTER_API_KEY` (or configure Nous Portal interactively from the dashboard).
+**Required env:** `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`. At least one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY` (bare names so the same key is shared with any other host tooling that talks to the same provider — or configure Nous Portal interactively from the dashboard).
 
 **Security:**
 - Dashboard stores API keys on disk in `hermes_data` — never expose port 9119 directly to the LAN.
@@ -351,7 +351,7 @@ docker volume create hermes_data
 # 2. Build the images (must be run on the host, not from inside vibe-kanban)
 ./hermes/build.sh
 
-# 3. Set at least one provider key in .env (HERMES_ANTHROPIC_API_KEY etc.)
+# 3. Set at least one provider key in .env (ANTHROPIC_API_KEY etc.)
 
 # 4. Bring the stack up
 ./nova.sh up hermes
