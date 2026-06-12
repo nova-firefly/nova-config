@@ -6,7 +6,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 
 | Stack | File | Services |
 |-------|------|----------|
-| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy |
+| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy, runners-socket-proxy, nova-config-sync, runner-nova-config, runner-vibe-kanban-tools, runner-movienight |
 | authelia | authelia/compose.yaml | authelia, redis |
 | media | media/compose.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent, decluttarr, recyclarr, homescreen-hero |
 | immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
@@ -36,6 +36,11 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | volume-sharer | gdiepen/volume-sharer | 139, 445 (host) | — | Samba share of Docker volumes |
 | wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; notify-only (Discord). Manual deploys via Dockge / Arcane / `nova.sh update` |
 | scrutiny | ghcr.io/analogj/scrutiny:master-omnibus | 8082→8080 | scrutiny.NOVA_DOMAIN | S.M.A.R.T. hard drive health monitoring; needs SYS_RAWIO + device passthrough |
+| runners-socket-proxy | tecnativa/docker-socket-proxy | — | — | Write-allowlist socket proxy for self-hosted runners (POST=1, EXEC=0, BUILD=0, SECRETS=0, SYSTEM=0); reachable only on `runners_net` |
+| nova-config-sync | alpine/git (pinned digest) | — | — | Sole writer to `/srv/nova-config`; loops `git fetch && reset --hard origin/main` every 10 min. Replaces the deleted `.github/workflows/sync.yml` Actions round-trip |
+| runner-nova-config | myoung34/github-runner (pinned digest) | — | — | Ephemeral self-hosted runner for `nova-firefly/nova-config`; labels `nova,nova-config`; jobs launch via `runners-socket-proxy` |
+| runner-vibe-kanban-tools | myoung34/github-runner (pinned digest) | — | — | Ephemeral runner for `nova-firefly/vibe-kanban-tools`; labels `nova,vibe-kanban-tools` |
+| runner-movienight | myoung34/github-runner (pinned digest) | — | — | Ephemeral runner for `nova-firefly/movienight`; serves both prod and test via labels `nova,movienight,movienight-test` (one runner per repo, not per environment) |
 
 **External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_data`, `dockge_data`
 
@@ -43,7 +48,13 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 
 **External networks:** `traefik_default` (shared)
 
-**WUD mode:** notify-only (Discord). Manual deploys via Arcane UI or `nova.sh update`.
+**Compose-managed networks:** `runners_net` (bridge, not internal — carries runner ↔ proxy traffic and gives runners outbound internet for GitHub long-poll)
+
+**Compose-managed volumes:** `runner_nova_config_state`, `runner_vibe_kanban_tools_state`, `runner_movienight_state` — per-runner registration state so ephemeral runners don't re-register on every restart
+
+**Required env:** `GH_PAT` for the three runner containers (fine-grained PAT scoped to all three runner repos with `Administration: write`). See `context/runners.md` for setup, digest pinning, rotation, and troubleshooting.
+
+**WUD mode:** notify-only (Discord). Manual deploys via Arcane UI or `nova.sh update`. Runner images are explicitly `wud.watch: "false"` — they are digest-pinned and updated only via deliberate PRs.
 
 ---
 

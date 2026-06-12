@@ -1,0 +1,52 @@
+name: Runner smoketest
+
+# Manually-triggered verification that the self-hosted runner for this repo
+# (runner-nova-config) is reachable AND that the Phase 1 hardening invariants
+# documented in context/runners.md actually hold.
+#
+# Run from: Actions tab → "Runner smoketest" → Run workflow.
+# Expected: job finishes in <30s and prints "All hardening invariants verified".
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, nova, nova-config]
+    timeout-minutes: 5
+    steps:
+      - name: Print runner identity
+        run: |
+          echo "RUNNER_NAME=${RUNNER_NAME:-unknown}"
+          echo "RUNNER_OS=${RUNNER_OS:-unknown}"
+
+      - name: Docker socket must not be directly mounted
+        run: |
+          if [ -e /var/run/docker.sock ]; then
+            echo "FAIL: /var/run/docker.sock is present inside the runner"
+            exit 1
+          fi
+          echo "OK: /var/run/docker.sock is absent"
+
+      - name: /nova-config must be read-only
+        run: |
+          if touch /nova-config/.smoketest 2>/dev/null; then
+            rm -f /nova-config/.smoketest
+            echo "FAIL: /nova-config is writable"
+            exit 1
+          fi
+          echo "OK: /nova-config is read-only"
+
+      - name: Socket proxy must answer /_ping
+        run: |
+          if ! wget -qO- "http://runners-socket-proxy:2375/_ping" | grep -q OK; then
+            echo "FAIL: runners-socket-proxy did not respond OK"
+            exit 1
+          fi
+          echo "OK: runners-socket-proxy reachable"
+
+      - name: Summary
+        run: echo "All hardening invariants verified"
