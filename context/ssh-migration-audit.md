@@ -113,8 +113,7 @@ services:
       EPHEMERAL: "true"
       DISABLE_AUTO_UPDATE: "true"        # we pin image digest, don't let runner self-update
       DOCKER_HOST: tcp://runners-socket-proxy:2375
-      ACCESS_TOKEN_FILE: /run/secrets/gh_pat
-    secrets: [gh_pat]
+      ACCESS_TOKEN: ${GH_PAT}            # from root .env, same source of truth as every other secret
     volumes:
       - /srv/nova-config:/nova-config:ro          # READ-ONLY — sync sidecar owns writes
       - runner_movienight_state:/runner            # registration state across restarts
@@ -188,9 +187,10 @@ runners-socket-proxy:
 Workflows target `runs-on: [self-hosted, nova, <repo-name>]`. The runner for movienight registers both `movienight` and `movienight-test` so one container handles both prod and PR-test deploys.
 
 ### Registration & PAT
-- One GitHub PAT (`repo` scope) stored as a docker secret: `secrets/gh_pat` (gitignored, mode 0400).
+- One GitHub PAT (`repo` scope) lives in the root `.env` as `GH_PAT` — same delivery mechanism as every other secret in nova. No new files, no docker secrets indirection. `.env` is already gitignored and mode 0600.
 - `myoung34/github-runner`'s built-in entrypoint exchanges the PAT for a 1h registration token at container start, registers the runner, runs the job, and (with `EPHEMERAL=true`) exits. `restart: unless-stopped` brings the container back; re-registration happens again — fresh state every job. No custom entrypoint of ours.
-- PAT lifetime: 90 days, rotation via calendar reminder + `infra/secrets/gh_pat` edit + `nova.sh up infra`.
+- PAT lifetime: 90 days, rotation via calendar reminder + edit `.env` + `nova.sh up infra`.
+- Add `GH_PAT=` to `.env.example` with an `# infra` annotation.
 
 ### Workflow shape (canonical, unchanged from bare-metal proposal)
 Only the deploy job moves. Build/push jobs stay on `ubuntu-latest`.
@@ -257,10 +257,8 @@ Ordering rationale:
 2. ~~**Replace `nova-config/sync.yml` entirely?**~~ **Decided 2026-06-05:** delete it. Replaced by the `nova-config-sync` sidecar in §5 (10-minute reconciliation loop). No GitHub Actions round-trip for config sync at all.
 3. ~~**Custom runner image?**~~ **Decided 2026-06-05:** no — pin `myoung34/github-runner` by digest. WUD watches for new digests.
 4. ~~**Per-environment vs. per-repo runners for movienight?**~~ **Decided 2026-06-05:** one runner per repo. `runner-movienight` registers both `movienight` and `movienight-test` labels.
-5. **PAT delivery to the runner containers** — for `infra/secrets/gh_pat`:
-   - **Plain gitignored file**, mode 0400. Simple. Rotation = edit file + `nova.sh up infra`. **Lean: this for v1.**
-   - **1Password CLI sidecar** that fetches the PAT at container start. Stronger (no PAT on disk at rest); more moving parts. Defer until rotation pain shows up.
-6. **Runner monitoring** — WUD already watches container exits; pair with ntfy on `oom_killed` / repeated restart loops via existing `nova.sh` ntfy hook. No new monitoring infra in v1.
+5. ~~**PAT delivery to the runner containers.**~~ **Decided 2026-06-12:** put `GH_PAT` in the root `.env` like every other nova secret. No docker-secrets indirection, no separate file. Rotation = edit `.env` + `nova.sh up infra`.
+6. ~~**Runner monitoring.**~~ **Decided 2026-06-12:** rely on Docker's `restart: unless-stopped` policy and nothing else for v1. If a runner crashes Docker brings it back; ephemeral mode means the next job picks up a clean container. No WUD/ntfy alerting plumbing for runner health in v1 — add it only if a real failure mode surfaces.
 
 ## 8. References
 
