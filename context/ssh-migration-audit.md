@@ -67,68 +67,100 @@ Save the output to `nova-config/context/ssh-pre-migration-snapshot.txt` before P
 
 ## 5. Phase-1 standard pattern (single source of truth)
 
-**Architecture decision (2026-06-05): runners are containerised**, not bare-metal systemd units. Rationale: every other service on nova lives in a compose stack; the privilege boundary that matters (docker write access) is enforced by the socket proxy regardless of host vs. container; lifecycle/observability/update tooling (Dockge, Arcane, WUD, Homepage, ntfy) already exists for compose services and we don't have to reinvent any of it for a one-off `gh-runner@` systemd unit.
+**Architecture decision (2026-06-05): runners are containerised**, not bare-metal systemd units. Rationale: every other service on nova lives in a compose stack; the privilege boundary that matters (docker write access) is enforced by the socket proxy regardless of host vs. container; lifecycle/observability/update tooling (Dockge, Arcane, WUD, Homepage, ntfy) already exists for compose services and we don't have to reinvent any of it.
 
-The runners live in a new `runners/` stack alongside the existing ones.
+**Simplifications adopted (2026-06-05, second pass):**
+1. **Runners live in `infra/`**, not a new `runners/` stack. Runners are infra. One fewer stack, one fewer `.env` symlink.
+2. **Use the upstream `myoung34/github-runner` image** pinned by digest. No custom `Dockerfile`, no `entrypoint.sh`, no GHCR build/push pipeline of our own.
+3. **`nova-config/sync.yml` is deleted, not migrated.** A small `nova-config-sync` sidecar in `infra/` does the `git fetch && reset --hard origin/main` on a cron. Push-triggered sync is dropped (reconciliation latency ≤ cron interval, which is acceptable).
+4. **The nova-config bind mount is read-only in every runner.** The `nova-config-sync` sidecar is the sole writer. A compromised runner cannot taint the source of truth that other runners read.
+5. **One runner per repo**, not per environment. Movienight prod + PR-test share `runner-movienight` (it just registers both labels on the same repo).
 
-### Stack layout
+### Stack layout (additions to `infra/compose.yaml`)
 
 ```
-nova-config/
-├── runners/
-│   ├── compose.yaml             # one service per repo + dedicated socket-proxy
-│   ├── Dockerfile               # thin image: actions/runner + docker CLI + git, pinned by SHA
-│   ├── entrypoint.sh            # registers via PAT → runs ./run.sh --once → exits
-│   └── .env -> ../.env
+nova-config/infra/compose.yaml
+  ├── (existing) socket-proxy        # read-only, untouched
+  ├── (new) runners-socket-proxy     # write-allowlist for runners only
+  ├── (new) nova-config-sync         # cron sidecar, sole writer to /srv/nova-config
+  ├── (new) runner-nova-config       # registers as [self-hosted, nova, nova-config]
+  ├── (new) runner-vibe-kanban-tools # registers as [self-hosted, nova, vibe-kanban-tools]
+  └── (new) runner-movienight        # registers as [self-hosted, nova, movienight, movienight-test]
 ```
 
-### Per-repo service block (canonical)
+Three runner containers (down from four). The `runners/` directory is not created.
+
+### Per-repo runner service block (canonical)
 
 ```yaml
 services:
   runner-movienight:
-    build: .
-    image: ghcr.io/nova-firefly/gh-runner:latest   # built locally, pushed for WUD
+    image: myoung34/github-runner@sha256:<pinned>   # pinned digest, WUD watches for new digests
     container_name: runner-movienight
     restart: unless-stopped
     init: true
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /home/runner/_work        # job workspace; vanishes on restart (ephemeral)
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    networks: [runners_proxy, traefik_default]
+    tmpfs:
+      - /tmp
+      - /_work                          # job workspace; vanishes between jobs
+    networks: [runners_proxy]
     environment:
       REPO_URL: https://github.com/nova-firefly/movienight
       RUNNER_NAME: nova-movienight
-      RUNNER_LABELS: self-hosted,nova,movienight
       RUNNER_SCOPE: repo
+      LABELS: nova,movienight,movienight-test     # one runner, both env labels
       EPHEMERAL: "true"
+      DISABLE_AUTO_UPDATE: "true"        # we pin image digest, don't let runner self-update
       DOCKER_HOST: tcp://runners-socket-proxy:2375
-      GH_PAT_FILE: /run/secrets/gh_pat
+      ACCESS_TOKEN_FILE: /run/secrets/gh_pat
     secrets: [gh_pat]
     volumes:
-      - /srv/nova-config:/nova-config:rw            # so the runner can `git reset --hard`
-      - runner_movienight_state:/runner             # persisted runner config (registration)
+      - /srv/nova-config:/nova-config:ro          # READ-ONLY — sync sidecar owns writes
+      - runner_movienight_state:/runner            # registration state across restarts
     deploy:
       resources:
         limits: { cpus: '1.0', memory: 512M }
     labels:
-      - wud.tag.include=^latest$
+      - wud.tag.include=^[0-9a-f]{64}$            # WUD tracks digest
       - homepage.group=Infra
       - homepage.name=Runner — movienight
 ```
 
-One block per repo: `runner-nova-config`, `runner-vibe-kanban-tools`, `runner-movienight`, `runner-movienight-test`. Labels differ; everything else is templated.
+`runner-nova-config` and `runner-vibe-kanban-tools` differ only in `REPO_URL`, `RUNNER_NAME`, `LABELS`, and the state volume name.
 
-### Dedicated socket proxy (separate from the read-only one)
+### nova-config sync sidecar (replaces `sync.yml`)
 
-Decision on §7 Q1: **second proxy instance**, not extending the read-only one used by vibe-kanban. The runners get their own `tecnativa/docker-socket-proxy` with a narrow write-verb allowlist:
+```yaml
+nova-config-sync:
+  image: alpine/git:latest                # pinned to a digest in the real PR
+  container_name: nova-config-sync
+  restart: unless-stopped
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  volumes:
+    - /srv/nova-config:/repo:rw           # the only writer to this path
+  entrypoint: ["/bin/sh", "-c"]
+  command:
+    - |
+      while true; do
+        cd /repo && git fetch origin && git reset --hard origin/main
+        sleep 600     # 10 min — much faster reconciliation than the old hourly cron
+      done
+  labels:
+    - homepage.group=Infra
+    - homepage.name=nova-config sync
+```
+
+Drops the `nova-config/.github/workflows/sync.yml` workflow entirely. Reconciliation window: ≤10 min vs. the old hourly cron + push trigger. No GitHub Actions round-trip; no inbound runner job per sync.
+
+### Dedicated socket proxy for runners (separate from the read-only one)
+
+Decision on §7 Q1: **second proxy instance**, not extending the read-only one used by vibe-kanban.
 
 ```yaml
 runners-socket-proxy:
-  image: tecnativa/docker-socket-proxy:latest
+  image: tecnativa/docker-socket-proxy@sha256:<pinned>
   container_name: runners-socket-proxy
   restart: unless-stopped
   read_only: true
@@ -150,15 +182,15 @@ runners-socket-proxy:
     - /var/run/docker.sock:/var/run/docker.sock:ro
 ```
 
-> **Note:** `tecnativa/docker-socket-proxy` toggles by resource, not verb. `POST=1` + `CONTAINERS=1` lets the runner start/stop/recreate containers but **cannot** `exec` (separate `EXEC` toggle, kept off) or build images. The blast radius for a compromised runner: it can start/stop/recreate containers managed by compose. It cannot get a shell, cannot mount arbitrary host paths, cannot create new containers with `privileged: true` (because it can't `POST /containers/create` without `CONTAINERS=1` + `POST=1` *and* the runner's payload is a known compose file the runner doesn't control). Acceptable.
+> **Note:** `tecnativa/docker-socket-proxy` toggles by resource, not verb. `POST=1` + `CONTAINERS=1` lets the runner start/stop/recreate containers but **cannot** `exec` (separate `EXEC` toggle, kept off) or build images. Blast radius for a compromised runner: start/stop/recreate containers managed by compose. Cannot get a shell, cannot mount arbitrary host paths, cannot mutate `/srv/nova-config` (read-only mount).
 
 ### Runner labels (GitHub side)
-Workflows target `runs-on: [self-hosted, nova, <repo-name>]`. A compromised repo cannot dequeue jobs intended for another runner because each container registers with its own repo URL and labels.
+Workflows target `runs-on: [self-hosted, nova, <repo-name>]`. The runner for movienight registers both `movienight` and `movienight-test` so one container handles both prod and PR-test deploys.
 
 ### Registration & PAT
-- One GitHub PAT (`repo` scope) stored as a docker secret: `secrets/gh_pat` mounted at `/run/secrets/gh_pat` (mode 0400, owned by runner uid).
-- `entrypoint.sh` exchanges the PAT for a 1h registration token at container start, registers the runner, then `exec`s `./run.sh --once`. After the job, the runner exits, `restart: unless-stopped` brings the container back up, and re-registration happens again — fresh state every job.
-- PAT lifetime: 90 days, rotation via a calendar reminder and `runners/.env` update. (Open Q for §7: 1Password CLI sidecar to fetch at start vs. static secret file.)
+- One GitHub PAT (`repo` scope) stored as a docker secret: `secrets/gh_pat` (gitignored, mode 0400).
+- `myoung34/github-runner`'s built-in entrypoint exchanges the PAT for a 1h registration token at container start, registers the runner, runs the job, and (with `EPHEMERAL=true`) exits. `restart: unless-stopped` brings the container back; re-registration happens again — fresh state every job. No custom entrypoint of ours.
+- PAT lifetime: 90 days, rotation via calendar reminder + `infra/secrets/gh_pat` edit + `nova.sh up infra`.
 
 ### Workflow shape (canonical, unchanged from bare-metal proposal)
 Only the deploy job moves. Build/push jobs stay on `ubuntu-latest`.
@@ -206,32 +238,29 @@ Each row below is the proposed unit of work (one PR + one kanban child issue).
 
 | # | Phase | Repo | What lands | Blocks | Blocked by |
 |---|-------|------|------------|--------|------------|
-| **A** | 1 | `nova-config` | New `runners/` stack: `compose.yaml` (one runner service per repo + dedicated socket-proxy), `Dockerfile`, `entrypoint.sh`, secrets wiring, docs (`context/runners.md`), `runners` added to `ALL_STACKS` in `nova.sh` | B, C, D | — |
-| **B** | 2 | `nova-config` | Migrate `sync.yml` to self-hosted runner (or replace with host-side systemd timer — see §1 note) | E | A |
+| **A** | 1 | `nova-config` | Add to `infra/compose.yaml`: `runners-socket-proxy`, `nova-config-sync` sidecar, three `runner-*` services (using pinned `myoung34/github-runner` digest). Add gitignored `infra/secrets/gh_pat`. **Delete `nova-config/.github/workflows/sync.yml`** in the same PR. Update `context/stacks.md` + new `context/runners.md`. | C, D | — |
 | **C** | 2 | `Vibe-kanban-tools` | Migrate `deploy.yml` to self-hosted runner | E | A |
 | **D** | 2 | `movienight` | Migrate `deploy.yml` + `deploy-test.yml` to self-hosted runner; fix compose path mismatch | E | A |
-| **E** | 3 | `nova-config` | Capture pre-migration snapshot, drop inbound port 22 at firewall, document break-glass | — | B, C, D all green for ≥1 successful prod deploy each |
+| **E** | 3 | `nova-config` | Capture pre-migration snapshot, drop inbound port 22 at firewall, document break-glass | — | C, D all green for ≥1 successful prod deploy each |
+
+> **`sync.yml` is gone, not migrated.** Old phase B is folded into phase A (sidecar is part of the same PR). The hourly cron + push-triggered SSH from GitHub Actions disappears entirely.
 
 Ordering rationale:
-- **A first** so the standard pattern exists before per-repo PRs.
-- **B (sync.yml) goes first among the migrations** — lowest blast radius (config sync, no images to build, can verify quickly), and the highest-frequency current SSH consumer. If the runner pattern is wrong, we learn here on a cheap workflow.
-- **C (Vibe-kanban-tools)** next — single-line `nova.sh update dev`, second-lowest blast radius.
-- **D (movienight)** last among the migrations — biggest workflow, real users, and bundles the compose-path-mismatch fix. Both `deploy.yml` and `deploy-test.yml` should land in one PR to avoid a window where one path is migrated and the other still needs SSH.
+- **A first** so the standard pattern + sync sidecar exist before per-repo PRs.
+- **C (Vibe-kanban-tools)** next — single-line `nova.sh update dev`, lowest blast radius of the remaining migrations. If the runner pattern is wrong, we learn here on a cheap workflow.
+- **D (movienight)** last among the migrations — biggest workflow, real users, and bundles the compose-path-mismatch fix. Both `deploy.yml` and `deploy-test.yml` land in one PR (same runner serves both labels, no need to split).
 - **E** only after each migrated workflow has done at least one successful production deploy on the new path. Keep sshd running but firewalled for ≥2 weeks as the rollback path before disabling the service entirely.
 
 ## 7. Open questions for the user before Phase 1
 
-1. ~~**Socket-proxy strategy.**~~ **Decided 2026-06-05:** dedicated second `tecnativa/docker-socket-proxy` instance for the runners stack (see §5). The existing read-only proxy used by vibe-kanban is untouched.
-2. **Replace `nova-config/sync.yml` entirely?** — With a runner container on nova, the workflow's whole purpose (`git fetch && reset`) is redundant. Two options:
-   - **Drop the workflow** and bake the same `git fetch && reset --hard` into the runner image's startup loop, or into a tiny separate `nova-config-sync` container with a cron entrypoint. Saves one runner job pickup per hour and removes the workflow entirely.
-   - **Migrate it** to the self-hosted runner for symmetry with the other migrations.
-3. **PAT delivery to the runner containers** — three options for `gh_pat` secret:
-   - **Plain docker secret from a file** under `runners/secrets/gh_pat` (gitignored; mode 0400). Simple, reproducible. PAT rotation = edit file + `docker compose up -d`.
-   - **1Password CLI sidecar** that fetches the PAT at container start and writes it to a tmpfs path. Stronger (no PAT on disk at rest), more moving parts.
-   - **GitHub App + JWT** instead of PAT. Best practice; biggest scope of work. Probably overkill for a homelab.
-4. **Runner monitoring** — pick one:
-   - WUD already watches container exits; pair with ntfy on `oom_killed` / repeated restart loops via existing `nova.sh` ntfy hook.
-   - Add a Prometheus `cadvisor` rule that pages when a runner container is in `restarting` state for >5m.
+1. ~~**Socket-proxy strategy.**~~ **Decided 2026-06-05:** dedicated second `tecnativa/docker-socket-proxy` instance, lives in `infra/`. The existing read-only proxy used by vibe-kanban is untouched.
+2. ~~**Replace `nova-config/sync.yml` entirely?**~~ **Decided 2026-06-05:** delete it. Replaced by the `nova-config-sync` sidecar in §5 (10-minute reconciliation loop). No GitHub Actions round-trip for config sync at all.
+3. ~~**Custom runner image?**~~ **Decided 2026-06-05:** no — pin `myoung34/github-runner` by digest. WUD watches for new digests.
+4. ~~**Per-environment vs. per-repo runners for movienight?**~~ **Decided 2026-06-05:** one runner per repo. `runner-movienight` registers both `movienight` and `movienight-test` labels.
+5. **PAT delivery to the runner containers** — for `infra/secrets/gh_pat`:
+   - **Plain gitignored file**, mode 0400. Simple. Rotation = edit file + `nova.sh up infra`. **Lean: this for v1.**
+   - **1Password CLI sidecar** that fetches the PAT at container start. Stronger (no PAT on disk at rest); more moving parts. Defer until rotation pain shows up.
+6. **Runner monitoring** — WUD already watches container exits; pair with ntfy on `oom_killed` / repeated restart loops via existing `nova.sh` ntfy hook. No new monitoring infra in v1.
 
 ## 8. References
 
