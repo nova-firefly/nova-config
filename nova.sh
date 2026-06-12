@@ -52,7 +52,7 @@ if [[ -n "${NOVA_CONFIG_PATH:-}" && "$(realpath "${NOVA_CONFIG_PATH}")" != "$(pw
   echo "         WUD and nova.sh will reference different compose paths. Fix .env." >&2
 fi
 
-ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test strava-hevy)
+ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test strava-hevy runner)
 
 # Stacks excluded from reconcile — intentionally transient or CI-only stacks
 RECONCILE_SKIP_STACKS=(movienight-test)
