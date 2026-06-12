@@ -256,6 +256,7 @@ services:
       - "--writable"
       - "--port=7681"
       - "--max-clients=2"
+      - "--check-origin"
       - "ssh"
       - "-o"
       - "StrictHostKeyChecking=accept-new"
@@ -263,8 +264,16 @@ services:
       - "UserKnownHostsFile=/tmp/known_hosts"
       - "-t"
       - "${SHELL_SSH_USER:?set SHELL_SSH_USER in .env to your host username}@host.docker.internal"
+    environment:
+      - "HOME=/tmp"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7681/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     labels:
       traefik.enable: "true"
       traefik.http.routers.shell.rule: "Host(`shell.${NOVA_DOMAIN}`)"
@@ -278,15 +287,18 @@ services:
       homepage.href: "https://shell.${NOVA_DOMAIN}"
       homepage.description: "Browser terminal (Authelia + sshd)"
       wud.watch: "false"  # locally-built image; rebuild via `./nova.sh recreate tools shell`
+    mem_limit: "128m"
     networks:
       - "traefik_default"
+    pids_limit: 200
     security_opt:
       - "no-new-privileges:true"
     cap_drop:
       - "ALL"
     read_only: true
     tmpfs:
-      - "/tmp"
+      - "/tmp:size=16m,mode=1777"
+    user: "nobody"
     restart: "unless-stopped"
 
   uptime-kuma:
