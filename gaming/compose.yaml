@@ -117,6 +117,17 @@ services:
   pterodactyl-wings:
     container_name: "pterodactyl-wings"
     image: "ghcr.io/pterodactyl/wings:latest"
+    # Wait for config.yml (dropped in by the panel bootstrap, step 4 above) before
+    # launching wings. Avoids a crashloop — and the nova-heal noise it generates —
+    # when the node hasn't been registered yet.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while [ ! -s /etc/pterodactyl/config.yml ]; do
+          echo "[wings] Waiting for /etc/pterodactyl/config.yml..."
+          sleep 60
+        done
+        exec /usr/bin/wings --config /etc/pterodactyl/config.yml
     environment:
       - "TZ=${TZ}"
     labels:
