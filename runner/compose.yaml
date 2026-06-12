@@ -1,0 +1,76 @@
+# Runner Stack - Self-Hosted GitHub Actions Runners
+# Usage: ./nova.sh up runner   (or: docker compose -f runner/compose.yaml up -d)
+# Requires .env file for: GH_RUNNER_PAT_NOVA_CONFIG, NOVA_CONFIG_PATH
+#
+# Why this stack exists
+# ---------------------
+# Inbound SSH is dropped at our WAN (ISP blocks 22; only 80/443 are forwarded
+# in). The previous push-mode "Sync to Nova" workflow used appleboy/ssh-action
+# from a GitHub-hosted runner to reach sshd on the host — which now times out
+# 100% of the time. A self-hosted runner reverses the direction: it sits on the
+# LAN, polls GitHub outbound over HTTPS, and runs `git fetch && reset --hard`
+# against the bind-mounted host repo. No inbound port required.
+#
+# Security model
+# --------------
+# - Ephemeral runners (EPHEMERAL=true): the runner de-registers after every job
+#   and the container restarts to re-register. No persistent workspace state
+#   carries between jobs, which limits poisoning windows.
+# - Repo-scoped PAT (RUNNER_SCOPE=repo + Administration:R/W on nova-config only)
+#   — see .env.example. Other repos in the org cannot register against it.
+# - Unique label pair `nova-self-hosted,nova-config-sync` — the workflow's
+#   `runs-on:` matches both, so other workflows with bare `runs-on: self-hosted`
+#   won't schedule onto this runner by accident.
+# - cap_drop: ALL + only the four caps the runner needs for its file ownership
+#   setup; no-new-privileges blocks setuid escalation.
+# - No Docker socket, no host network, no published ports — runner is egress-
+#   only to api.github.com / actions endpoints.
+# - Bind mount is ${NOVA_CONFIG_PATH} only. Runner UID 1000 in the container
+#   matches PUID=1000 (koonan) on the host, so files stay owned correctly for
+#   nova.sh / Dockge to keep operating.
+# - Load-bearing external control: branch protection on `main`. Anyone who can
+#   land a workflow file gains write access to ${NOVA_CONFIG_PATH} via this
+#   runner, so PR review on main is non-negotiable.
+#
+# Adding another repo (e.g. movienight)
+# -------------------------------------
+# 1. Copy the `runner-nova-config` service block; rename to `runner-<repo>`.
+# 2. Change REPO_URL, RUNNER_NAME, the second LABELS token, the ACCESS_TOKEN
+#    env var, and the bind-mount source path.
+# 3. Generate a fresh fine-grained PAT scoped to the new repo and add a
+#    GH_RUNNER_PAT_<REPO> entry to .env.example and .env.
+# 4. In the new repo's workflow, set `runs-on: [self-hosted, <repo>-sync]` to
+#    match the new LABELS pair.
+
+name: runner
+
+services:
+
+  runner-nova-config:
+    image: "myoung34/github-runner:latest"
+    container_name: "runner-nova-config"
+    environment:
+      - "REPO_URL=https://github.com/nova-firefly/nova-config"
+      - "RUNNER_NAME=nova-runner-nova-config"
+      - "RUNNER_SCOPE=repo"
+      - "LABELS=nova-self-hosted,nova-config-sync"
+      - "ACCESS_TOKEN=${GH_RUNNER_PAT_NOVA_CONFIG}"
+      - "EPHEMERAL=true"
+      - "DISABLE_AUTO_UPDATE=true"
+      - "RUN_AS_ROOT=false"
+    cap_drop:
+      - "ALL"
+    cap_add:
+      - "CHOWN"
+      - "DAC_OVERRIDE"
+      - "SETUID"
+      - "SETGID"
+    security_opt:
+      - "no-new-privileges:true"
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    restart: "unless-stopped"
+    volumes:
+      - "${NOVA_CONFIG_PATH}:/home/runner/nova-config"

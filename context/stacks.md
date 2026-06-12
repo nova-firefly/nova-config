@@ -18,6 +18,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | gaming | gaming/compose.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
 | movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
 | strava-hevy | strava-hevy/compose.yaml | strava-hevy |
+| runner | runner/compose.yaml | runner-nova-config |
 
 ---
 
@@ -302,6 +303,32 @@ docker exec -it pterodactyl-panel php artisan p:user:make
 6. Settings → enable polling, set interval (default 10 min).
 
 **Recovery:** if Strava or Hevy refresh tokens are revoked, re-do the matching auth step. To wipe state, remove the `strava_hevy_data` volume; already-imported Hevy workouts are not duplicated because Hevy 409s and the service then PUTs to the same deterministic workout ID.
+
+---
+
+## runner stack (`runner/compose.yaml`)
+
+**Purpose:** Self-hosted GitHub Actions runners. Sit on the LAN, poll GitHub outbound over HTTPS, and execute jobs against bind-mounted host paths. Workaround for our ISP dropping inbound SSH at the WAN.
+
+| Service | Image | Port(s) | URL | Notes |
+|---------|-------|---------|-----|-------|
+| runner-nova-config | myoung34/github-runner:latest | — | — | Ephemeral runner registered against `nova-firefly/nova-config` with labels `nova-self-hosted,nova-config-sync`. Bind-mounts `${NOVA_CONFIG_PATH}` for the Sync-to-Nova workflow. |
+
+**Image:** `myoung34/github-runner` is the de-facto community image (the upstream `actions/runner` repo does not publish one). WUD watches the digest and notifies on Discord.
+
+**Required env:** `GH_RUNNER_PAT_NOVA_CONFIG` (fine-grained PAT, `Administration: R/W` on the nova-config repo only), `NOVA_CONFIG_PATH`. See `.env.example`.
+
+**Security hardening:**
+- Ephemeral runners (`EPHEMERAL=true`) — de-register after each job; container restart re-registers with a fresh registration token. No persistent workspace state survives between jobs.
+- Repo-scoped PAT (`RUNNER_SCOPE=repo`); other repos in the org cannot register against the same runner pool.
+- Unique label pair (`nova-self-hosted,nova-config-sync`) — workflows must request both labels, so bare `runs-on: self-hosted` cannot accidentally land here.
+- `cap_drop: ALL` plus only `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID` (needed for the runner's file-ownership setup); `no-new-privileges:true`.
+- No Docker socket, no host network, no published ports. The runner is egress-only to GitHub.
+- Runs as `runner` UID 1000 inside the container, matching `PUID=1000` on the host so files written into `${NOVA_CONFIG_PATH}` stay owned by koonan.
+
+**Load-bearing external control:** branch protection on `main` in nova-firefly/nova-config. Any workflow that lands on this runner can write the bind-mounted repo, so PR review on main is the gate.
+
+**Adding another repo:** copy the `runner-nova-config` service block, change `REPO_URL` / `RUNNER_NAME` / second `LABELS` token / `ACCESS_TOKEN` / mount path, then add a matching `GH_RUNNER_PAT_<REPO>` to `.env.example` and `.env`. The new repo's workflows reference the new label pair via `runs-on: [self-hosted, <repo>-sync]`.
 
 ---
 
