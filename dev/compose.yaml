@@ -1,4 +1,4 @@
-# Dev/Utility Stack - Vibe Kanban, Vibe Kanban Tools
+# Dev/Utility Stack - Vibe Kanban, Vibe Kanban Tools, Mission Control
 # Usage: ./nova.sh up dev   (or: docker compose -f dev/compose.yaml up -d)
 
 name: dev
@@ -126,6 +126,69 @@ services:
       - "3001:3000/tcp"
     restart: "unless-stopped"
 
+  mission-control:
+    image: "ghcr.io/builderz-labs/mission-control:latest"
+    container_name: "mission-control"
+    environment:
+      - "PORT=3000"
+      - "TZ=${TZ}"
+      # Standalone mode — no OpenClaw gateway required. Kanban board, projects,
+      # agents CRUD, sessions, scheduler, webhooks, alerts, and cost tracking all
+      # work; live gateway events and agent messaging do not.
+      - "NEXT_PUBLIC_GATEWAY_OPTIONAL=true"
+      # Host allowlist. MC blocks unknown hosts in production.
+      - "MC_ALLOWED_HOSTS=mc.${NOVA_DOMAIN},localhost,127.0.0.1"
+      - "MC_COOKIE_SECURE=1"
+      - "MC_COOKIE_SAMESITE=strict"
+      - "MC_ENABLE_HSTS=1"
+      # Optional: seed the admin account non-interactively. If unset, visit
+      # /setup on first run to create it.
+      - "AUTH_USER=${MC_AUTH_USER:-}"
+      - "AUTH_PASS=${MC_AUTH_PASS:-}"
+      # Optional: enable Authelia SSO passthrough (single sign-on). Requires
+      # trusted-IP list matching the traefik_default bridge subnet.
+      # - "MC_PROXY_AUTH_HEADER=Remote-User"
+      # - "MC_PROXY_AUTH_DEFAULT_ROLE=viewer"
+      # - "MC_PROXY_AUTH_TRUSTED_IPS=127.0.0.1,::1"
+    healthcheck:
+      disable: true  # image ships without curl/wget; upstream compose omits healthcheck
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.mission-control.rule: "Host(`mc.${NOVA_DOMAIN}`)"
+      traefik.http.routers.mission-control.entrypoints: "websecure"
+      traefik.http.routers.mission-control.tls: "true"
+      traefik.http.routers.mission-control.middlewares: "authelia@file"
+      traefik.http.services.mission-control.loadbalancer.server.port: "3000"
+      homepage.group: "Development"
+      homepage.name: "Mission Control"
+      homepage.icon: "https://www.google.com/s2/favicons?domain=mc.builderz.dev&sz=128"
+      homepage.href: "https://mc.${NOVA_DOMAIN}"
+      homepage.description: "Multi-agent orchestration dashboard (alpha)"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
+    volumes:
+      - "mission_control_data:/app/.data"
+    read_only: true
+    tmpfs:
+      - "/tmp"
+      - "/app/.next/cache"
+    cap_drop:
+      - "ALL"
+    cap_add:
+      - "NET_BIND_SERVICE"
+    security_opt:
+      - "no-new-privileges:true"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+          pids: 256
+    restart: "unless-stopped"
+
 volumes:
 
   vibe-kanban-repos:
@@ -157,3 +220,6 @@ volumes:
   vibe-kanban-cache:
 
   vibe-kanban-data:
+
+  mission_control_data:
+    external: true
