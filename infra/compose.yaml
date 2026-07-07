@@ -11,6 +11,11 @@ networks:
   socket_proxy:
     external: true
     name: "socket_proxy"
+  # Isolated bridge for self-hosted GitHub Actions runners. Carries traffic between
+  # each runner and runners-socket-proxy (write-allowlist). Runners also reach the
+  # public internet via this network's default gateway (it is NOT marked internal).
+  runners_net:
+    driver: bridge
 
 services:
 
@@ -389,6 +394,179 @@ services:
       - "scrutiny_data:/opt/scrutiny/data"
       - "/run/udev:/run/udev:ro"
 
+  # --- Self-hosted GitHub Actions runners + supporting sidecars ---
+  # See context/runners.md for architecture, add-a-runner steps, and PAT rotation.
+  #
+  # Image digests intentionally use a placeholder (sha256:000…). Replace before first
+  # `nova.sh up infra` with the current upstream digest — instructions in runners.md.
+  # Docker will refuse to pull until a real digest is supplied, which is the point:
+  # digest pinning is a hard precondition for these write-capable containers.
+
+  runners-socket-proxy:
+    container_name: "runners-socket-proxy"
+    # Write-capable socket proxy used by runner containers to launch job containers
+    # via Docker. POST=1 enables creates/starts; EXEC, BUILD, SECRETS, SYSTEM remain
+    # off so a compromised runner cannot exec into other containers, build arbitrary
+    # images, read swarm secrets, or shut down the daemon.
+    environment:
+      - "CONTAINERS=1"
+      - "IMAGES=1"
+      - "NETWORKS=1"
+      - "VOLUMES=1"
+      - "POST=1"
+      - "INFO=1"
+      - "VERSION=1"
+    image: "tecnativa/docker-socket-proxy"
+    cap_drop:
+      - "ALL"
+    security_opt:
+      - "no-new-privileges:true"
+    labels:
+      wud.watch: "false"
+    networks:
+      - "runners_net"
+    restart: "unless-stopped"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  nova-config-sync:
+    container_name: "nova-config-sync"
+    # Sole writer to /srv/nova-config — replaces the old nova-config/.github/workflows/sync.yml
+    # GitHub Actions round-trip with an in-host 10-minute reconciliation loop.
+    # The runner containers bind-mount /srv/nova-config read-only; this sidecar is
+    # the only process permitted to mutate that path.
+    image: "alpine/git@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    init: true
+    cap_drop:
+      - "ALL"
+    security_opt:
+      - "no-new-privileges:true"
+    command:
+      - "sh"
+      - "-c"
+      - |
+        set -eu
+        while :; do
+          cd /repo \
+            && git fetch --quiet origin main \
+            && git reset --hard origin/main \
+            || echo "nova-config-sync: reconcile failed, will retry in 600s"
+          sleep 600
+        done
+    labels:
+      wud.watch: "false"
+    restart: "unless-stopped"
+    volumes:
+      - "/srv/nova-config:/repo"
+
+  runner-nova-config:
+    container_name: "runner-nova-config"
+    image: "myoung34/github-runner@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    init: true
+    cap_drop:
+      - "ALL"
+    security_opt:
+      - "no-new-privileges:true"
+    tmpfs:
+      - "/tmp"
+      - "/_work"
+    environment:
+      - "ACCESS_TOKEN=${GH_PAT}"
+      - "REPO_URL=https://github.com/nova-firefly/nova-config"
+      - "RUNNER_NAME=runner-nova-config"
+      - "RUNNER_SCOPE=repo"
+      - "LABELS=nova,nova-config"
+      - "EPHEMERAL=true"
+      - "DISABLE_AUTO_UPDATE=true"
+      - "RUNNER_WORKDIR=/_work"
+      - "DOCKER_HOST=tcp://runners-socket-proxy:2375"
+    labels:
+      wud.watch: "false"
+    networks:
+      - "runners_net"
+    restart: "unless-stopped"
+    volumes:
+      - "/srv/nova-config:/nova-config:ro"
+      - "runner_nova_config_state:/runner"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+
+  runner-vibe-kanban-tools:
+    container_name: "runner-vibe-kanban-tools"
+    image: "myoung34/github-runner@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    init: true
+    cap_drop:
+      - "ALL"
+    security_opt:
+      - "no-new-privileges:true"
+    tmpfs:
+      - "/tmp"
+      - "/_work"
+    environment:
+      - "ACCESS_TOKEN=${GH_PAT}"
+      - "REPO_URL=https://github.com/nova-firefly/vibe-kanban-tools"
+      - "RUNNER_NAME=runner-vibe-kanban-tools"
+      - "RUNNER_SCOPE=repo"
+      - "LABELS=nova,vibe-kanban-tools"
+      - "EPHEMERAL=true"
+      - "DISABLE_AUTO_UPDATE=true"
+      - "RUNNER_WORKDIR=/_work"
+      - "DOCKER_HOST=tcp://runners-socket-proxy:2375"
+    labels:
+      wud.watch: "false"
+    networks:
+      - "runners_net"
+    restart: "unless-stopped"
+    volumes:
+      - "/srv/nova-config:/nova-config:ro"
+      - "runner_vibe_kanban_tools_state:/runner"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+
+  runner-movienight:
+    container_name: "runner-movienight"
+    # Single runner serves both movienight and movienight-test workflows via the
+    # shared `movienight,movienight-test` labels — see decision #6 in the Phase 1
+    # spec (one runner per repo, not per environment).
+    image: "myoung34/github-runner@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    init: true
+    cap_drop:
+      - "ALL"
+    security_opt:
+      - "no-new-privileges:true"
+    tmpfs:
+      - "/tmp"
+      - "/_work"
+    environment:
+      - "ACCESS_TOKEN=${GH_PAT}"
+      - "REPO_URL=https://github.com/nova-firefly/movienight"
+      - "RUNNER_NAME=runner-movienight"
+      - "RUNNER_SCOPE=repo"
+      - "LABELS=nova,movienight,movienight-test"
+      - "EPHEMERAL=true"
+      - "DISABLE_AUTO_UPDATE=true"
+      - "RUNNER_WORKDIR=/_work"
+      - "DOCKER_HOST=tcp://runners-socket-proxy:2375"
+    labels:
+      wud.watch: "false"
+    networks:
+      - "runners_net"
+    restart: "unless-stopped"
+    volumes:
+      - "/srv/nova-config:/nova-config:ro"
+      - "runner_movienight_state:/runner"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+
 volumes:
 
   traefik_acme:
@@ -403,3 +581,11 @@ volumes:
   arcane_data:
 
   dockge_data:
+
+  # Per-runner registration / settings state — survives container recreate so the
+  # runner does not need to re-register on every restart.
+  runner_nova_config_state:
+
+  runner_vibe_kanban_tools_state:
+
+  runner_movienight_state:
