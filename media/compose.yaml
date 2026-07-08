@@ -495,6 +495,109 @@ services:
     volumes:
       - "../recyclarr:/config"
 
+  # Tdarr — distributed transcoding & media-library health
+  #
+  # Architecture:
+  #   - This container runs the Tdarr SERVER + a CPU-only built-in internal node.
+  #   - Heavy encoding (initial library cleanup) is intended to run on an EXTERNAL
+  #     node — see context/tdarr-windows-node-setup.md for the Windows + RTX 3080
+  #     setup procedure that connects to this server over LAN port 8266.
+  #   - The internal CPU node handles ongoing low-volume work (audio remux, the
+  #     occasional new legacy-codec grab) so the system is functional even when
+  #     no external worker is running.
+  #
+  # GPU policy:
+  #   - Intentionally NOT given an NVIDIA reservation. Plex owns the GTX 970 for
+  #     playback transcodes; Maxwell HEVC quality is too low to be worth the
+  #     contention. If a future GPU upgrade changes that calculus, add a
+  #     tdarr-node service (template comments at end of this file) and give that
+  #     node the GPU — keeping tdarr-server CPU-only stays correct.
+  #
+  # Library paths mirror the Plex container's mount layout so the same logical
+  # paths (/library1, /library2, /library3) map cleanly via path translators on
+  # remote nodes. Do not change these paths without also updating the Windows
+  # node's pathTranslators in Tdarr_Node_Config.json.
+  tdarr-server:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "tdarr-server"
+    environment:
+      - "TZ=${TZ}"
+      - "PUID=${PUID}"
+      - "PGID=${PGID}"
+      - "UMASK_SET=002"
+      - "serverIP=0.0.0.0"
+      - "serverPort=8266"
+      - "webUIPort=8265"
+      - "internalNode=true"
+      - "inContainer=true"
+      - "ffmpegVersion=7"
+      - "nodeName=NovaInternalCPU"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8265/api/v2/status >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    image: "ghcr.io/haveagitgat/tdarr:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.tdarr.rule: "Host(`tdarr.${NOVA_DOMAIN}`)"
+      traefik.http.routers.tdarr.entrypoints: "websecure"
+      traefik.http.routers.tdarr.tls: "true"
+      traefik.http.routers.tdarr.middlewares: "authelia@file"
+      traefik.http.services.tdarr.loadbalancer.server.port: "8265"
+      homepage.group: "Downloads"
+      homepage.name: "Tdarr"
+      homepage.icon: "tdarr.svg"
+      homepage.href: "https://tdarr.${NOVA_DOMAIN}"
+      homepage.description: "Media Re-encoder & Health Checks"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "dockercompose.media,discord.notify"
+    networks:
+      - "traefik_default"
+    ports:
+      - "8265:8265/tcp"   # WebUI (also fronted by Traefik+Authelia; LAN access kept for direct debug)
+      - "8266:8266/tcp"   # Server port — remote nodes connect here from the LAN
+    restart: "unless-stopped"
+    volumes:
+      - "tdarr_server:/app/server"
+      - "tdarr_configs:/app/configs"
+      - "tdarr_logs:/app/logs"
+      # Library mounts — mirror plex container layout so logical paths match across
+      # services and remote nodes. A remote node sees the same path prefix after
+      # path-translation (see context/tdarr-windows-node-setup.md).
+      - "/data1/plex_data_1/_data:/library1"
+      - "/data2:/library2"
+      - "/data3/movies:/library3/movies"
+      - "/data3/tv:/library3/tv"
+      # Transcode cache lives on /data1 (most free space, same drive that gets SMB-shared
+      # to the Windows node so all workers see the same cache path under translation).
+      - "/data1/tdarr/cache:/temp"
+
   tautulli:
     container_name: "tautulli"
     environment:
@@ -874,3 +977,69 @@ volumes:
   kometa_trigger:
     # Shared IPC volume between kometa and internal-webhook.
     # Not external — compose manages it; no data needs to survive stack removal.
+
+  tdarr_server:
+    external: true
+
+  tdarr_configs:
+    external: true
+
+  tdarr_logs:
+    external: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Future tdarr-node container template (add when/if Nova gets a modern GPU)
+# ─────────────────────────────────────────────────────────────────────────────
+# When Nova's GPU is upgraded to something with usable HEVC NVENC (Turing or
+# newer) and you want a permanent local node instead of relying on the Windows
+# RTX 3080 ad-hoc worker, paste the block below into `services:` and adjust:
+#
+#   tdarr-node:
+#     image: "ghcr.io/haveagitgat/tdarr_node:latest"
+#     container_name: "tdarr-node"
+#     restart: "unless-stopped"
+#     environment:
+#       - "TZ=${TZ}"
+#       - "PUID=${PUID}"
+#       - "PGID=${PGID}"
+#       - "UMASK_SET=002"
+#       - "nodeName=NovaLocalGPU"
+#       - "serverIP=tdarr-server"
+#       - "serverPort=8266"
+#       - "inContainer=true"
+#       - "ffmpegVersion=7"
+#       - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
+#       - "NVIDIA_VISIBLE_DEVICES=all"
+#     deploy:
+#       resources:
+#         reservations:
+#           devices:
+#             - driver: nvidia
+#               count: 1
+#               capabilities: [gpu]
+#     networks:
+#       - "traefik_default"   # so it can reach tdarr-server by container name
+#     volumes:
+#       - "tdarr_node_configs:/app/configs"
+#       - "tdarr_node_logs:/app/logs"
+#       # Library mounts MUST match tdarr-server exactly — otherwise the server's
+#       # job paths won't resolve on the node.
+#       - "/data1/plex_data_1/_data:/library1"
+#       - "/data2:/library2"
+#       - "/data3/movies:/library3/movies"
+#       - "/data3/tv:/library3/tv"
+#       - "/data1/tdarr/cache:/temp"
+#     # Standard cap_drop list (omit SYS_NICE if encoder threads need priority)
+#
+# Plus add to volumes:
+#   tdarr_node_configs:
+#     external: true
+#   tdarr_node_logs:
+#     external: true
+#
+# And in `nova.sh init` (or by hand): docker volume create tdarr_node_configs tdarr_node_logs
+#
+# When this container is added, the Windows external node remains compatible —
+# Tdarr supports any number of nodes simultaneously. You can keep both running,
+# or shut the Windows machine down once Nova-local is fast enough on its own.
+# ─────────────────────────────────────────────────────────────────────────────

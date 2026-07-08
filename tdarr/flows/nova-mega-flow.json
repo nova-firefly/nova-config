@@ -1,0 +1,629 @@
+{
+  "_id": "novaMega1",
+  "name": "Nova - Mega flow (all concerns)",
+  "description": "Single flow that routes each file through the appropriate action: legacy codec cleanup (mpeg2/mpeg4/wmv3 -> H.264), oversized SDR HEVC capping (1080p>4Mbps, 4K>8Mbps), H.264 to HEVC at 1080p over 6Mbps, or audio hygiene (add English AAC stereo if missing). Files matching multiple concerns get the highest-priority video action with audio hygiene applied in the same ffmpeg invocation. Files that match nothing are skipped. Designed for the Windows RTX 3080 ad-hoc node; on a CPU-only worker, edit each Set Video Encoder node to disable hardware encoding.",
+  "tags": "nova,video,audio,mega",
+  "flowPlugins": [
+    {
+      "name": "Input File",
+      "sourceRepo": "Community",
+      "pluginName": "inputFile",
+      "version": "1.0.0",
+      "id": "novaMega-input",
+      "position": { "x": 700, "y": 60 },
+      "fpEnabled": true
+    },
+
+    {
+      "name": "Is mpeg2video?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaMega-mpeg2",
+      "position": { "x": 700, "y": 160 },
+      "fpEnabled": true,
+      "inputsDB": { "codec": "mpeg2video" }
+    },
+    {
+      "name": "Is mpeg4?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaMega-mpeg4",
+      "position": { "x": 700, "y": 260 },
+      "fpEnabled": true,
+      "inputsDB": { "codec": "mpeg4" }
+    },
+    {
+      "name": "Is wmv3?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaMega-wmv3",
+      "position": { "x": 700, "y": 360 },
+      "fpEnabled": true,
+      "inputsDB": { "codec": "wmv3" }
+    },
+    {
+      "name": "Is hevc?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaMega-hevc",
+      "position": { "x": 700, "y": 460 },
+      "fpEnabled": true,
+      "inputsDB": { "codec": "hevc" }
+    },
+    {
+      "name": "Is h264?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaMega-h264",
+      "position": { "x": 700, "y": 560 },
+      "fpEnabled": true,
+      "inputsDB": { "codec": "h264" }
+    },
+
+    {
+      "name": "Begin (legacy)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaMega-leg-start",
+      "position": { "x": 100, "y": 700 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Encode H.264 NVENC slow qp=19",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoEncoder",
+      "version": "1.0.0",
+      "id": "novaMega-leg-enc",
+      "position": { "x": 100, "y": 800 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "outputCodec": "h264",
+        "ffmpegPresetEnabled": "true",
+        "ffmpegPreset": "slow",
+        "ffmpegQualityEnabled": "true",
+        "ffmpegQuality": "19",
+        "hardwareEncoding": "true",
+        "hardwareType": "nvenc"
+      }
+    },
+    {
+      "name": "Ensure AAC stereo (legacy)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandEnsureAudioStream",
+      "version": "1.0.0",
+      "id": "novaMega-leg-aud",
+      "position": { "x": 100, "y": 900 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "audioEncoder": "aac",
+        "language": "en",
+        "channels": "2",
+        "enableBitrate": "true",
+        "bitrate": "192k",
+        "enableSamplerate": "true",
+        "samplerate": "48000"
+      }
+    },
+    {
+      "name": "Reorder (legacy)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandRorderStreams",
+      "version": "1.0.0",
+      "id": "novaMega-leg-reorder",
+      "position": { "x": 100, "y": 1000 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Execute (legacy)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaMega-leg-exec",
+      "position": { "x": 100, "y": 1100 },
+      "fpEnabled": true
+    },
+
+    {
+      "name": "Is 10-bit? (HEVC)",
+      "sourceRepo": "Community",
+      "pluginName": "check10Bit",
+      "version": "1.0.0",
+      "id": "novaMega-hevc-10bit",
+      "position": { "x": 400, "y": 700 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Is HDR? (HEVC)",
+      "sourceRepo": "Community",
+      "pluginName": "checkHdr",
+      "version": "1.0.0",
+      "id": "novaMega-hevc-hdr",
+      "position": { "x": 400, "y": 800 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Resolution? (HEVC)",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoResolution",
+      "version": "1.0.0",
+      "id": "novaMega-hevc-res",
+      "position": { "x": 400, "y": 900 },
+      "fpEnabled": true
+    },
+    {
+      "name": "1080p > 4000kbps?",
+      "sourceRepo": "Community",
+      "pluginName": "checkOverallBitrate",
+      "version": "1.0.0",
+      "id": "novaMega-hevc-1080br",
+      "position": { "x": 280, "y": 1020 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "unit": "kbps",
+        "greaterThan": "4000",
+        "lessThan": "999999"
+      }
+    },
+    {
+      "name": "4K > 8000kbps?",
+      "sourceRepo": "Community",
+      "pluginName": "checkOverallBitrate",
+      "version": "1.0.0",
+      "id": "novaMega-hevc-4kbr",
+      "position": { "x": 520, "y": 1020 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "unit": "kbps",
+        "greaterThan": "8000",
+        "lessThan": "999999"
+      }
+    },
+
+    {
+      "name": "Begin (HEVC 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaMega-hevc1080-start",
+      "position": { "x": 280, "y": 1140 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Encode HEVC NVENC slow (1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoEncoder",
+      "version": "1.0.0",
+      "id": "novaMega-hevc1080-enc",
+      "position": { "x": 280, "y": 1240 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "outputCodec": "hevc",
+        "ffmpegPresetEnabled": "true",
+        "ffmpegPreset": "slow",
+        "ffmpegQualityEnabled": "false",
+        "ffmpegQuality": "25",
+        "hardwareEncoding": "true",
+        "hardwareType": "nvenc"
+      }
+    },
+    {
+      "name": "Bitrate cap 4000kbps",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoBitrate",
+      "version": "1.0.0",
+      "id": "novaMega-hevc1080-br",
+      "position": { "x": 280, "y": 1340 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "useInputBitrate": "false",
+        "bitrate": "4000",
+        "targetBitratePercent": "50",
+        "fallbackBitrate": "4000"
+      }
+    },
+    {
+      "name": "Ensure AAC stereo (HEVC 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandEnsureAudioStream",
+      "version": "1.0.0",
+      "id": "novaMega-hevc1080-aud",
+      "position": { "x": 280, "y": 1440 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "audioEncoder": "aac",
+        "language": "en",
+        "channels": "2",
+        "enableBitrate": "true",
+        "bitrate": "192k",
+        "enableSamplerate": "true",
+        "samplerate": "48000"
+      }
+    },
+    {
+      "name": "Reorder (HEVC 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandRorderStreams",
+      "version": "1.0.0",
+      "id": "novaMega-hevc1080-reorder",
+      "position": { "x": 280, "y": 1540 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Execute (HEVC 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaMega-hevc1080-exec",
+      "position": { "x": 280, "y": 1640 },
+      "fpEnabled": true
+    },
+
+    {
+      "name": "Begin (HEVC 4K)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaMega-hevc4k-start",
+      "position": { "x": 520, "y": 1140 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Encode HEVC NVENC slow (4K)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoEncoder",
+      "version": "1.0.0",
+      "id": "novaMega-hevc4k-enc",
+      "position": { "x": 520, "y": 1240 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "outputCodec": "hevc",
+        "ffmpegPresetEnabled": "true",
+        "ffmpegPreset": "slow",
+        "ffmpegQualityEnabled": "false",
+        "ffmpegQuality": "25",
+        "hardwareEncoding": "true",
+        "hardwareType": "nvenc"
+      }
+    },
+    {
+      "name": "Bitrate cap 8000kbps",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoBitrate",
+      "version": "1.0.0",
+      "id": "novaMega-hevc4k-br",
+      "position": { "x": 520, "y": 1340 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "useInputBitrate": "false",
+        "bitrate": "8000",
+        "targetBitratePercent": "50",
+        "fallbackBitrate": "8000"
+      }
+    },
+    {
+      "name": "Ensure AAC stereo (HEVC 4K)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandEnsureAudioStream",
+      "version": "1.0.0",
+      "id": "novaMega-hevc4k-aud",
+      "position": { "x": 520, "y": 1440 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "audioEncoder": "aac",
+        "language": "en",
+        "channels": "2",
+        "enableBitrate": "true",
+        "bitrate": "192k",
+        "enableSamplerate": "true",
+        "samplerate": "48000"
+      }
+    },
+    {
+      "name": "Reorder (HEVC 4K)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandRorderStreams",
+      "version": "1.0.0",
+      "id": "novaMega-hevc4k-reorder",
+      "position": { "x": 520, "y": 1540 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Execute (HEVC 4K)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaMega-hevc4k-exec",
+      "position": { "x": 520, "y": 1640 },
+      "fpEnabled": true
+    },
+
+    {
+      "name": "Is 10-bit? (H.264)",
+      "sourceRepo": "Community",
+      "pluginName": "check10Bit",
+      "version": "1.0.0",
+      "id": "novaMega-h264-10bit",
+      "position": { "x": 800, "y": 700 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Is HDR? (H.264)",
+      "sourceRepo": "Community",
+      "pluginName": "checkHdr",
+      "version": "1.0.0",
+      "id": "novaMega-h264-hdr",
+      "position": { "x": 800, "y": 800 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Resolution? (H.264)",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoResolution",
+      "version": "1.0.0",
+      "id": "novaMega-h264-res",
+      "position": { "x": 800, "y": 900 },
+      "fpEnabled": true
+    },
+    {
+      "name": "1080p > 6000kbps?",
+      "sourceRepo": "Community",
+      "pluginName": "checkOverallBitrate",
+      "version": "1.0.0",
+      "id": "novaMega-h264-br",
+      "position": { "x": 800, "y": 1020 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "unit": "kbps",
+        "greaterThan": "6000",
+        "lessThan": "999999"
+      }
+    },
+    {
+      "name": "Begin (H.264 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaMega-h264-start",
+      "position": { "x": 800, "y": 1140 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Encode HEVC NVENC slow (H.264 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoEncoder",
+      "version": "1.0.0",
+      "id": "novaMega-h264-enc",
+      "position": { "x": 800, "y": 1240 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "outputCodec": "hevc",
+        "ffmpegPresetEnabled": "true",
+        "ffmpegPreset": "slow",
+        "ffmpegQualityEnabled": "false",
+        "ffmpegQuality": "25",
+        "hardwareEncoding": "true",
+        "hardwareType": "nvenc"
+      }
+    },
+    {
+      "name": "Bitrate cap 6000kbps",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoBitrate",
+      "version": "1.0.0",
+      "id": "novaMega-h264-brset",
+      "position": { "x": 800, "y": 1340 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "useInputBitrate": "false",
+        "bitrate": "6000",
+        "targetBitratePercent": "50",
+        "fallbackBitrate": "6000"
+      }
+    },
+    {
+      "name": "Ensure AAC stereo (H.264 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandEnsureAudioStream",
+      "version": "1.0.0",
+      "id": "novaMega-h264-aud",
+      "position": { "x": 800, "y": 1440 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "audioEncoder": "aac",
+        "language": "en",
+        "channels": "2",
+        "enableBitrate": "true",
+        "bitrate": "192k",
+        "enableSamplerate": "true",
+        "samplerate": "48000"
+      }
+    },
+    {
+      "name": "Reorder (H.264 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandRorderStreams",
+      "version": "1.0.0",
+      "id": "novaMega-h264-reorder",
+      "position": { "x": 800, "y": 1540 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Execute (H.264 1080p)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaMega-h264-exec",
+      "position": { "x": 800, "y": 1640 },
+      "fpEnabled": true
+    },
+
+    {
+      "name": "Has AAC?",
+      "sourceRepo": "Community",
+      "pluginName": "checkAudioCodec",
+      "version": "1.0.0",
+      "id": "novaMega-aud-codec",
+      "position": { "x": 1200, "y": 800 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "codec": "aac",
+        "checkBitrate": "false"
+      }
+    },
+    {
+      "name": "Has 2-channel stream?",
+      "sourceRepo": "Community",
+      "pluginName": "checkChannelCount",
+      "version": "1.0.0",
+      "id": "novaMega-aud-channels",
+      "position": { "x": 1200, "y": 900 },
+      "fpEnabled": true,
+      "inputsDB": { "channelCount": "2" }
+    },
+    {
+      "name": "Begin (audio-only)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaMega-aud-start",
+      "position": { "x": 1200, "y": 1000 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Ensure AAC stereo (audio-only)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandEnsureAudioStream",
+      "version": "1.0.0",
+      "id": "novaMega-aud-ensure",
+      "position": { "x": 1200, "y": 1100 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "audioEncoder": "aac",
+        "language": "en",
+        "channels": "2",
+        "enableBitrate": "true",
+        "bitrate": "192k",
+        "enableSamplerate": "true",
+        "samplerate": "48000"
+      }
+    },
+    {
+      "name": "Reorder (audio-only)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandRorderStreams",
+      "version": "1.0.0",
+      "id": "novaMega-aud-reorder",
+      "position": { "x": 1200, "y": 1200 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Execute (audio-only)",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaMega-aud-exec",
+      "position": { "x": 1200, "y": 1300 },
+      "fpEnabled": true
+    },
+
+    {
+      "name": "Replace Original File",
+      "sourceRepo": "Community",
+      "pluginName": "replaceOriginalFile",
+      "version": "1.0.0",
+      "id": "novaMega-replace",
+      "position": { "x": 700, "y": 1800 },
+      "fpEnabled": true
+    }
+  ],
+  "flowEdges": [
+    { "source": "novaMega-input",       "sourceHandle": "1", "target": "novaMega-mpeg2",        "targetHandle": null, "id": "mega-e1" },
+
+    { "source": "novaMega-mpeg2",       "sourceHandle": "1", "target": "novaMega-leg-start",    "targetHandle": null, "id": "mega-e2" },
+    { "source": "novaMega-mpeg2",       "sourceHandle": "2", "target": "novaMega-mpeg4",        "targetHandle": null, "id": "mega-e3" },
+    { "source": "novaMega-mpeg4",       "sourceHandle": "1", "target": "novaMega-leg-start",    "targetHandle": null, "id": "mega-e4" },
+    { "source": "novaMega-mpeg4",       "sourceHandle": "2", "target": "novaMega-wmv3",         "targetHandle": null, "id": "mega-e5" },
+    { "source": "novaMega-wmv3",        "sourceHandle": "1", "target": "novaMega-leg-start",    "targetHandle": null, "id": "mega-e6" },
+    { "source": "novaMega-wmv3",        "sourceHandle": "2", "target": "novaMega-hevc",         "targetHandle": null, "id": "mega-e7" },
+    { "source": "novaMega-hevc",        "sourceHandle": "1", "target": "novaMega-hevc-10bit",   "targetHandle": null, "id": "mega-e8" },
+    { "source": "novaMega-hevc",        "sourceHandle": "2", "target": "novaMega-h264",         "targetHandle": null, "id": "mega-e9" },
+    { "source": "novaMega-h264",        "sourceHandle": "1", "target": "novaMega-h264-10bit",   "targetHandle": null, "id": "mega-e10" },
+    { "source": "novaMega-h264",        "sourceHandle": "2", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e11" },
+
+    { "source": "novaMega-leg-start",   "sourceHandle": "1", "target": "novaMega-leg-enc",      "targetHandle": null, "id": "mega-e12" },
+    { "source": "novaMega-leg-enc",     "sourceHandle": "1", "target": "novaMega-leg-aud",      "targetHandle": null, "id": "mega-e13" },
+    { "source": "novaMega-leg-aud",     "sourceHandle": "1", "target": "novaMega-leg-reorder",  "targetHandle": null, "id": "mega-e14" },
+    { "source": "novaMega-leg-reorder", "sourceHandle": "1", "target": "novaMega-leg-exec",     "targetHandle": null, "id": "mega-e15" },
+    { "source": "novaMega-leg-exec",    "sourceHandle": "1", "target": "novaMega-replace",      "targetHandle": null, "id": "mega-e16" },
+
+    { "source": "novaMega-hevc-10bit",  "sourceHandle": "1", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e17" },
+    { "source": "novaMega-hevc-10bit",  "sourceHandle": "2", "target": "novaMega-hevc-hdr",     "targetHandle": null, "id": "mega-e18" },
+    { "source": "novaMega-hevc-hdr",    "sourceHandle": "1", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e19" },
+    { "source": "novaMega-hevc-hdr",    "sourceHandle": "2", "target": "novaMega-hevc-res",     "targetHandle": null, "id": "mega-e20" },
+
+    { "source": "novaMega-hevc-res",    "sourceHandle": "1", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e21" },
+    { "source": "novaMega-hevc-res",    "sourceHandle": "2", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e22" },
+    { "source": "novaMega-hevc-res",    "sourceHandle": "3", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e23" },
+    { "source": "novaMega-hevc-res",    "sourceHandle": "4", "target": "novaMega-hevc-1080br",  "targetHandle": null, "id": "mega-e24" },
+    { "source": "novaMega-hevc-res",    "sourceHandle": "5", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e25" },
+    { "source": "novaMega-hevc-res",    "sourceHandle": "6", "target": "novaMega-hevc-4kbr",    "targetHandle": null, "id": "mega-e26" },
+    { "source": "novaMega-hevc-res",    "sourceHandle": "7", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e27" },
+    { "source": "novaMega-hevc-res",    "sourceHandle": "8", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e28" },
+    { "source": "novaMega-hevc-res",    "sourceHandle": "9", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e29" },
+
+    { "source": "novaMega-hevc-1080br", "sourceHandle": "1", "target": "novaMega-hevc1080-start", "targetHandle": null, "id": "mega-e30" },
+    { "source": "novaMega-hevc-1080br", "sourceHandle": "2", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e31" },
+    { "source": "novaMega-hevc1080-start","sourceHandle": "1", "target": "novaMega-hevc1080-enc","targetHandle": null, "id": "mega-e32" },
+    { "source": "novaMega-hevc1080-enc","sourceHandle": "1", "target": "novaMega-hevc1080-br",  "targetHandle": null, "id": "mega-e33" },
+    { "source": "novaMega-hevc1080-br", "sourceHandle": "1", "target": "novaMega-hevc1080-aud", "targetHandle": null, "id": "mega-e34" },
+    { "source": "novaMega-hevc1080-aud","sourceHandle": "1", "target": "novaMega-hevc1080-reorder","targetHandle": null, "id": "mega-e35" },
+    { "source": "novaMega-hevc1080-reorder","sourceHandle":"1", "target": "novaMega-hevc1080-exec","targetHandle": null, "id": "mega-e36" },
+    { "source": "novaMega-hevc1080-exec","sourceHandle": "1", "target": "novaMega-replace",     "targetHandle": null, "id": "mega-e37" },
+
+    { "source": "novaMega-hevc-4kbr",   "sourceHandle": "1", "target": "novaMega-hevc4k-start", "targetHandle": null, "id": "mega-e38" },
+    { "source": "novaMega-hevc-4kbr",   "sourceHandle": "2", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e39" },
+    { "source": "novaMega-hevc4k-start","sourceHandle": "1", "target": "novaMega-hevc4k-enc",   "targetHandle": null, "id": "mega-e40" },
+    { "source": "novaMega-hevc4k-enc",  "sourceHandle": "1", "target": "novaMega-hevc4k-br",    "targetHandle": null, "id": "mega-e41" },
+    { "source": "novaMega-hevc4k-br",   "sourceHandle": "1", "target": "novaMega-hevc4k-aud",   "targetHandle": null, "id": "mega-e42" },
+    { "source": "novaMega-hevc4k-aud",  "sourceHandle": "1", "target": "novaMega-hevc4k-reorder","targetHandle": null, "id": "mega-e43" },
+    { "source": "novaMega-hevc4k-reorder","sourceHandle":"1", "target": "novaMega-hevc4k-exec", "targetHandle": null, "id": "mega-e44" },
+    { "source": "novaMega-hevc4k-exec", "sourceHandle": "1", "target": "novaMega-replace",      "targetHandle": null, "id": "mega-e45" },
+
+    { "source": "novaMega-h264-10bit",  "sourceHandle": "1", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e46" },
+    { "source": "novaMega-h264-10bit",  "sourceHandle": "2", "target": "novaMega-h264-hdr",     "targetHandle": null, "id": "mega-e47" },
+    { "source": "novaMega-h264-hdr",    "sourceHandle": "1", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e48" },
+    { "source": "novaMega-h264-hdr",    "sourceHandle": "2", "target": "novaMega-h264-res",     "targetHandle": null, "id": "mega-e49" },
+
+    { "source": "novaMega-h264-res",    "sourceHandle": "1", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e50" },
+    { "source": "novaMega-h264-res",    "sourceHandle": "2", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e51" },
+    { "source": "novaMega-h264-res",    "sourceHandle": "3", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e52" },
+    { "source": "novaMega-h264-res",    "sourceHandle": "4", "target": "novaMega-h264-br",      "targetHandle": null, "id": "mega-e53" },
+    { "source": "novaMega-h264-res",    "sourceHandle": "5", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e54" },
+    { "source": "novaMega-h264-res",    "sourceHandle": "6", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e55" },
+    { "source": "novaMega-h264-res",    "sourceHandle": "7", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e56" },
+    { "source": "novaMega-h264-res",    "sourceHandle": "8", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e57" },
+    { "source": "novaMega-h264-res",    "sourceHandle": "9", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e58" },
+
+    { "source": "novaMega-h264-br",     "sourceHandle": "1", "target": "novaMega-h264-start",   "targetHandle": null, "id": "mega-e59" },
+    { "source": "novaMega-h264-br",     "sourceHandle": "2", "target": "novaMega-aud-codec",    "targetHandle": null, "id": "mega-e60" },
+    { "source": "novaMega-h264-start",  "sourceHandle": "1", "target": "novaMega-h264-enc",     "targetHandle": null, "id": "mega-e61" },
+    { "source": "novaMega-h264-enc",    "sourceHandle": "1", "target": "novaMega-h264-brset",   "targetHandle": null, "id": "mega-e62" },
+    { "source": "novaMega-h264-brset",  "sourceHandle": "1", "target": "novaMega-h264-aud",     "targetHandle": null, "id": "mega-e63" },
+    { "source": "novaMega-h264-aud",    "sourceHandle": "1", "target": "novaMega-h264-reorder", "targetHandle": null, "id": "mega-e64" },
+    { "source": "novaMega-h264-reorder","sourceHandle": "1", "target": "novaMega-h264-exec",    "targetHandle": null, "id": "mega-e65" },
+    { "source": "novaMega-h264-exec",   "sourceHandle": "1", "target": "novaMega-replace",      "targetHandle": null, "id": "mega-e66" },
+
+    { "source": "novaMega-aud-codec",   "sourceHandle": "2", "target": "novaMega-aud-channels", "targetHandle": null, "id": "mega-e67" },
+    { "source": "novaMega-aud-channels","sourceHandle": "2", "target": "novaMega-aud-start",    "targetHandle": null, "id": "mega-e68" },
+    { "source": "novaMega-aud-start",   "sourceHandle": "1", "target": "novaMega-aud-ensure",   "targetHandle": null, "id": "mega-e69" },
+    { "source": "novaMega-aud-ensure",  "sourceHandle": "1", "target": "novaMega-aud-reorder",  "targetHandle": null, "id": "mega-e70" },
+    { "source": "novaMega-aud-reorder", "sourceHandle": "1", "target": "novaMega-aud-exec",     "targetHandle": null, "id": "mega-e71" },
+    { "source": "novaMega-aud-exec",    "sourceHandle": "1", "target": "novaMega-replace",      "targetHandle": null, "id": "mega-e72" }
+  ]
+}
