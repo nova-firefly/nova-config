@@ -1,0 +1,140 @@
+# Hermes Agent Stack - Self-hosted NousResearch agent with web dashboard
+# Usage: ./nova.sh up hermes   (or: docker compose -f hermes/compose.yaml up -d)
+# Requires .env file for: NOVA_DOMAIN, TZ, PUID, PGID, and at least one LLM provider key
+#                         (ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY)
+#
+# Prereqs:
+#   1. Build the images once:  ./hermes/build.sh
+#   2. Create the persistent volume:  docker volume create hermes_data
+#   3. `./nova.sh up hermes` (or via Dockge)
+#
+# Networking deviation from upstream:
+#   Upstream compose uses network_mode: host. We drop that so the dashboard can
+#   reach the read-only socket-proxy on the `socket_proxy` Docker network and so
+#   the gateway/dashboard sit on `traefik_default` for standard label-based routing.
+#   The dashboard binds 0.0.0.0 inside the container and is gated by Authelia at
+#   the Traefik edge — never expose port 9119 directly.
+
+name: hermes
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+  socket_proxy:
+    external: true
+    name: "socket_proxy"
+
+services:
+
+  hermes-gateway:
+    container_name: "hermes-gateway"
+    image: "hermes-nova:latest"
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    command: ["gateway", "run"]
+    environment:
+      - "TZ=${TZ}"
+      - "HERMES_UID=${PUID}"
+      - "HERMES_GID=${PGID}"
+      # Talk to the read-only socket proxy for `docker ps/logs/inspect`.
+      - "DOCKER_HOST=tcp://socket-proxy:2375"
+      # LLM provider keys — bare names so they're shared with anything else
+      # on the host that uses the same providers. Set whichever you use in .env.
+      - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
+      - "OPENAI_API_KEY=${OPENAI_API_KEY:-}"
+      - "OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}"
+    labels:
+      # Gateway has no HTTP surface by default — no Traefik route.
+      wud.watch: "false"
+    networks:
+      - "traefik_default"
+      - "socket_proxy"
+    restart: "unless-stopped"
+    volumes:
+      - "hermes_data:/opt/data"
+      # Read-only access to the working tree, for grepping logs and configs.
+      - "vibe-kanban-repos:/repos:ro"
+      # Read-only access to service config volumes (logs / config inspection).
+      - "bazarr_config:/mnt/configs/bazarr:ro"
+      - "prowlarr_config:/mnt/configs/prowlarr:ro"
+      - "seerr_config:/mnt/configs/seerr:ro"
+      - "qbittorrent_config:/mnt/configs/qbittorrent:ro"
+      - "radarr_config:/mnt/configs/radarr:ro"
+      - "sonarr_config:/mnt/configs/sonarr:ro"
+      - "tautulli_config:/mnt/configs/tautulli:ro"
+      - "stirling_config:/mnt/configs/stirling:ro"
+      - "samba_config:/mnt/configs/samba:ro"
+      - "backrest_backrest_config:/mnt/configs/backrest:ro"
+
+  hermes-dashboard:
+    container_name: "hermes-dashboard"
+    image: "hermes-nova:latest"
+    depends_on:
+      - "hermes-gateway"
+    # --insecure: skip the built-in OAuth-to-Nous-Portal gate. We rely on
+    #             Authelia (forwardAuth via Traefik) instead — same model as
+    #             every other Nova service. The container is not reachable
+    #             directly from the LAN, only via Traefik.
+    command: ["dashboard", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--insecure"]
+    environment:
+      - "TZ=${TZ}"
+      - "HERMES_UID=${PUID}"
+      - "HERMES_GID=${PGID}"
+      # Enable the in-browser chat tab (PTY-backed TUI). Works because we are on Linux.
+      - "HERMES_DASHBOARD_TUI=1"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9119/api/status >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.hermes.rule: "Host(`hermes.${NOVA_DOMAIN}`)"
+      traefik.http.routers.hermes.entrypoints: "websecure"
+      traefik.http.routers.hermes.tls: "true"
+      traefik.http.routers.hermes.middlewares: "authelia@file"
+      traefik.http.services.hermes.loadbalancer.server.port: "9119"
+      homepage.group: "Development"
+      homepage.name: "Hermes Agent"
+      homepage.icon: "mdi-robot"
+      homepage.href: "https://hermes.${NOVA_DOMAIN}"
+      homepage.description: "Self-hosted AI agent (Nous Research)"
+      # Local-built image — WUD has nothing to watch. Run `./hermes/build.sh` to update.
+      wud.watch: "false"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "hermes_data:/opt/data"
+
+volumes:
+
+  hermes_data:
+    external: true
+
+  # Shared read-only mounts — declared external so this stack does not own them.
+  vibe-kanban-repos:
+    external: true
+  bazarr_config:
+    external: true
+  prowlarr_config:
+    external: true
+  seerr_config:
+    external: true
+  qbittorrent_config:
+    external: true
+  radarr_config:
+    external: true
+  sonarr_config:
+    external: true
+  tautulli_config:
+    external: true
+  stirling_config:
+    external: true
+  samba_config:
+    external: true
+  backrest_backrest_config:
+    external: true
