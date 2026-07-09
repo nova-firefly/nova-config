@@ -194,7 +194,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 |---------|-------------|-------|
 | vibe-kanban | local build (`../vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
 | vibe-kanban-tools | ghcr.io/kjsb25/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
-| mission-control | source build from `github.com/builderz-labs/mission-control` (pinned tag) | Multi-agent orchestration dashboard (kanban, agents, scheduler, quality gates). Alpha software. Built from source because upstream GHCR image is private. Standalone mode — no OpenClaw gateway wired. Read-only rootfs, cap_drop ALL, 512M/1cpu limit. `mc.NOVA_DOMAIN` |
+| mission-control | ghcr.io/builderz-labs/mission-control:latest | Multi-agent orchestration dashboard (kanban, agents, scheduler, quality gates). Alpha software. Standalone mode — no OpenClaw gateway wired. Read-only rootfs, cap_drop ALL, 512M/1cpu limit. `mc.NOVA_DOMAIN` |
 
 **Auto-deploy (vibe-kanban-tools):** Image is built by CI in the `kjsb25/vibe-kanban-tools` repo on push to `main` and pushed to GHCR. The CI deploy job SSH-deploys immediately via `nova.sh update dev`. WUD watches the image and notifies on Discord when the digest changes but does not recreate.
 
