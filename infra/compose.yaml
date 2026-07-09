@@ -435,7 +435,7 @@ services:
     # GitHub Actions round-trip with an in-host 10-minute reconciliation loop.
     # The runner containers bind-mount /srv/nova-config read-only; this sidecar is
     # the only process permitted to mutate that path.
-    image: "alpine/git@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    image: "alpine/git@sha256:fac7bc2c12aa52bff1c78a26359990e149954a60cdd5d6e20e7e009666c73e0a"
     init: true
     cap_drop:
       - "ALL"
@@ -461,7 +461,7 @@ services:
 
   runner-nova-config:
     container_name: "runner-nova-config"
-    image: "myoung34/github-runner@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    image: "myoung34/github-runner@sha256:67c2447f2717227277560b76ba7e281e9f981d13508fe934b9f9f3cfd68e2d52"
     init: true
     cap_drop:
       - "ALL"
@@ -496,7 +496,7 @@ services:
 
   runner-vibe-kanban-tools:
     container_name: "runner-vibe-kanban-tools"
-    image: "myoung34/github-runner@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    image: "myoung34/github-runner@sha256:67c2447f2717227277560b76ba7e281e9f981d13508fe934b9f9f3cfd68e2d52"
     init: true
     cap_drop:
       - "ALL"
@@ -534,7 +534,7 @@ services:
     # Single runner serves both movienight and movienight-test workflows via the
     # shared `movienight,movienight-test` labels — see decision #6 in the Phase 1
     # spec (one runner per repo, not per environment).
-    image: "myoung34/github-runner@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    image: "myoung34/github-runner@sha256:67c2447f2717227277560b76ba7e281e9f981d13508fe934b9f9f3cfd68e2d52"
     init: true
     cap_drop:
       - "ALL"
