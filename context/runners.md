@@ -50,10 +50,11 @@ Before the first `nova.sh up infra` after these services land:
    The sync sidecar runs `git reset --hard origin/main` against this checkout every 10 min,
    so any local edits here will be destroyed — edit through PRs, not in place.
 
-2. **GH_PAT** — fine-grained PAT scoped to all three runner repos:
+2. **GH_PAT** — fine-grained PAT scoped to all runner repos:
    - `nova-firefly/nova-config`
    - `nova-firefly/vibe-kanban-tools`
    - `nova-firefly/movienight`
+   - `nova-firefly/todoassist`
 
    Required permission: **Administration: read & write** (lets the runner register and
    unregister itself). Recommended extra: **Actions: read** (for log fetches). No org scope.
@@ -107,6 +108,7 @@ should appear as **Idle** within ~30 s. Workflows can then target it with
    ./nova.sh recreate infra runner-nova-config
    ./nova.sh recreate infra runner-vibe-kanban-tools
    ./nova.sh recreate infra runner-movienight
+   ./nova.sh recreate infra runner-todoassist
    ```
 4. In GitHub, delete the now-orphaned old runner entries from
    **Settings → Actions → Runners** for each repo (the ephemeral pattern means stale

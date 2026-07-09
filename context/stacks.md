@@ -6,7 +6,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 
 | Stack | File | Services |
 |-------|------|----------|
-| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy, runners-socket-proxy, nova-config-sync, runner-nova-config, runner-vibe-kanban-tools, runner-movienight |
+| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy, runners-socket-proxy, nova-config-sync, runner-nova-config, runner-vibe-kanban-tools, runner-movienight, runner-todoassist |
 | authelia | authelia/compose.yaml | authelia, redis |
 | media | media/compose.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent, decluttarr, recyclarr, homescreen-hero |
 | immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
@@ -18,6 +18,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | gaming | gaming/compose.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
 | movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
 | strava-hevy | strava-hevy/compose.yaml | strava-hevy |
+| todoassist | todoassist/compose.yaml | todoassist |
 
 ---
 
@@ -334,6 +335,34 @@ docker exec -it pterodactyl-panel php artisan p:user:make
 6. Settings → enable polling, set interval (default 10 min).
 
 **Recovery:** if Strava or Hevy refresh tokens are revoked, re-do the matching auth step. To wipe state, remove the `strava_hevy_data` volume; already-imported Hevy workouts are not duplicated because Hevy 409s and the service then PUTs to the same deterministic workout ID.
+
+---
+
+## todoassist stack (`todoassist/compose.yaml`)
+
+**Purpose:** Todoist automation add-ons for a single user / single Todoist account. Runs a small set of modules on a schedule against the Todoist Sync API. v1 ships with one module — **Recurring task hygiene** — which detects recurring tasks that are overdue by more than a configurable grace threshold and either reschedules them to today or reports them to the activity log.
+
+| Service | Image/Build | Port | URL | Notes |
+|---------|-------------|------|-----|-------|
+| todoassist | ghcr.io/nova-firefly/todoassist:latest | 8000 | todoassist.NOVA_DOMAIN | FastAPI; SQLite state at `/data/state.db`; protected by Authelia |
+
+**Image:** Built by CI in [`nova-firefly/todoassist`](https://github.com/nova-firefly/todoassist) (`.github/workflows/build.yml`) on every push to `main`. Tags: `:latest` and `:sha-<short>`. WUD watches the digest and notifies on Discord; redeploy with `./nova.sh update todoassist`.
+
+**External volumes:** `todoassist_data` (SQLite + persistent state — encrypted Todoist token, module config, activity log)
+
+**Required env:** `TODOASSIST_ENCRYPTION_KEY` (Fernet key used to encrypt the Todoist API token at rest). Optional: `TODOASSIST_LOG_LEVEL`.
+
+**Auth model:** Authelia (forwardAuth via `authelia@file`). No inbound webhooks in v1 — the Recurring task hygiene module runs on an internal scheduler only.
+
+**Security hardening:** runs as non-root, read-only rootfs, `cap_drop: ALL`, `no-new-privileges`, `/tmp` tmpfs. Only `/data` is writable.
+
+**Bootstrap (one-time, after `nova.sh up todoassist`):**
+1. Generate `TODOASSIST_ENCRYPTION_KEY` (see `.env.example`) and add to root `.env`.
+2. Visit `https://todoassist.${NOVA_DOMAIN}/`, authenticate via Authelia.
+3. Settings → paste Todoist API token (from Todoist → Settings → Integrations → Developer → API token) and **Test connection**.
+4. Modules → **Recurring task hygiene** → set grace-days threshold, choose action (`reschedule` or `report`), enable **dry-run**, click **Run now**, review the activity log, then flip dry-run off and enable the schedule.
+
+**Recovery:** if the Todoist token is revoked, re-do step 3. Losing `TODOASSIST_ENCRYPTION_KEY` means the stored token can no longer be decrypted — re-enter it via the UI. To wipe state, remove the `todoassist_data` volume.
 
 ---
 

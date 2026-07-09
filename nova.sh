@@ -17,7 +17,7 @@
 #   orphans   Find all containers (running + stopped) not defined in any stack and offer to remove them
 #   reconcile Check all stacks for missing containers and recreate them (self-healing)
 #
-# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test, strava-hevy
+# Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test, strava-hevy, todoassist
 # Omit stack name to apply to all stacks.
 #
 # Examples:
@@ -52,7 +52,7 @@ if [[ -n "${NOVA_CONFIG_PATH:-}" && "$(realpath "${NOVA_CONFIG_PATH}")" != "$(pw
   echo "         WUD and nova.sh will reference different compose paths. Fix .env." >&2
 fi
 
-ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test strava-hevy)
+ALL_STACKS=(infra authelia media immich home backup gaming dev tools movienight movienight-test strava-hevy todoassist)
 
 # Stacks excluded from reconcile — intentionally transient or CI-only stacks
 RECONCILE_SKIP_STACKS=(movienight-test)
