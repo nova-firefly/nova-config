@@ -127,7 +127,11 @@ services:
     restart: "unless-stopped"
 
   mission-control:
-    image: "ghcr.io/builderz-labs/mission-control:latest"
+    # Built from upstream source pinned to a release tag. The prebuilt GHCR
+    # image (ghcr.io/builderz-labs/mission-control) is currently private —
+    # tracked upstream. Bump the ref below when a new tag ships.
+    build:
+      context: "https://github.com/builderz-labs/mission-control.git#v2.1.0"
     container_name: "mission-control"
     environment:
       - "PORT=3000"
@@ -164,9 +168,7 @@ services:
       homepage.icon: "https://www.google.com/s2/favicons?domain=mc.builderz.dev&sz=128"
       homepage.href: "https://mc.${NOVA_DOMAIN}"
       homepage.description: "Multi-agent orchestration dashboard (alpha)"
-      wud.watch: "true"
-      wud.watch.digest: "true"
-      wud.trigger.include: "discord.notify"
+      wud.watch: "false"  # source build from git tag; no digest to watch
     networks:
       - "traefik_default"
     volumes:
