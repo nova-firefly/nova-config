@@ -141,10 +141,11 @@ services:
       - "MC_COOKIE_SECURE=1"
       - "MC_COOKIE_SAMESITE=strict"
       - "MC_ENABLE_HSTS=1"
-      # Optional: seed the admin account non-interactively. If unset, visit
-      # /setup on first run to create it.
-      - "AUTH_USER=${MC_AUTH_USER:-}"
-      - "AUTH_PASS=${MC_AUTH_PASS:-}"
+      # Claude Code bridge — MC scans this dir for CC sessions, teams, and tasks
+      # (read-only). Points at the vibe-kanban service's ~/.claude volume so MC
+      # sees the same login and history as the CC install running in vibe-kanban.
+      # First-run auth still happens interactively at /setup.
+      - "MC_CLAUDE_HOME=/claude-home"
       # Optional: enable Authelia SSO passthrough (single sign-on). Requires
       # trusted-IP list matching the traefik_default bridge subnet.
       # - "MC_PROXY_AUTH_HEADER=Remote-User"
@@ -171,6 +172,10 @@ services:
       - "traefik_default"
     volumes:
       - "mission_control_data:/app/.data"
+      # Read-only view of vibe-kanban's Claude Code home so MC's read-only
+      # Claude Code bridge (~/.claude/projects, ~/.claude/teams, ~/.claude/tasks)
+      # sees the actual CC login and session history.
+      - "vibe-kanban-claude:/claude-home:ro"
     read_only: true
     tmpfs:
       - "/tmp"

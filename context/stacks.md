@@ -194,13 +194,13 @@ docker volume create authelia_data && docker volume create authelia_redis
 |---------|-------------|-------|
 | vibe-kanban | local build (`../vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
 | vibe-kanban-tools | ghcr.io/kjsb25/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
-| mission-control | ghcr.io/builderz-labs/mission-control:latest | Multi-agent orchestration dashboard (kanban, agents, scheduler, quality gates). Alpha software. Standalone mode — no OpenClaw gateway wired. Read-only rootfs, cap_drop ALL, 512M/1cpu limit. `mc.NOVA_DOMAIN` |
+| mission-control | ghcr.io/builderz-labs/mission-control:latest | Multi-agent orchestration dashboard (kanban, agents, scheduler, quality gates). Alpha software. Standalone mode — no OpenClaw gateway wired. Read-only rootfs, cap_drop ALL, 512M/1cpu limit. Claude Code bridge active: `vibe-kanban-claude` volume bind-mounted read-only at `/claude-home` with `MC_CLAUDE_HOME=/claude-home`, so MC discovers CC sessions/teams/tasks from the vibe-kanban CC install. First-run auth at `/setup`. `mc.NOVA_DOMAIN` |
 
 **Auto-deploy (vibe-kanban-tools):** Image is built by CI in the `kjsb25/vibe-kanban-tools` repo on push to `main` and pushed to GHCR. The CI deploy job SSH-deploys immediately via `nova.sh update dev`. WUD watches the image and notifies on Discord when the digest changes but does not recreate.
 
 **External volumes (mission-control):** `mission_control_data` — SQLite DB + auto-generated auth secrets. Create with `docker volume create mission_control_data` before first `up`.
 
-**Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`. Optional: `MC_AUTH_USER`, `MC_AUTH_PASS` (seed admin non-interactively; otherwise use `/setup` on first hit).
+**Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`. Mission Control has no stack-specific env — first-run auth at `mc.NOVA_DOMAIN/setup`.
 
 **Required GitHub secrets (vibe-kanban-tools repo):** `NOVA_HOST`, `NOVA_USER`, `NOVA_SSH_KEY`
 
