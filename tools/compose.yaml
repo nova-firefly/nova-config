@@ -1,6 +1,6 @@
-# Tools Stack - Stirling PDF, Vikunja, Actual, ntfy, Uptime Kuma, SnapOtter
+# Tools Stack - Stirling PDF, Vikunja, Actual, ntfy, Uptime Kuma, SnapOtter, Shell, Kittygram
 # Usage: ./nova.sh up tools   (or: docker compose -f tools/compose.yaml up -d)
-# Requires .env file for: NOVA_DOMAIN, TZ
+# Requires .env file for: NOVA_DOMAIN, TZ, SHELL_SSH_USER
 
 name: tools
 
@@ -8,6 +8,8 @@ networks:
   traefik_default:
     external: true
     name: "traefik_default"
+  kittygram_internal:
+    internal: true
 
 services:
 
@@ -240,6 +242,64 @@ services:
     user: "nobody"
     restart: "unless-stopped"
 
+  # Privacy-friendly Instagram frontend (OpenResty + Lua + SQLite + Valkey).
+  # No upstream image is published — built locally from ../kittygram/ (upstream repo cloned
+  # into nova-config/kittygram/ on the host, gitignored). Bootstrap from the repo root:
+  #   git clone https://codeberg.org/irelephant/kittygram.git kittygram --depth=1
+  #   (cd kittygram && git lfs pull)
+  # See context/stacks.md (tools stack) for full bootstrap.
+  kittygram:
+    container_name: "kittygram"
+    build:
+      context: "../kittygram"
+    depends_on:
+      kittygram-valkey:
+        condition: service_started
+    environment:
+      - "REDIS_HOST=kittygram-valkey"
+      - "REDIS_PORT=6379"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.kittygram.rule: "Host(`kittygram.${NOVA_DOMAIN}`)"
+      traefik.http.routers.kittygram.entrypoints: "websecure"
+      traefik.http.routers.kittygram.tls: "true"
+      traefik.http.routers.kittygram.middlewares: "authelia@file"
+      traefik.http.services.kittygram.loadbalancer.server.port: "80"
+      homepage.group: "Tools"
+      homepage.name: "Kittygram"
+      homepage.icon: "mdi-instagram"
+      homepage.href: "https://kittygram.${NOVA_DOMAIN}"
+      homepage.description: "Privacy-friendly Instagram frontend"
+      wud.watch: "false"  # locally-built image; rebuild via `./nova.sh recreate tools kittygram`
+    networks:
+      - "traefik_default"
+      - "kittygram_internal"
+    restart: "unless-stopped"
+
+  kittygram-valkey:
+    container_name: "kittygram-valkey"
+    image: "valkey/valkey:latest"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "kittygram_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "kittygram_valkey_data:/data"
+
   uptime-kuma:
     container_name: "uptime-kuma"
     environment:
@@ -297,3 +357,6 @@ volumes:
     external: true
 
   snapotter_workspace: {}
+
+  kittygram_valkey_data:
+    external: true

@@ -35,3 +35,6 @@ kometa/.schema/*
 kometa/plex_test_libraries/*
 kometa/.secret_key
 kometa/quickstart.sqlite
+
+# Upstream Kittygram source (cloned on the host, built by tools stack)
+kittygram/

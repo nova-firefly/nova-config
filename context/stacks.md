@@ -13,7 +13,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | dev/compose.yaml | vibe-kanban, vibe-kanban-tools |
-| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
+| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell, kittygram, kittygram-valkey |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | pterodactyl-db, pterodactyl-cache, pterodactyl-panel, pterodactyl-wings |
 | movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
@@ -225,8 +225,12 @@ docker volume create authelia_data && docker volume create authelia_redis
 | ntfy | binwiederhier/ntfy | 80 | ntfy.NOVA_DOMAIN | Push notification server; no Authelia — must be reachable by webhooks. Also used by nova.sh to notify on up/down/update/recreate/restart (topic: `$NTFY_TOPIC`) |
 | snapotter | ghcr.io/snapotter-hq/snapotter | 1349 | snapotter.NOVA_DOMAIN | Self-hosted image manipulation (50+ tools, local AI). Behind Authelia; internal auth also on with default `admin`/`admin` (change on first login). `/tmp/workspace` is a compose-managed volume — auto-cleaned by the app |
 | shell | local build (`../shell/`) | 7681 | shell.NOVA_DOMAIN | Browser SSH terminal to host. ttyd (alpine) + openssh-client; reaches host sshd via `host.docker.internal:22` (docker bridge gateway). No SSH creds in the image — user types host secret in browser. |
+| kittygram | local build (`../kittygram/`) | 80 | kittygram.NOVA_DOMAIN | Privacy-friendly Instagram frontend (OpenResty + Lua + SQLite). Behind Authelia. Talks to `kittygram-valkey` over `kittygram_internal` via `REDIS_HOST` env var. No upstream image — see bootstrap below. |
+| kittygram-valkey | valkey/valkey:latest | 6379 (internal) | — | Cache backend for kittygram. No external network. |
 
-**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `snapotter_data`
+**External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `snapotter_data`, `kittygram_valkey_data`
+
+**Internal networks:** `kittygram_internal` (Valkey ↔ Kittygram only; not externally reachable)
 
 **Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose), `snapotter_workspace` (ephemeral processing dir; safe to wipe)
 
@@ -244,6 +248,16 @@ Recommended host hardening once `shell` is up (see `.env.example` Shell section 
 - Add `pam_google_authenticator` to `$SHELL_SSH_USER` for a TOTP factor at the sshd layer.
 
 **Required env (for shell):** `SHELL_SSH_USER` (stack refuses to start without it).
+
+**Kittygram bootstrap (one-time, before `nova.sh up tools`):**
+Upstream publishes no image; the tools stack builds from `../kittygram/` (relative to `tools/compose.yaml`, i.e. the sibling dir `nova-config/kittygram/`). The clone is gitignored (not vendored in nova-config).
+```bash
+# On the host, from the nova-config repo root:
+git clone https://codeberg.org/irelephant/kittygram.git kittygram --depth=1
+(cd kittygram && git lfs pull)    # requires git-lfs installed on the host
+docker volume create kittygram_valkey_data
+```
+To update Kittygram: `(cd kittygram && git pull && git lfs pull) && ./nova.sh recreate tools kittygram`.
 
 ---
 
