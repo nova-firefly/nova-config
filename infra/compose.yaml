@@ -435,15 +435,19 @@ services:
     # GitHub Actions round-trip with an in-host 10-minute reconciliation loop.
     # The runner containers bind-mount /srv/nova-config read-only; this sidecar is
     # the only process permitted to mutate that path.
+    #
+    # alpine/git has ENTRYPOINT ["git"] baked in — we override it so the loop
+    # script runs under /bin/sh instead of being passed as a git subcommand.
     image: "alpine/git@sha256:fac7bc2c12aa52bff1c78a26359990e149954a60cdd5d6e20e7e009666c73e0a"
     init: true
     cap_drop:
       - "ALL"
     security_opt:
       - "no-new-privileges:true"
-    command:
-      - "sh"
+    entrypoint:
+      - "/bin/sh"
       - "-c"
+    command:
       - |
         set -eu
         while :; do
@@ -465,6 +469,19 @@ services:
     init: true
     cap_drop:
       - "ALL"
+    # The image starts as root, `chown -R runner:runner /actions-runner`, then
+    # su-exec's down to uid 1001. That init sequence needs CHOWN + FOWNER (fix
+    # ownership), DAC_OVERRIDE (root writing into the freshly-chown'd dir), and
+    # SETUID + SETGID (privilege drop). Without them the runner user cannot
+    # write .env / .path / _diag, and Runner.Listener aborts with exit 134.
+    # These caps are only exercised during ~1s of container startup — the runner
+    # process itself does not need them and workflow jobs run under su-exec.
+    cap_add:
+      - "CHOWN"
+      - "DAC_OVERRIDE"
+      - "FOWNER"
+      - "SETUID"
+      - "SETGID"
     security_opt:
       - "no-new-privileges:true"
     tmpfs:
@@ -500,6 +517,19 @@ services:
     init: true
     cap_drop:
       - "ALL"
+    # The image starts as root, `chown -R runner:runner /actions-runner`, then
+    # su-exec's down to uid 1001. That init sequence needs CHOWN + FOWNER (fix
+    # ownership), DAC_OVERRIDE (root writing into the freshly-chown'd dir), and
+    # SETUID + SETGID (privilege drop). Without them the runner user cannot
+    # write .env / .path / _diag, and Runner.Listener aborts with exit 134.
+    # These caps are only exercised during ~1s of container startup — the runner
+    # process itself does not need them and workflow jobs run under su-exec.
+    cap_add:
+      - "CHOWN"
+      - "DAC_OVERRIDE"
+      - "FOWNER"
+      - "SETUID"
+      - "SETGID"
     security_opt:
       - "no-new-privileges:true"
     tmpfs:
@@ -538,6 +568,19 @@ services:
     init: true
     cap_drop:
       - "ALL"
+    # The image starts as root, `chown -R runner:runner /actions-runner`, then
+    # su-exec's down to uid 1001. That init sequence needs CHOWN + FOWNER (fix
+    # ownership), DAC_OVERRIDE (root writing into the freshly-chown'd dir), and
+    # SETUID + SETGID (privilege drop). Without them the runner user cannot
+    # write .env / .path / _diag, and Runner.Listener aborts with exit 134.
+    # These caps are only exercised during ~1s of container startup — the runner
+    # process itself does not need them and workflow jobs run under su-exec.
+    cap_add:
+      - "CHOWN"
+      - "DAC_OVERRIDE"
+      - "FOWNER"
+      - "SETUID"
+      - "SETGID"
     security_opt:
       - "no-new-privileges:true"
     tmpfs:

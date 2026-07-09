@@ -152,6 +152,7 @@ Most common causes:
 | `401 Unauthorized` against api.github.com | `GH_PAT` is expired, revoked, or missing `Administration: write` | Rotate PAT (see above) |
 | `manifest for myoung34/github-runner@sha256:… not found` | Placeholder digest never replaced, or replaced with a typo | Re-pin the digest |
 | `Cannot connect to the Docker daemon at tcp://runners-socket-proxy:2375` | `runners-socket-proxy` is unhealthy or hasn't joined `runners_net` | `docker logs runners-socket-proxy`; recreate proxy |
+| `touch: cannot touch '.env': Permission denied` and `Aborted (core dumped)` (exit 134) | Container missing one of CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID — the image's root-init phase can't chown `/actions-runner` and drop to the runner user | Verify the `cap_add` block on the runner matches the current compose file, then recreate |
 | Runner registers, runs one job, exits, and never comes back | `EPHEMERAL=true` is working as designed — `restart: unless-stopped` should bring it back; if not, check `docker ps -a` for the exit code | Recreate the runner |
 
 ### A job sits Queued forever
