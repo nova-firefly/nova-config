@@ -88,8 +88,6 @@ services:
       - "bazarr_config:/mnt/volumes/bazarr_config:ro"
       - "gluetun_data:/mnt/volumes/gluetun_data:ro"
       - "ha_config:/mnt/volumes/ha_config:ro"
-      - "habitica_db:/mnt/volumes/habitica_db:ro"
-      - "habitica_db_config:/mnt/volumes/habitica_db_config:ro"
       - "homescreen_hero_data:/mnt/volumes/homescreen_hero_data:ro"
       - "immich_immich-ml-model-cache:/mnt/volumes/immich_immich-ml-model-cache:ro"
       - "immich_power_tools_data:/mnt/volumes/immich_power_tools_data:ro"
@@ -192,10 +190,6 @@ volumes:
   gluetun_data:
     external: true
   ha_config:
-    external: true
-  habitica_db:
-    external: true
-  habitica_db_config:
     external: true
   homescreen_hero_data:
     external: true
