@@ -259,7 +259,10 @@ services:
       - "REDIS_HOST=kittygram-valkey"
       - "REDIS_PORT=6379"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      # Force IPv4 — busybox wget resolves "localhost" to ::1 first, but OpenResty (with
+      # `listen ${{PORT}};` from lapis' docker config) only binds IPv4 on this image, so
+      # `wget http://localhost/` gets ECONNREFUSED even though the app is fine on 0.0.0.0.
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
