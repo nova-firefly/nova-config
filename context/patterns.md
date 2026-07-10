@@ -230,6 +230,41 @@ Each compose file begins with a comment block:
 3. Add env vars to `.env.example` with `# Stack: name` annotation
 4. Update `context/stacks.md`
 
+## On-Demand Container Spin-Up (Sablier)
+
+For services used occasionally (photo tools, ad-hoc utilities), Sablier stops them after idle timeout and restarts on the next HTTP request. Traefik shows a themed loading page during cold start.
+
+**Infrastructure:** `sablier` + `socket-proxy-sablier` in `infra/compose.yaml`; plugin registered in the Traefik static args (`--experimental.plugins.sablier.*`); shared middleware defined in `traefik/dynamic.yaml` as `sablier-tools@file` (group `tools`, 60m session, ghost theme).
+
+**To make an existing service on-demand:**
+
+1. In the service's Traefik labels, prepend `traefik.docker.allownonrunning: "true"` and change the middleware chain to include `sablier-tools@file` **after** `authelia@file`:
+
+   ```yaml
+   traefik.docker.allownonrunning: "true"
+   traefik.http.routers.myservice.middlewares: "authelia@file,sablier-tools@file"
+   sablier.enable: "true"
+   sablier.group: "tools"
+   ```
+
+2. Leave `restart: unless-stopped` in place — Sablier issues an explicit `docker stop`, which `unless-stopped` honours (won't fight it).
+
+3. Verify: hit the URL after a fresh boot, cancel any active session (or wait 60m), then hit again — you should see the ghost loading theme, then the app.
+
+**Group semantics:** all services sharing `sablier.group=<name>` wake and sleep together. For independent lifecycles, define a new middleware block in `dynamic.yaml` (`sablier-<groupname>`) with a distinct `group:` value and label services with the matching `sablier.group`.
+
+**Never put on-demand:**
+- Databases (Postgres, Redis, MariaDB) — always up.
+- Immich, media stack — mobile apps poll constantly, defeating idle.
+- Authelia, Traefik, homepage, monitoring — infrastructure must be reachable.
+- Home Assistant / Z-Wave — event driven, cannot miss triggers.
+
+**Cold-start tuning:** if a service's `healthcheck.start_period` is longer than the loading-page refresh interval, the ghost theme will still poll and the container will surface when ready. If cold start exceeds a few minutes, consider raising `refreshFrequency` on the middleware or switching to `blocking` mode with an appropriate `timeout`.
+
+**Long-lived connections:** the middleware sets `keepAliveInterval: 30s` so SSE, WebSockets, and long uploads renew the session while active. If a service depends heavily on WebSockets and users report drop-outs, drop this to `10s` or increase `sessionDuration`.
+
+**Version bumps:** the plugin version (in Traefik static args) and the daemon image tag (on the sablier service) must stay compatible. Bump both together; test the wake flow on a low-traffic candidate before merging.
+
 ## Adding a Host-Mode Service to Traefik
 
 Edit `traefik/dynamic.yaml`:

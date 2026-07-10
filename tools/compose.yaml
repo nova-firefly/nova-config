@@ -157,16 +157,24 @@ services:
     image: "ghcr.io/snapotter-hq/snapotter:latest"
     labels:
       traefik.enable: "true"
+      # On-demand: sablier@file middleware wakes this container when hit and stops
+      # it after 60m idle. `allownonrunning` tells Traefik to keep the router
+      # registered while the container is stopped so the wake path works.
+      # Middleware order matters: Authelia must run BEFORE Sablier so unauth'd
+      # probes don't wake the container.
+      traefik.docker.allownonrunning: "true"
       traefik.http.routers.snapotter.rule: "Host(`snapotter.${NOVA_DOMAIN}`)"
       traefik.http.routers.snapotter.entrypoints: "websecure"
       traefik.http.routers.snapotter.tls: "true"
-      traefik.http.routers.snapotter.middlewares: "authelia@file"
+      traefik.http.routers.snapotter.middlewares: "authelia@file,sablier-tools@file"
       traefik.http.services.snapotter.loadbalancer.server.port: "1349"
+      sablier.enable: "true"
+      sablier.group: "tools"
       homepage.group: "Tools"
       homepage.name: "SnapOtter"
       homepage.icon: "mdi-image-edit"
       homepage.href: "https://snapotter.${NOVA_DOMAIN}"
-      homepage.description: "Self-hosted image manipulation"
+      homepage.description: "Self-hosted image manipulation (on-demand)"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
