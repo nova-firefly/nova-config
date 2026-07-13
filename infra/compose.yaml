@@ -610,6 +610,54 @@ services:
           cpus: "1.0"
           memory: "512M"
 
+  runner-todoassist:
+    container_name: "runner-todoassist"
+    image: "myoung34/github-runner@sha256:67c2447f2717227277560b76ba7e281e9f981d13508fe934b9f9f3cfd68e2d52"
+    init: true
+    cap_drop:
+      - "ALL"
+    # The image starts as root, `chown -R runner:runner /actions-runner`, then
+    # su-exec's down to uid 1001. That init sequence needs CHOWN + FOWNER (fix
+    # ownership), DAC_OVERRIDE (root writing into the freshly-chown'd dir), and
+    # SETUID + SETGID (privilege drop). Without them the runner user cannot
+    # write .env / .path / _diag, and Runner.Listener aborts with exit 134.
+    # These caps are only exercised during ~1s of container startup — the runner
+    # process itself does not need them and workflow jobs run under su-exec.
+    cap_add:
+      - "CHOWN"
+      - "DAC_OVERRIDE"
+      - "FOWNER"
+      - "SETUID"
+      - "SETGID"
+    security_opt:
+      - "no-new-privileges:true"
+    tmpfs:
+      - "/tmp"
+      - "/_work"
+    environment:
+      - "ACCESS_TOKEN=${GH_PAT}"
+      - "REPO_URL=https://github.com/nova-firefly/todoassist"
+      - "RUNNER_NAME=runner-todoassist"
+      - "RUNNER_SCOPE=repo"
+      - "LABELS=nova,todoassist"
+      - "EPHEMERAL=true"
+      - "DISABLE_AUTO_UPDATE=true"
+      - "RUNNER_WORKDIR=/_work"
+      - "DOCKER_HOST=tcp://runners-socket-proxy:2375"
+    labels:
+      wud.watch: "false"
+    networks:
+      - "runners_net"
+    restart: "unless-stopped"
+    volumes:
+      - "/srv/nova-config:/nova-config:ro"
+      - "runner_todoassist_state:/runner"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+
 volumes:
 
   traefik_acme:
@@ -632,3 +680,5 @@ volumes:
   runner_vibe_kanban_tools_state:
 
   runner_movienight_state:
+
+  runner_todoassist_state:

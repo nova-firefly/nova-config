@@ -1,0 +1,73 @@
+# Todoassist Stack - Todoist automation add-ons (single-user, single-account)
+# Usage: ./nova.sh up todoassist   (or: docker compose -f todoassist/compose.yaml up -d)
+# Requires .env file for: NOVA_DOMAIN, TODOASSIST_ENCRYPTION_KEY
+#
+# Image is built by CI in nova-firefly/todoassist (.github/workflows/build.yml)
+# on push to main and published to ghcr.io/nova-firefly/todoassist. WUD watches
+# the digest of `:latest` and auto-recreates the container (docker.local trigger)
+# in addition to notifying on Discord — we own the image so CI gates the changes.
+#
+# Bootstrap (after first `nova.sh up todoassist`):
+#   1. Generate TODOASSIST_ENCRYPTION_KEY (see .env.example) and add to root .env.
+#   2. Visit https://todoassist.${NOVA_DOMAIN}/ (gated by Authelia).
+#   3. Settings → paste Todoist API token (Todoist → Settings → Integrations →
+#      Developer → API token) and click "Test connection".
+#   4. Modules → Recurring task hygiene → set grace-days threshold, choose
+#      dry-run first, then enable.
+
+name: todoassist
+
+networks:
+  traefik_default:
+    external: true
+    name: "traefik_default"
+
+services:
+
+  todoassist:
+    image: "ghcr.io/nova-firefly/todoassist:latest"
+    container_name: "todoassist"
+    environment:
+      - "DATA_DIR=/data"
+      - "LOG_LEVEL=${TODOASSIST_LOG_LEVEL:-INFO}"
+      - "PUBLIC_BASE_URL=https://todoassist.${NOVA_DOMAIN}"
+      - "ENCRYPTION_KEY=${TODOASSIST_ENCRYPTION_KEY}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/healthz >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    read_only: true
+    tmpfs:
+      - "/tmp:size=16M,noexec,nosuid,nodev"
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - "ALL"
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "traefik_default"
+      traefik.http.routers.todoassist.rule: "Host(`todoassist.${NOVA_DOMAIN}`)"
+      traefik.http.routers.todoassist.entrypoints: "websecure"
+      traefik.http.routers.todoassist.tls: "true"
+      traefik.http.routers.todoassist.middlewares: "authelia@file"
+      traefik.http.services.todoassist.loadbalancer.server.port: "8000"
+      homepage.group: "Tools"
+      homepage.name: "Todoassist"
+      homepage.icon: "todoist.svg"
+      homepage.href: "https://todoassist.${NOVA_DOMAIN}"
+      homepage.description: "Todoist automation add-ons"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "docker.local,discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "todoassist_data:/data"
+
+volumes:
+
+  todoassist_data:
+    external: true
