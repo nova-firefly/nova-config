@@ -208,7 +208,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:7681/ || exit 1"]
+      # busybox wget --spider hangs/fails against ttyd with --check-origin; a real
+      # GET to / returns the ttyd HTML page and confirms the listener is alive.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:7681/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

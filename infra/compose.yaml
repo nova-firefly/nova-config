@@ -100,11 +100,7 @@ services:
       - "JWT_SECRET=${ARCANE_JWT_SECRET}"
       - "TZ=${TZ}"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 15s
+      disable: true  # distroless image has no shell, wget, or curl; app health confirmed via logs
     labels:
       traefik.enable: "true"
       traefik.http.routers.arcane.rule: "Host(`arcane.${NOVA_DOMAIN}`)"
