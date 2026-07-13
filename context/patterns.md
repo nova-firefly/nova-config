@@ -249,7 +249,16 @@ For services used occasionally (photo tools, ad-hoc utilities), Sablier stops th
 
 2. Leave `restart: unless-stopped` in place — Sablier issues an explicit `docker stop`, which `unless-stopped` honours (won't fight it).
 
-3. Verify: hit the URL after a fresh boot, cancel any active session (or wait 60m), then hit again — you should see the ghost loading theme, then the app.
+3. Add Homepage tile hints so the sleeping state reads as "idle" instead of "broken":
+
+   ```yaml
+   homepage.description: "<short desc> — on-demand · click to wake"
+   homepage.statusStyle: "dot"
+   ```
+
+   Homepage's docker provider (`homepage/docker.yaml` → `socket-proxy`) already surfaces container state — a green dot when running, a red dot when Sablier has stopped it. The `on-demand · click to wake` suffix tells users a red dot means "idle" rather than "down". Clicking the tile navigates to the URL and Traefik/Sablier handle the wake via the ghost loading page — no separate button needed.
+
+4. Verify: hit the URL after a fresh boot, cancel any active session (or wait 60m), then hit again — you should see the ghost loading theme, then the app. Homepage's tile dot should flip red while asleep and green after the wake.
 
 **Group semantics:** all services sharing `sablier.group=<name>` wake and sleep together. For independent lifecycles, define a new middleware block in `dynamic.yaml` (`sablier-<groupname>`) with a distinct `group:` value and label services with the matching `sablier.group`.
 
@@ -262,6 +271,11 @@ For services used occasionally (photo tools, ad-hoc utilities), Sablier stops th
 **Cold-start tuning:** if a service's `healthcheck.start_period` is longer than the loading-page refresh interval, the ghost theme will still poll and the container will surface when ready. If cold start exceeds a few minutes, consider raising `refreshFrequency` on the middleware or switching to `blocking` mode with an appropriate `timeout`.
 
 **Long-lived connections:** the middleware sets `keepAliveInterval: 30s` so SSE, WebSockets, and long uploads renew the session while active. If a service depends heavily on WebSockets and users report drop-outs, drop this to `10s` or increase `sessionDuration`.
+
+**Interaction with `nova.sh reconcile` and `nova-heal`:**
+
+- `nova.sh reconcile` (systemd timer, every 15m via `host-scripts/nova-reconcile.timer`) checks each stack with `docker ps -a` — a container in `exited` state still exists, so a Sablier-stopped service is treated as *present* and never recreated. Safe.
+- `nova-heal.sh` (systemd timer, every 3h via `host-scripts/nova-heal.timer`) calls `nova.sh heal`, which is `up --no-recreate` per stack minus services labelled `sablier.enable=true`. Sablier-stopped services are left alone; only genuinely-crashed or unstarted non-Sablier containers get recovered. If you add `nova.sh heal` invocations elsewhere, keep this filter — bare `up --no-recreate` would fight Sablier every timer tick and generate phantom "container recovered" ntfys.
 
 **Version bumps:** the plugin version (in Traefik static args) and the daemon image tag (on the sablier service) must stay compatible. Bump both together; test the wake flow on a low-traffic candidate before merging.
 

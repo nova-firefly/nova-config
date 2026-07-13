@@ -174,7 +174,10 @@ services:
       homepage.name: "SnapOtter"
       homepage.icon: "mdi-image-edit"
       homepage.href: "https://snapotter.${NOVA_DOMAIN}"
-      homepage.description: "Self-hosted image manipulation (on-demand)"
+      homepage.description: "Image manipulation — on-demand · click to wake"
+      # Green dot = running, red dot = sleeping (Sablier stopped it). See
+      # patterns.md "On-Demand Container Spin-Up (Sablier)".
+      homepage.statusStyle: "dot"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
