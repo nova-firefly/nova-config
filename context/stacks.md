@@ -6,7 +6,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 
 | Stack | File | Services |
 |-------|------|----------|
-| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy, runners-socket-proxy, nova-config-sync, runner-nova-config, runner-vibe-kanban-tools, runner-movienight, runner-todoassist |
+| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy, socket-proxy-sablier, sablier, runners-socket-proxy, nova-config-sync, runner-nova-config, runner-vibe-kanban-tools, runner-movienight, runner-todoassist |
 | authelia | authelia/compose.yaml | authelia, redis |
 | media | media/compose.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent, decluttarr, recyclarr, homescreen-hero |
 | immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
@@ -37,6 +37,8 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | volume-sharer | gdiepen/volume-sharer | 139, 445 (host) | — | Samba share of Docker volumes |
 | wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; notify-only (Discord). Manual deploys via Dockge / Arcane / `nova.sh update` |
 | scrutiny | ghcr.io/analogj/scrutiny:master-omnibus | 8082→8080 | scrutiny.NOVA_DOMAIN | S.M.A.R.T. hard drive health monitoring; needs SYS_RAWIO + device passthrough |
+| socket-proxy-sablier | tecnativa/docker-socket-proxy | — | — | Scoped write-allowlist socket proxy for Sablier only. `CONTAINERS=1,POST=1,INFO=1,VERSION=1,EVENTS=1`; no IMAGES/NETWORKS/VOLUMES/EXEC/BUILD/SYSTEM/SECRETS. Reachable only on `sablier_internal` (internal-only bridge, no egress). |
+| sablier | sablierapp/sablier:1.15.0 | 10000 (internal only) | — | On-demand container controller: stops idle containers, wakes them on the next HTTP request via a Traefik plugin. Target services opt in with `sablier.enable=true` + `sablier.group=<name>` labels plus the `sablier-tools@file` middleware. See `context/patterns.md` for the pattern. Plugin version pinned in traefik's static args (`v1.3.0`) and daemon image tag must stay compatible. |
 | runners-socket-proxy | tecnativa/docker-socket-proxy | — | — | Write-allowlist socket proxy for self-hosted runners (POST=1, EXEC=0, BUILD=0, SECRETS=0, SYSTEM=0); reachable only on `runners_net` |
 | nova-config-sync | alpine/git (pinned digest) | — | — | Sole writer to `/srv/nova-config`; loops `git fetch && reset --hard origin/main` every 10 min. Replaces the deleted `.github/workflows/sync.yml` Actions round-trip |
 | runner-nova-config | myoung34/github-runner (pinned digest) | — | — | Ephemeral self-hosted runner for `nova-firefly/nova-config`; labels `nova,nova-config`; jobs launch via `runners-socket-proxy` |
@@ -49,7 +51,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 
 **External networks:** `traefik_default` (shared)
 
-**Compose-managed networks:** `runners_net` (bridge, not internal — carries runner ↔ proxy traffic and gives runners outbound internet for GitHub long-poll)
+**Compose-managed networks:** `runners_net` (bridge, not internal — carries runner ↔ proxy traffic and gives runners outbound internet for GitHub long-poll), `sablier_internal` (bridge, `internal: true` — sablier ↔ socket-proxy-sablier only, no egress)
 
 **Compose-managed volumes:** `runner_nova_config_state`, `runner_vibe_kanban_tools_state`, `runner_movienight_state` — per-runner registration state so ephemeral runners don't re-register on every restart
 
@@ -224,7 +226,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management |
 | uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
 | ntfy | binwiederhier/ntfy | 80 | ntfy.NOVA_DOMAIN | Push notification server; no Authelia — must be reachable by webhooks. Also used by nova.sh to notify on up/down/update/recreate/restart (topic: `$NTFY_TOPIC`) |
-| snapotter | ghcr.io/snapotter-hq/snapotter | 1349 | snapotter.NOVA_DOMAIN | Self-hosted image manipulation (50+ tools, local AI). Behind Authelia; internal auth also on with default `admin`/`admin` (change on first login). `/tmp/workspace` is a compose-managed volume — auto-cleaned by the app |
+| snapotter | ghcr.io/snapotter-hq/snapotter | 1349 | snapotter.NOVA_DOMAIN | Self-hosted image manipulation (50+ tools, local AI). Behind Authelia; internal auth also on with default `admin`/`admin` (change on first login). `/tmp/workspace` is a compose-managed volume — auto-cleaned by the app. **On-demand via Sablier** (group `tools`, 60m idle; see patterns.md). Cold-start ~60s. |
 | shell | local build (`../shell/`) | 7681 | shell.NOVA_DOMAIN | Browser SSH terminal to host. ttyd (alpine) + openssh-client; reaches host sshd via `host.docker.internal:22` (docker bridge gateway). No SSH creds in the image — user types host secret in browser. |
 
 **External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `snapotter_data`

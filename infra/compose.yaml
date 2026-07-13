@@ -16,6 +16,12 @@ networks:
   # public internet via this network's default gateway (it is NOT marked internal).
   runners_net:
     driver: bridge
+  # Internal-only bridge between sablier (on-demand container controller) and its
+  # scoped socket-proxy. No egress; nothing else joins this network. Sablier reaches
+  # Traefik on traefik_default separately.
+  sablier_internal:
+    driver: bridge
+    internal: true
 
 services:
 
@@ -193,6 +199,11 @@ services:
       - "--ping=true"
       - "--ping.entrypoint=ping"
       - "--entrypoints.ping.address=:8082"
+      # Sablier plugin: on-demand container spin-up. Version pinned in step with
+      # sablierapp/sablier daemon (below). Bumping requires editing BOTH the plugin
+      # version here and the daemon image tag on the sablier service.
+      - "--experimental.plugins.sablier.moduleName=github.com/sablierapp/sablier-traefik-plugin"
+      - "--experimental.plugins.sablier.version=v1.3.0"
     container_name: "traefik"
     depends_on:
       - "socket-proxy"
@@ -389,6 +400,67 @@ services:
       - "../scrutiny/scrutiny.yaml:/opt/scrutiny/config/scrutiny.yaml:ro"
       - "scrutiny_data:/opt/scrutiny/data"
       - "/run/udev:/run/udev:ro"
+
+  # --- On-demand container spin-up (Sablier + scoped socket proxy) ---
+  # Sablier stops idle containers and restarts them on the next HTTP request via
+  # Traefik. Target services opt in with `sablier.enable=true` + `sablier.group=<name>`
+  # labels plus a Sablier middleware in their Traefik chain (see traefik/dynamic.yaml
+  # for the `sablier-tools@file` middleware and context/patterns.md for the pattern).
+  #
+  # Version pinning: the plugin version (registered on the traefik service above) and
+  # the daemon image tag here must stay compatible. Sablier follows semver — pin both,
+  # bump together, verify the wake flow before merging.
+
+  socket-proxy-sablier:
+    container_name: "socket-proxy-sablier"
+    # Write-allowlist socket proxy scoped to just what Sablier needs: list containers
+    # by label, inspect them, and start/stop them. No IMAGES / NETWORKS / VOLUMES /
+    # EXEC / BUILD / SYSTEM / SECRETS — a compromised Sablier can only cycle the
+    # containers it already manages, nothing else.
+    environment:
+      - "CONTAINERS=1"
+      - "INFO=1"
+      - "VERSION=1"
+      - "EVENTS=1"
+      - "POST=1"
+    image: "tecnativa/docker-socket-proxy"
+    cap_drop:
+      - "ALL"
+    security_opt:
+      - "no-new-privileges:true"
+    labels:
+      wud.watch: "false"
+    networks:
+      - "sablier_internal"
+    restart: "unless-stopped"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  sablier:
+    container_name: "sablier"
+    image: "sablierapp/sablier:1.15.0"
+    command:
+      - "start"
+      - "--provider.name=docker"
+    environment:
+      - "DOCKER_HOST=tcp://socket-proxy-sablier:2375"
+    healthcheck:
+      # Sablier ships FROM scratch — no shell, no curl. Its binary is at /bin/sablier
+      # and has a `health` subcommand that hits http://localhost:10000/health by default.
+      test: ["CMD", "/bin/sablier", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      wud.watch: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      # traefik_default so Traefik can reach http://sablier:10000 for the plugin API.
+      # sablier_internal so sablier can reach the scoped socket proxy.
+      - "traefik_default"
+      - "sablier_internal"
+    restart: "unless-stopped"
 
   # --- Self-hosted GitHub Actions runners + supporting sidecars ---
   # See context/runners.md for architecture, add-a-runner steps, and PAT rotation.

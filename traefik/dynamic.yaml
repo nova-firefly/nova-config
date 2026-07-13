@@ -4,8 +4,14 @@
 # host.docker.internal resolves to the Docker host via extra_hosts
 #
 # Middleware defined here:
-#   authelia@file - Forward authentication via Authelia
-#                   Reference in Docker labels as: authelia@file
+#   authelia@file      - Forward authentication via Authelia
+#                        Reference in Docker labels as: authelia@file
+#   sablier-tools@file - On-demand container wake for occasional-use services.
+#                        Reference as: sablier-tools@file
+#                        Chain AFTER authelia so unauth'd probes don't wake containers:
+#                          middlewares: "authelia@file,sablier-tools@file"
+#                        Each target service also needs sablier.enable=true,
+#                        sablier.group=<name>, and traefik.docker.allownonrunning=true.
 
 http:
   middlewares:
@@ -18,6 +24,32 @@ http:
           - "Remote-Groups"
           - "Remote-Email"
           - "Remote-Name"
+
+    sablier-tools:
+      plugin:
+        sablier:
+          sablierUrl: "http://sablier:10000"
+          # Group name — Sablier wakes/stops all containers labelled with this group
+          # together. Each Sablier-managed service currently uses its own group
+          # (sablier.group=<service-name>); this middleware's `group` is set per
+          # target via the sablier.group service label, but the plugin still
+          # requires a value here as its group-of-record default.
+          group: "tools"
+          # 60m matches the plan: photo tools where you might walk away between edits.
+          sessionDuration: "60m"
+          # Keep the session alive during long uploads / SSE streams.
+          keepAliveInterval: "30s"
+          # Silently ignore probes so they don't wake containers.
+          ignoreUserAgent:
+            - "(?i)uptimerobot"
+            - "(?i)uptime-kuma"
+            - "curl"
+            - "wget"
+          dynamic:
+            displayName: "Nova Service"
+            theme: "ghost"
+            refreshFrequency: "5s"
+            showDetails: true
 
   routers:
     plex:
