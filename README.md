@@ -12,7 +12,7 @@ Docker Compose configuration for managing self-hosted services, split into indep
 | **Infra** | `infra/compose.yaml` | Traefik, Authelia (separate stack), Arcane, Dockge, WUD, DuckDNS, Homepage, Glances, Scrutiny |
 | **Authelia** | `authelia/compose.yaml` | Authelia + Redis (forward-auth for protected services) |
 | **Backup** | `backup/compose.yaml` | Backrest, Duplicati |
-| **Gaming** | `gaming/compose.yaml` | Pterodactyl panel + Wings |
+| **Gaming** | `gaming/compose.yaml` | Minecraft server |
 | **Dev** | `dev/compose.yaml` | Vibe Kanban, Vibe Kanban Tools |
 | **Tools** | `tools/compose.yaml` | Stirling PDF, Vikunja, Uptime Kuma, ntfy, Actual |
 | **Movienight** | `movienight/compose.yaml` | Frontend + Backend + Postgres |
