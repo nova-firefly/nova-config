@@ -249,7 +249,16 @@ For services used occasionally (photo tools, ad-hoc utilities), Sablier stops th
 
 2. Leave `restart: unless-stopped` in place — Sablier issues an explicit `docker stop`, which `unless-stopped` honours (won't fight it).
 
-3. Verify: hit the URL after a fresh boot, cancel any active session (or wait 60m), then hit again — you should see the ghost loading theme, then the app.
+3. Add Homepage tile hints so the sleeping state reads as "idle" instead of "broken":
+
+   ```yaml
+   homepage.description: "<short desc> — on-demand · click to wake"
+   homepage.statusStyle: "dot"
+   ```
+
+   Homepage's docker provider (`homepage/docker.yaml` → `socket-proxy`) already surfaces container state — a green dot when running, a red dot when Sablier has stopped it. The `on-demand · click to wake` suffix tells users a red dot means "idle" rather than "down". Clicking the tile navigates to the URL and Traefik/Sablier handle the wake via the ghost loading page — no separate button needed.
+
+4. Verify: hit the URL after a fresh boot, cancel any active session (or wait 60m), then hit again — you should see the ghost loading theme, then the app. Homepage's tile dot should flip red while asleep and green after the wake.
 
 **Group semantics:** all services sharing `sablier.group=<name>` wake and sleep together. For independent lifecycles, define a new middleware block in `dynamic.yaml` (`sablier-<groupname>`) with a distinct `group:` value and label services with the matching `sablier.group`.
 
