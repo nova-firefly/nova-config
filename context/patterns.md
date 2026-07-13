@@ -275,10 +275,7 @@ For services used occasionally (photo tools, ad-hoc utilities), Sablier stops th
 **Interaction with `nova.sh reconcile` and `nova-heal`:**
 
 - `nova.sh reconcile` (systemd timer, every 15m via `host-scripts/nova-reconcile.timer`) checks each stack with `docker ps -a` — a container in `exited` state still exists, so a Sablier-stopped service is treated as *present* and never recreated. Safe.
-- `nova-heal.sh` (systemd timer, every 3h via `host-scripts/nova-heal.timer`) runs `nova.sh up --no-recreate`, which starts *stopped* containers. **This currently fights Sablier**: a service Sablier stopped for idle will be restarted on the next heal cycle and generate a "container recovered" ntfy. If you see phantom heals of an on-demand service, that's the cause. Options to resolve (pick one when Sablier fleet grows):
-  - Skip services labelled `sablier.enable=true` in `nova-heal.sh` (filter by label before compose invocation).
-  - Change heal semantics to only start *missing* containers (align with reconcile), losing crash-recovery for legitimately-stopped services.
-  - Move Sablier-managed services into a compose `profile` that nova-heal doesn't activate.
+- `nova-heal.sh` (systemd timer, every 3h via `host-scripts/nova-heal.timer`) calls `nova.sh heal`, which is `up --no-recreate` per stack minus services labelled `sablier.enable=true`. Sablier-stopped services are left alone; only genuinely-crashed or unstarted non-Sablier containers get recovered. If you add `nova.sh heal` invocations elsewhere, keep this filter — bare `up --no-recreate` would fight Sablier every timer tick and generate phantom "container recovered" ntfys.
 
 **Version bumps:** the plugin version (in Traefik static args) and the daemon image tag (on the sablier service) must stay compatible. Bump both together; test the wake flow on a low-traffic candidate before merging.
 

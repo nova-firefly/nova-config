@@ -16,6 +16,8 @@
 #   restart   Restart stack or single service (picks up config changes, no pull/rebuild)
 #   orphans   Find all containers (running + stopped) not defined in any stack and offer to remove them
 #   reconcile Check all stacks for missing containers and recreate them (self-healing)
+#   heal      Like `up --no-recreate` but skips services labelled sablier.enable=true
+#             (Sablier idle-stops those; heal must not fight it). Used by nova-heal timer.
 #
 # Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test, strava-hevy, todoassist
 # Omit stack name to apply to all stacks.
@@ -34,6 +36,7 @@
 #   ./nova.sh health                # Show unhealthy/starting containers
 #   ./nova.sh orphans               # Find and optionally remove containers no longer in config
 #   ./nova.sh reconcile             # Detect + recreate any missing containers across all stacks
+#   ./nova.sh heal                  # Start missing/stopped containers, but leave Sablier idle-stops alone
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -115,6 +118,19 @@ get_external_volumes() {
     in_volumes && /^  [a-zA-Z_-]/ { gsub(/:/, "", $1); current=$1 }
     in_volumes && /external: true/ { print current }
   ' "$file"
+}
+
+# --- Return service names labelled sablier.enable=true in a compose file ---
+# Used by `heal` to skip services that Sablier intentionally idle-stops.
+# Relies on this project's convention: services are declared with 2-space
+# indent under `services:`, labels are `sablier.enable: "true"`.
+
+get_sablier_services() {
+  local file="$1"
+  awk '
+    /^  [a-zA-Z0-9_-]+:$/ { name=$1; sub(":$","",name); current=name }
+    /sablier\.enable: *"?true"?/ { print current }
+  ' "$file" | sort -u
 }
 
 # --- Collect all container_name values defined across every stack file ---
@@ -419,6 +435,40 @@ case "$CMD" in
     else
       echo "Aborted — no containers removed."
     fi
+    ;;
+
+  heal)
+    # Like `up --no-recreate` but excludes services labelled sablier.enable=true
+    # per stack. Sablier stops those for idle; heal must not restart them or it
+    # fights Sablier every timer tick (see context/patterns.md, Sablier section).
+    [[ -z "${NOVA_SUPPRESS_NOTIFY:-}" ]] && _NTFY_TITLE="nova heal"
+    ensure_traefik_network
+    ensure_socket_proxy_network
+    ensure_internal_webhook_network
+
+    for s in "${ALL_STACKS[@]}"; do
+      file="${s}/compose.yaml"
+      [[ -f "$file" ]] || continue
+
+      mapfile -t sablier_svcs < <(get_sablier_services "$file")
+      mapfile -t all_svcs < <(docker compose -f "$file" config --services 2>/dev/null || true)
+      [[ ${#all_svcs[@]} -eq 0 ]] && continue
+
+      keep=()
+      for svc in "${all_svcs[@]}"; do
+        skip=0
+        for ss in "${sablier_svcs[@]:-}"; do
+          [[ "$svc" == "$ss" ]] && { skip=1; break; }
+        done
+        [[ $skip -eq 0 ]] && keep+=("$svc")
+      done
+
+      [[ ${#keep[@]} -eq 0 ]] && continue
+
+      echo "==> $s"
+      remove_conflicting_containers "$s"
+      run_compose up "$s" --no-recreate -d "${keep[@]}"
+    done
     ;;
 
   reconcile)
