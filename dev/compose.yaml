@@ -103,9 +103,6 @@ services:
       - "overseerr_config:/mnt/volumes/overseerr_config:ro"
       - "plex_data_1:/mnt/volumes/plex_data_1:ro"
       - "prowlarr_config:/mnt/volumes/prowlarr_config:ro"
-      - "pterodactyl_db:/mnt/volumes/pterodactyl_db:ro"
-      - "pterodactyl_panel_logs:/mnt/volumes/pterodactyl_panel_logs:ro"
-      - "pterodactyl_panel_var:/mnt/volumes/pterodactyl_panel_var:ro"
       - "qbittorrent_config:/mnt/volumes/qbittorrent_config:ro"
       - "qbittorrent_data:/mnt/volumes/qbittorrent_data:ro"
       - "radarr_config:/mnt/volumes/radarr_config:ro"
@@ -220,12 +217,6 @@ volumes:
   plex_data_1:
     external: true
   prowlarr_config:
-    external: true
-  pterodactyl_db:
-    external: true
-  pterodactyl_panel_logs:
-    external: true
-  pterodactyl_panel_var:
     external: true
   qbittorrent_config:
     external: true
