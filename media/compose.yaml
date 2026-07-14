@@ -662,15 +662,24 @@ services:
     image: "trentferguson/homescreen-hero:latest"
     labels:
       traefik.enable: "true"
+      traefik.docker.allownonrunning: "true"
       traefik.http.routers.homescreen-hero.rule: "Host(`homescreen-hero.${NOVA_DOMAIN}`)"
       traefik.http.routers.homescreen-hero.entrypoints: "websecure"
       traefik.http.routers.homescreen-hero.tls: "true"
+      # No Authelia — the app has its own JWT-based login (HSH_AUTH_PASSWORD).
+      # Sablier joins the `tools` group (60m idle). Probe-wake risk is
+      # mitigated by the middleware's ignoreUserAgent filter; if kiosk or
+      # bot traffic starts keeping this warm, revert these labels.
+      traefik.http.routers.homescreen-hero.middlewares: "sablier-tools@file"
       traefik.http.services.homescreen-hero.loadbalancer.server.port: "8000"
+      sablier.enable: "true"
+      sablier.group: "tools"
       homepage.group: "Media"
       homepage.name: "Homescreen Hero"
       homepage.icon: "plex.svg"
       homepage.href: "https://homescreen-hero.${NOVA_DOMAIN}"
-      homepage.description: "Plex Dashboard & Collection Manager"
+      homepage.description: "Plex Dashboard & Collection Manager — on-demand · click to wake"
+      homepage.statusStyle: "dot"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"

@@ -171,15 +171,23 @@ services:
       - "WAKE_ALARM"
     labels:
       traefik.enable: "true"
+      traefik.docker.allownonrunning: "true"
       traefik.http.routers.immich-power-tools.rule: "Host(`immich-power-tools.${NOVA_DOMAIN}`)"
       traefik.http.routers.immich-power-tools.entrypoints: "websecure"
       traefik.http.routers.immich-power-tools.tls: "true"
+      # The app has no auth of its own — gate probes with Authelia so Sablier
+      # only wakes on a real user hit. Sablier reuses the `tools` group (60m
+      # idle). See context/patterns.md "On-Demand Container Spin-Up (Sablier)".
+      traefik.http.routers.immich-power-tools.middlewares: "authelia@file,sablier-tools@file"
       traefik.http.services.immich-power-tools.loadbalancer.server.port: "3000"
+      sablier.enable: "true"
+      sablier.group: "tools"
       homepage.group: "Media"
       homepage.name: "Immich Power Tools"
       homepage.icon: "immich.svg"
       homepage.href: "https://immich-power-tools.${NOVA_DOMAIN}"
-      homepage.description: "Immich Library Organizer"
+      homepage.description: "Immich Library Organizer — on-demand · click to wake"
+      homepage.statusStyle: "dot"
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
