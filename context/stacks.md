@@ -124,7 +124,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | prowlarr | lscr.io/linuxserver/prowlarr | 9696 | prowlarr.NOVA_DOMAIN | Indexer aggregator; on `media` network |
 | tautulli | ghcr.io/tautulli/tautulli | 8181 | tautulli.NOVA_DOMAIN | Plex stats/monitoring |
 | seerr | ghcr.io/seerr-team/seerr | 5055 | seerr.NOVA_DOMAIN | Media request management |
-| homescreen-hero | trentferguson/homescreen-hero | 8000 | homescreen-hero.NOVA_DOMAIN | Plex dashboard: collection rotation, Tautulli/Seerr widgets, watch history tools |
+| homescreen-hero | trentferguson/homescreen-hero | 8000 | homescreen-hero.NOVA_DOMAIN | Plex dashboard: collection rotation, Tautulli/Seerr widgets, watch history tools. **On-demand via Sablier** (group `tools`, 60m idle); no Authelia because the app has its own JWT login — probe-wake risk mitigated by `ignoreUserAgent`. Revert if kiosk/bot traffic keeps it warm. |
 | kometa | kometateam/kometa | — | — | Plex collection manager; runs daily at 05:00 via trigger-wrapper.sh; config in `../kometa/` (root-level dir, mounted from media stack); no web UI |
 | kometa-quickstart | kometateam/quickstart:develop | 7171 | kometa-quickstart.NOVA_DOMAIN | Web UI config wizard for Kometa; shares `../kometa/` bind-mount to write config.yml |
 | internal-webhook | local build (`../internal-webhook/`) | 9000 (internal only) | — | Internal webhook server for container-to-container triggers; only reachable from `internal_webhook` internal Docker network; currently handles `/kometa/trigger` |
@@ -155,7 +155,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | immich-machine-learning | ghcr.io/immich-app/immich-machine-learning | ML inference |
 | immich-postgres | tensorchord/pgvecto-rs | PostgreSQL with vector extension |
 | immich-redis | redis | Cache |
-| immich-power-tools | ghcr.io/immich-power-tools/immich-power-tools | Library organizer UI — face merge, album suggestions, analytics; at `immich-power-tools.NOVA_DOMAIN` |
+| immich-power-tools | ghcr.io/immich-power-tools/immich-power-tools | Library organizer UI — face merge, album suggestions, analytics; at `immich-power-tools.NOVA_DOMAIN`. **On-demand via Sablier** (group `tools`, 60m idle). Now gated by Authelia (previously exposed) — Sablier needs an auth layer in front so probes don't wake it. |
 
 **External volumes:** `immich_power_tools_data`
 
@@ -354,5 +354,5 @@ Routes for host-mode services that Docker provider can't discover, plus global m
 - `ma.NOVA_DOMAIN` → `host.docker.internal:8095` (Music Assistant)
 - `glances.NOVA_DOMAIN` → `host.docker.internal:61208` (Glances) — protected by `authelia@file`
 - `authelia` middleware — forwardAuth to `http://authelia:9091/api/authz/forward-auth`
-- `sablier-tools` middleware — on-demand container wake for group `tools` (actual, stirling-pdf, vikunja, snapotter)
+- `sablier-tools` middleware — on-demand container wake for group `tools` (actual, stirling-pdf, vikunja, snapotter, immich-power-tools, homescreen-hero)
 - `sablier-movienight-test` middleware — on-demand container wake for group `movienight-test` (frontend + backend)
