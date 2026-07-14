@@ -16,7 +16,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | minecraft |
-| movienight-test | movienight-test/compose.yaml | (CI-only; excluded from reconcile) |
+| movienight-test | movienight-test/compose.yaml | movienight-test-frontend, movienight-test-backend, movienight-test-db (CI-only; excluded from reconcile). Frontend + backend are **on-demand via Sablier** (group `movienight-test`, 60m idle); DB stays running. |
 | strava-hevy | strava-hevy/compose.yaml | strava-hevy |
 | todoassist | todoassist/compose.yaml | todoassist |
 
@@ -221,9 +221,9 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Image | Port | URL | Notes |
 |---------|-------|------|-----|-------|
-| actual | actualbudget/actual-server | 5006 | actual.NOVA_DOMAIN | Personal budgeting |
-| stirling-pdf | stirlingtools/stirling-pdf | 8080 | stirling-pdf.NOVA_DOMAIN | PDF manipulation tool |
-| vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management |
+| actual | actualbudget/actual-server | 5006 | actual.NOVA_DOMAIN | Personal budgeting. **On-demand via Sablier** (group `tools`, 60m idle). |
+| stirling-pdf | stirlingtools/stirling-pdf | 8080 | stirling-pdf.NOVA_DOMAIN | PDF manipulation tool. **On-demand via Sablier** (group `tools`, 60m idle); JVM cold start — `start_period` bumped to 60s so wake doesn't briefly flip to unhealthy. |
+| vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management. **On-demand via Sablier** (group `tools`, 60m idle). Assumes browser-only usage; if CalDAV subscribers or the mobile app poll the host, they'll keep it warm — revert this service and remove sablier labels. |
 | uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
 | ntfy | binwiederhier/ntfy | 80 | ntfy.NOVA_DOMAIN | Push notification server; no Authelia — must be reachable by webhooks. Also used by nova.sh to notify on up/down/update/recreate/restart (topic: `$NTFY_TOPIC`) |
 | snapotter | ghcr.io/snapotter-hq/snapotter | 1349 | snapotter.NOVA_DOMAIN | Self-hosted image manipulation (50+ tools, local AI). Behind Authelia; internal auth also on with default `admin`/`admin` (change on first login). `/tmp/workspace` is a compose-managed volume — auto-cleaned by the app. **On-demand via Sablier** (group `tools`, 60m idle; see patterns.md). Cold-start ~60s. |
@@ -354,3 +354,5 @@ Routes for host-mode services that Docker provider can't discover, plus global m
 - `ma.NOVA_DOMAIN` → `host.docker.internal:8095` (Music Assistant)
 - `glances.NOVA_DOMAIN` → `host.docker.internal:61208` (Glances) — protected by `authelia@file`
 - `authelia` middleware — forwardAuth to `http://authelia:9091/api/authz/forward-auth`
+- `sablier-tools` middleware — on-demand container wake for group `tools` (actual, stirling-pdf, vikunja, snapotter)
+- `sablier-movienight-test` middleware — on-demand container wake for group `movienight-test` (frontend + backend)

@@ -4,14 +4,19 @@
 # host.docker.internal resolves to the Docker host via extra_hosts
 #
 # Middleware defined here:
-#   authelia@file      - Forward authentication via Authelia
-#                        Reference in Docker labels as: authelia@file
-#   sablier-tools@file - On-demand container wake for occasional-use services.
-#                        Reference as: sablier-tools@file
-#                        Chain AFTER authelia so unauth'd probes don't wake containers:
-#                          middlewares: "authelia@file,sablier-tools@file"
-#                        Each target service also needs sablier.enable=true,
-#                        sablier.group=<name>, and traefik.docker.allownonrunning=true.
+#   authelia@file             - Forward authentication via Authelia
+#                               Reference in Docker labels as: authelia@file
+#   sablier-tools@file        - On-demand container wake for occasional-use tools
+#                               (group `tools`). Chain AFTER authelia so unauth'd
+#                               probes don't wake containers:
+#                                 middlewares: "authelia@file,sablier-tools@file"
+#                               Each target service also needs sablier.enable=true,
+#                               sablier.group=tools, and traefik.docker.allownonrunning=true.
+#   sablier-movienight-test@file
+#                             - Same pattern but scoped to the movienight-test CI
+#                               stack (group `movienight-test`). Kept separate so a
+#                               hit on the test env doesn't wake the tools fleet
+#                               (and vice versa).
 
 http:
   middlewares:
@@ -47,6 +52,29 @@ http:
             - "wget"
           dynamic:
             displayName: "Nova Service"
+            theme: "ghost"
+            refreshFrequency: "5s"
+            showDetails: true
+
+    sablier-movienight-test:
+      plugin:
+        sablier:
+          sablierUrl: "http://sablier:10000"
+          # Isolated group so a hit on the movienight-test host doesn't wake the
+          # tools fleet, and vice versa. Frontend + backend share this group so
+          # they wake together on a browser hit. The postgres DB is left running
+          # to avoid start-order races on wake (docker start doesn't honour
+          # depends_on: service_healthy — that's a compose-up-only guarantee).
+          group: "movienight-test"
+          sessionDuration: "60m"
+          keepAliveInterval: "30s"
+          ignoreUserAgent:
+            - "(?i)uptimerobot"
+            - "(?i)uptime-kuma"
+            - "curl"
+            - "wget"
+          dynamic:
+            displayName: "MovieNight Test"
             theme: "ghost"
             refreshFrequency: "5s"
             showDetails: true
