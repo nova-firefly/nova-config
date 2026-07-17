@@ -519,10 +519,20 @@ services:
       - |
         set -eu
         while :; do
-          cd /repo \
-            && git fetch --quiet origin main \
-            && git reset --hard origin/main \
-            || echo "nova-config-sync: reconcile failed, will retry in 600s"
+          if [ ! -d /repo/.git ]; then
+            # Bootstrap: /repo is empty (or missing .git). Clone into it so the
+            # runners' read-only mount has something to serve. Uses --depth 1
+            # since we never need history on the host — the sidecar only tracks
+            # origin/main. If nova-config is ever flipped private, this clone
+            # will need a token (future problem).
+            git clone --depth 1 https://github.com/nova-firefly/nova-config /repo \
+              || echo "nova-config-sync: initial clone failed, will retry in 600s"
+          else
+            cd /repo \
+              && git fetch --quiet origin main \
+              && git reset --hard origin/main \
+              || echo "nova-config-sync: reconcile failed, will retry in 600s"
+          fi
           sleep 600
         done
     labels:
