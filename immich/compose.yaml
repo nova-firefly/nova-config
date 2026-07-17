@@ -176,12 +176,13 @@ services:
       traefik.http.routers.immich-power-tools.entrypoints: "websecure"
       traefik.http.routers.immich-power-tools.tls: "true"
       # The app has no auth of its own — gate probes with Authelia so Sablier
-      # only wakes on a real user hit. Sablier reuses the `tools` group (60m
-      # idle). See context/patterns.md "On-Demand Container Spin-Up (Sablier)".
-      traefik.http.routers.immich-power-tools.middlewares: "authelia@file,sablier-tools@file"
+      # only wakes on a real user hit. Own Sablier group so a hit here doesn't
+      # wake unrelated on-demand tools (60m idle). See context/patterns.md
+      # "On-Demand Container Spin-Up (Sablier)".
+      traefik.http.routers.immich-power-tools.middlewares: "authelia@file,sablier-immich-power-tools@file"
       traefik.http.services.immich-power-tools.loadbalancer.server.port: "3000"
       sablier.enable: "true"
-      sablier.group: "tools"
+      sablier.group: "immich-power-tools"
       homepage.group: "Media"
       homepage.name: "Immich Power Tools"
       homepage.icon: "immich.svg"

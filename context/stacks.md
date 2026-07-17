@@ -38,7 +38,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | wud | getwud/wud | 3003→3000 | wud.NOVA_DOMAIN | Watch Update Docker; notify-only (Discord). Manual deploys via Dockge / Arcane / `nova.sh update` |
 | scrutiny | ghcr.io/analogj/scrutiny:master-omnibus | 8082→8080 | scrutiny.NOVA_DOMAIN | S.M.A.R.T. hard drive health monitoring; needs SYS_RAWIO + device passthrough |
 | socket-proxy-sablier | tecnativa/docker-socket-proxy | — | — | Scoped write-allowlist socket proxy for Sablier only. `CONTAINERS=1,POST=1,INFO=1,VERSION=1,EVENTS=1`; no IMAGES/NETWORKS/VOLUMES/EXEC/BUILD/SYSTEM/SECRETS. Reachable only on `sablier_internal` (internal-only bridge, no egress). |
-| sablier | sablierapp/sablier:1.15.0 | 10000 (internal only) | — | On-demand container controller: stops idle containers, wakes them on the next HTTP request via a Traefik plugin. Target services opt in with `sablier.enable=true` + `sablier.group=<name>` labels plus the `sablier-tools@file` middleware. See `context/patterns.md` for the pattern. Plugin version pinned in traefik's static args (`v1.3.0`) and daemon image tag must stay compatible. |
+| sablier | sablierapp/sablier:1.15.0 | 10000 (internal only) | — | On-demand container controller: stops idle containers, wakes them on the next HTTP request via a Traefik plugin. Target services opt in with `sablier.enable=true` + `sablier.group=<service>` labels plus a matching per-service `sablier-<service>@file` middleware (one per on-demand service for independent lifecycles). See `context/patterns.md` for the pattern. Plugin version pinned in traefik's static args (`v1.3.0`) and daemon image tag must stay compatible. |
 | runners-socket-proxy | tecnativa/docker-socket-proxy | — | — | Write-allowlist socket proxy for self-hosted runners (POST=1, EXEC=0, BUILD=0, SECRETS=0, SYSTEM=0); reachable only on `runners_net` |
 | nova-config-sync | alpine/git (pinned digest) | — | — | Sole writer to `/srv/nova-config`; loops `git fetch && reset --hard origin/main` every 10 min. Replaces the deleted `.github/workflows/sync.yml` Actions round-trip |
 | runner-nova-config | myoung34/github-runner (pinned digest) | — | — | Ephemeral self-hosted runner for `nova-firefly/nova-config`; labels `nova,nova-config`; jobs launch via `runners-socket-proxy` |
@@ -354,5 +354,5 @@ Routes for host-mode services that Docker provider can't discover, plus global m
 - `ma.NOVA_DOMAIN` → `host.docker.internal:8095` (Music Assistant)
 - `glances.NOVA_DOMAIN` → `host.docker.internal:61208` (Glances) — protected by `authelia@file`
 - `authelia` middleware — forwardAuth to `http://authelia:9091/api/authz/forward-auth`
-- `sablier-tools` middleware — on-demand container wake for group `tools` (actual, stirling-pdf, vikunja, snapotter, immich-power-tools, homescreen-hero)
-- `sablier-movienight-test` middleware — on-demand container wake for group `movienight-test` (frontend + backend)
+- Per-service `sablier-<service>` middlewares — one per on-demand container for independent wake/sleep lifecycles: `sablier-actual`, `sablier-stirling-pdf`, `sablier-vikunja`, `sablier-snapotter`, `sablier-immich-power-tools`, `sablier-homescreen-hero`
+- `sablier-movienight-test` middleware — intentional shared group: frontend + backend wake together (the app is unusable without both)
