@@ -20,6 +20,9 @@ Thumbs.db
 *.swo
 *~
 
+# Claude Code runtime state (scheduled_tasks.lock, etc.)
+.claude/
+
 # Logs
 *.log
 logs/
