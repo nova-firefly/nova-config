@@ -234,22 +234,24 @@ Each compose file begins with a comment block:
 
 For services used occasionally (photo tools, ad-hoc utilities), Sablier stops them after idle timeout and restarts on the next HTTP request. Traefik shows a themed loading page during cold start.
 
-**Infrastructure:** `sablier` + `socket-proxy-sablier` in `infra/compose.yaml`; plugin registered in the Traefik static args (`--experimental.plugins.sablier.*`); shared middleware defined in `traefik/dynamic.yaml` as `sablier-tools@file` (group `tools`, 60m session, ghost theme).
+**Infrastructure:** `sablier` + `socket-proxy-sablier` in `infra/compose.yaml`; plugin registered in the Traefik static args (`--experimental.plugins.sablier.*`); one middleware per on-demand service defined in `traefik/dynamic.yaml` as `sablier-<service>@file` (60m session, ghost theme). Each service has its own middleware + group so a hit on one doesn't wake unrelated services.
 
 **To make an existing service on-demand:**
 
-1. In the service's Traefik labels, prepend `traefik.docker.allownonrunning: "true"` and change the middleware chain to include `sablier-tools@file` **after** `authelia@file`:
+1. Add a per-service middleware block in `traefik/dynamic.yaml` next to the existing `sablier-<service>` blocks — copy one and change `group:` and `displayName:` to match the new service.
+
+2. In the service's Traefik labels, prepend `traefik.docker.allownonrunning: "true"` and reference the matching middleware **after** `authelia@file`:
 
    ```yaml
    traefik.docker.allownonrunning: "true"
-   traefik.http.routers.myservice.middlewares: "authelia@file,sablier-tools@file"
+   traefik.http.routers.myservice.middlewares: "authelia@file,sablier-myservice@file"
    sablier.enable: "true"
-   sablier.group: "tools"
+   sablier.group: "myservice"
    ```
 
-2. Leave `restart: unless-stopped` in place — Sablier issues an explicit `docker stop`, which `unless-stopped` honours (won't fight it).
+3. Leave `restart: unless-stopped` in place — Sablier issues an explicit `docker stop`, which `unless-stopped` honours (won't fight it).
 
-3. Add Homepage tile hints so the sleeping state reads as "idle" instead of "broken":
+4. Add Homepage tile hints so the sleeping state reads as "idle" instead of "broken":
 
    ```yaml
    homepage.description: "<short desc> — on-demand · click to wake"
@@ -258,9 +260,9 @@ For services used occasionally (photo tools, ad-hoc utilities), Sablier stops th
 
    Homepage's docker provider (`homepage/docker.yaml` → `socket-proxy`) already surfaces container state — a green dot when running, a red dot when Sablier has stopped it. The `on-demand · click to wake` suffix tells users a red dot means "idle" rather than "down". Clicking the tile navigates to the URL and Traefik/Sablier handle the wake via the ghost loading page — no separate button needed.
 
-4. Verify: hit the URL after a fresh boot, cancel any active session (or wait 60m), then hit again — you should see the ghost loading theme, then the app. Homepage's tile dot should flip red while asleep and green after the wake.
+5. Verify: hit the URL after a fresh boot, cancel any active session (or wait 60m), then hit again — you should see the ghost loading theme, then the app. Homepage's tile dot should flip red while asleep and green after the wake.
 
-**Group semantics:** all services sharing `sablier.group=<name>` wake and sleep together. For independent lifecycles, define a new middleware block in `dynamic.yaml` (`sablier-<groupname>`) with a distinct `group:` value and label services with the matching `sablier.group`.
+**Group semantics:** the Sablier plugin wakes/sleeps every container whose `sablier.group` label matches the `group` field of the middleware that was hit. For independent lifecycles (the default now), each service gets its own middleware with a unique `group` and a matching `sablier.group` label. If two services *must* wake together (e.g. a frontend that can't function without its backend — see `sablier-movienight-test` in `dynamic.yaml`), give them the same `sablier.group` value and point them at a shared middleware.
 
 **Never put on-demand:**
 - Databases (Postgres, Redis, MariaDB) — always up.

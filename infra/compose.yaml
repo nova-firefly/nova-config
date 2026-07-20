@@ -403,9 +403,10 @@ services:
 
   # --- On-demand container spin-up (Sablier + scoped socket proxy) ---
   # Sablier stops idle containers and restarts them on the next HTTP request via
-  # Traefik. Target services opt in with `sablier.enable=true` + `sablier.group=<name>`
-  # labels plus a Sablier middleware in their Traefik chain (see traefik/dynamic.yaml
-  # for the `sablier-tools@file` middleware and context/patterns.md for the pattern).
+  # Traefik. Target services opt in with `sablier.enable=true` + `sablier.group=<service>`
+  # labels plus a matching per-service Sablier middleware in their Traefik chain
+  # (see traefik/dynamic.yaml — one `sablier-<service>@file` block per target so
+  # each has an independent wake/sleep lifecycle — and context/patterns.md).
   #
   # Version pinning: the plugin version (registered on the traefik service above) and
   # the daemon image tag here must stay compatible. Sablier follows semver — pin both,

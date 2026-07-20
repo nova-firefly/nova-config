@@ -667,13 +667,14 @@ services:
       traefik.http.routers.homescreen-hero.entrypoints: "websecure"
       traefik.http.routers.homescreen-hero.tls: "true"
       # No Authelia — the app has its own JWT-based login (HSH_AUTH_PASSWORD).
-      # Sablier joins the `tools` group (60m idle). Probe-wake risk is
-      # mitigated by the middleware's ignoreUserAgent filter; if kiosk or
-      # bot traffic starts keeping this warm, revert these labels.
-      traefik.http.routers.homescreen-hero.middlewares: "sablier-tools@file"
+      # Own Sablier group so a hit here doesn't wake unrelated tools (60m
+      # idle). Probe-wake risk is mitigated by the middleware's
+      # ignoreUserAgent filter; if kiosk or bot traffic starts keeping this
+      # warm, revert these labels.
+      traefik.http.routers.homescreen-hero.middlewares: "sablier-homescreen-hero@file"
       traefik.http.services.homescreen-hero.loadbalancer.server.port: "8000"
       sablier.enable: "true"
-      sablier.group: "tools"
+      sablier.group: "homescreen-hero"
       homepage.group: "Media"
       homepage.name: "Homescreen Hero"
       homepage.icon: "plex.svg"

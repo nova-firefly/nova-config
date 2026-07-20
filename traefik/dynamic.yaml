@@ -6,17 +6,21 @@
 # Middleware defined here:
 #   authelia@file             - Forward authentication via Authelia
 #                               Reference in Docker labels as: authelia@file
-#   sablier-tools@file        - On-demand container wake for occasional-use tools
-#                               (group `tools`). Chain AFTER authelia so unauth'd
+#   sablier-<service>@file    - Per-container on-demand wake. One middleware per
+#                               service so each Sablier-managed container has an
+#                               independent lifecycle (a hit on `actual` must not
+#                               wake `snapotter`). Chain AFTER authelia so unauth'd
 #                               probes don't wake containers:
-#                                 middlewares: "authelia@file,sablier-tools@file"
+#                                 middlewares: "authelia@file,sablier-actual@file"
 #                               Each target service also needs sablier.enable=true,
-#                               sablier.group=tools, and traefik.docker.allownonrunning=true.
+#                               a matching sablier.group=<service> label, and
+#                               traefik.docker.allownonrunning=true.
 #   sablier-movienight-test@file
-#                             - Same pattern but scoped to the movienight-test CI
-#                               stack (group `movienight-test`). Kept separate so a
-#                               hit on the test env doesn't wake the tools fleet
-#                               (and vice versa).
+#                             - Intentional multi-container group: the frontend
+#                               and backend of the movienight-test CI stack wake
+#                               together on a browser hit (the app is unusable
+#                               without both). Kept in its own group so it doesn't
+#                               interact with the per-service tools middlewares.
 
 http:
   middlewares:
@@ -30,28 +34,117 @@ http:
           - "Remote-Email"
           - "Remote-Name"
 
-    sablier-tools:
+    # Per-service Sablier middlewares. All share the same session/theme/probe
+    # settings — only `group` differs. Duplicated (not anchored) to match the
+    # existing dynamic.yaml style and to keep each block independently readable.
+    # 60m sessionDuration matches the plan: tools where you might walk away
+    # between edits. keepAliveInterval keeps long uploads / SSE streams warm.
+    # ignoreUserAgent filters uptime probes so they don't wake containers.
+
+    sablier-actual:
       plugin:
         sablier:
           sablierUrl: "http://sablier:10000"
-          # Group name — Sablier wakes/stops all containers labelled with this group
-          # together. Each Sablier-managed service currently uses its own group
-          # (sablier.group=<service-name>); this middleware's `group` is set per
-          # target via the sablier.group service label, but the plugin still
-          # requires a value here as its group-of-record default.
-          group: "tools"
-          # 60m matches the plan: photo tools where you might walk away between edits.
+          group: "actual"
           sessionDuration: "60m"
-          # Keep the session alive during long uploads / SSE streams.
           keepAliveInterval: "30s"
-          # Silently ignore probes so they don't wake containers.
           ignoreUserAgent:
             - "(?i)uptimerobot"
             - "(?i)uptime-kuma"
             - "curl"
             - "wget"
           dynamic:
-            displayName: "Nova Service"
+            displayName: "Actual Budget"
+            theme: "ghost"
+            refreshFrequency: "5s"
+            showDetails: true
+
+    sablier-stirling-pdf:
+      plugin:
+        sablier:
+          sablierUrl: "http://sablier:10000"
+          group: "stirling-pdf"
+          sessionDuration: "60m"
+          keepAliveInterval: "30s"
+          ignoreUserAgent:
+            - "(?i)uptimerobot"
+            - "(?i)uptime-kuma"
+            - "curl"
+            - "wget"
+          dynamic:
+            displayName: "Stirling PDF"
+            theme: "ghost"
+            refreshFrequency: "5s"
+            showDetails: true
+
+    sablier-vikunja:
+      plugin:
+        sablier:
+          sablierUrl: "http://sablier:10000"
+          group: "vikunja"
+          sessionDuration: "60m"
+          keepAliveInterval: "30s"
+          ignoreUserAgent:
+            - "(?i)uptimerobot"
+            - "(?i)uptime-kuma"
+            - "curl"
+            - "wget"
+          dynamic:
+            displayName: "Vikunja"
+            theme: "ghost"
+            refreshFrequency: "5s"
+            showDetails: true
+
+    sablier-snapotter:
+      plugin:
+        sablier:
+          sablierUrl: "http://sablier:10000"
+          group: "snapotter"
+          sessionDuration: "60m"
+          keepAliveInterval: "30s"
+          ignoreUserAgent:
+            - "(?i)uptimerobot"
+            - "(?i)uptime-kuma"
+            - "curl"
+            - "wget"
+          dynamic:
+            displayName: "SnapOtter"
+            theme: "ghost"
+            refreshFrequency: "5s"
+            showDetails: true
+
+    sablier-immich-power-tools:
+      plugin:
+        sablier:
+          sablierUrl: "http://sablier:10000"
+          group: "immich-power-tools"
+          sessionDuration: "60m"
+          keepAliveInterval: "30s"
+          ignoreUserAgent:
+            - "(?i)uptimerobot"
+            - "(?i)uptime-kuma"
+            - "curl"
+            - "wget"
+          dynamic:
+            displayName: "Immich Power Tools"
+            theme: "ghost"
+            refreshFrequency: "5s"
+            showDetails: true
+
+    sablier-homescreen-hero:
+      plugin:
+        sablier:
+          sablierUrl: "http://sablier:10000"
+          group: "homescreen-hero"
+          sessionDuration: "60m"
+          keepAliveInterval: "30s"
+          ignoreUserAgent:
+            - "(?i)uptimerobot"
+            - "(?i)uptime-kuma"
+            - "curl"
+            - "wget"
+          dynamic:
+            displayName: "Homescreen Hero"
             theme: "ghost"
             refreshFrequency: "5s"
             showDetails: true
