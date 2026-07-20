@@ -120,6 +120,55 @@ services:
     volumes:
       - "actual_data:/data"
 
+  # MCP server that exposes Actual Budget over SSE for LLM clients
+  # (Claude Desktop/web, Codex, etc.). Talks to `actual` on the internal
+  # traefik_default network via ACTUAL_SERVER_URL=http://actual:5006.
+  #
+  # Sablier: shares `sablier.group: actual` and reuses the sablier-actual@file
+  # middleware so a hit on either host wakes BOTH containers together — the
+  # MCP server can't reach the Actual API if `actual` itself is asleep.
+  # Same pattern as sablier-movienight-test (frontend+backend must wake together).
+  #
+  # Auth: no Authelia — MCP clients don't do browser forward-auth. The
+  # --enable-bearer flag makes the server require Authorization: Bearer $BEARER_TOKEN
+  # on every request, which is what MCP clients send.
+  actual-mcp:
+    container_name: "actual-mcp"
+    image: "sstefanov/actual-mcp:latest"
+    command:
+      - "--sse"
+      - "--enable-write"
+      - "--enable-bearer"
+    environment:
+      - "ACTUAL_SERVER_URL=http://actual:5006"
+      - "ACTUAL_PASSWORD=${ACTUAL_PASSWORD}"
+      - "ACTUAL_BUDGET_SYNC_ID=${ACTUAL_BUDGET_SYNC_ID}"
+      - "BEARER_TOKEN=${ACTUAL_MCP_BEARER_TOKEN}"
+    labels:
+      traefik.enable: "true"
+      traefik.docker.allownonrunning: "true"
+      traefik.http.routers.actual-mcp.rule: "Host(`actual-mcp.${NOVA_DOMAIN}`)"
+      traefik.http.routers.actual-mcp.entrypoints: "websecure"
+      traefik.http.routers.actual-mcp.tls: "true"
+      traefik.http.routers.actual-mcp.middlewares: "sablier-actual@file"
+      traefik.http.services.actual-mcp.loadbalancer.server.port: "3000"
+      sablier.enable: "true"
+      sablier.group: "actual"
+      homepage.group: "Tools"
+      homepage.name: "Actual MCP"
+      homepage.icon: "actual-budget.svg"
+      homepage.href: "https://actual-mcp.${NOVA_DOMAIN}"
+      homepage.description: "Actual Budget MCP — on-demand · wakes with Actual"
+      homepage.statusStyle: "dot"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      - "actual_mcp_data:/data"
+
   ntfy:
     container_name: "ntfy"
     command: serve
@@ -317,6 +366,8 @@ volumes:
     external: true
 
   actual_data: {}
+
+  actual_mcp_data: {}
 
   stirling_config:
     external: true
