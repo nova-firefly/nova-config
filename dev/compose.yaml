@@ -126,7 +126,7 @@ services:
       - "zwave-js-ui:/mnt/volumes/zwave-js-ui:ro"
 
   vibe-kanban-tools:
-    image: "ghcr.io/kjsb25/vibe-kanban-tools:latest"
+    image: "ghcr.io/nova-firefly/vibe-kanban-tools:latest"
     container_name: "vibe-kanban-tools"
     environment:
       - "VIBE_KANBAN_URL=http://vibe-kanban:4000"
