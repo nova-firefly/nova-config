@@ -13,7 +13,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | dev/compose.yaml | vibe-kanban, vibe-kanban-tools |
-| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
+| tools | tools/compose.yaml | actual, actual-mcp, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | minecraft |
 | movienight-test | movienight-test/compose.yaml | movienight-test-frontend, movienight-test-backend, movienight-test-db (CI-only; excluded from reconcile). Frontend + backend are **on-demand via Sablier** (group `movienight-test`, 60m idle); DB stays running. |
@@ -222,6 +222,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | Service | Image | Port | URL | Notes |
 |---------|-------|------|-----|-------|
 | actual | actualbudget/actual-server | 5006 | actual.NOVA_DOMAIN | Personal budgeting. **On-demand via Sablier** (group `tools`, 60m idle). |
+| actual-mcp | sstefanov/actual-mcp | 3000 | actual-mcp.NOVA_DOMAIN | MCP/SSE gateway to Actual Budget for LLM clients. Talks to `actual` at `http://actual:5006`. No Authelia — clients auth with `Authorization: Bearer $ACTUAL_MCP_BEARER_TOKEN` (`--enable-bearer`). **On-demand via Sablier** in shared group `actual` — a hit here wakes both `actual` and `actual-mcp` together (reuses `sablier-actual@file` middleware). |
 | stirling-pdf | stirlingtools/stirling-pdf | 8080 | stirling-pdf.NOVA_DOMAIN | PDF manipulation tool. **On-demand via Sablier** (group `tools`, 60m idle); JVM cold start — `start_period` bumped to 60s so wake doesn't briefly flip to unhealthy. |
 | vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management. **On-demand via Sablier** (group `tools`, 60m idle). Assumes browser-only usage; if CalDAV subscribers or the mobile app poll the host, they'll keep it warm — revert this service and remove sablier labels. |
 | uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
@@ -231,7 +232,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `snapotter_data`
 
-**Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose), `snapotter_workspace` (ephemeral processing dir; safe to wipe)
+**Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose), `actual_mcp_data` (MCP server cache — safe to wipe; rebuilt from Actual on next sync), `snapotter_workspace` (ephemeral processing dir; safe to wipe)
 
 **Shell auth model (defense in depth):**
 1. Traefik TLS at the edge.
@@ -356,3 +357,4 @@ Routes for host-mode services that Docker provider can't discover, plus global m
 - `authelia` middleware — forwardAuth to `http://authelia:9091/api/authz/forward-auth`
 - Per-service `sablier-<service>` middlewares — one per on-demand container for independent wake/sleep lifecycles: `sablier-actual`, `sablier-stirling-pdf`, `sablier-vikunja`, `sablier-snapotter`, `sablier-immich-power-tools`, `sablier-homescreen-hero`
 - `sablier-movienight-test` middleware — intentional shared group: frontend + backend wake together (the app is unusable without both)
+- `sablier-actual` middleware is also shared by `actual` and `actual-mcp` (group `actual`) — the MCP server can't reach the Actual API if `actual` itself is asleep, so a hit on either host wakes both
