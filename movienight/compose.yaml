@@ -63,7 +63,7 @@ services:
       - "ADMIN_PASSWORD=${MOVIENIGHT_ADMIN_PASSWORD}"
       - "TMDB_API_KEY=${TMDB_API_KEY}"
       # Path inside the container where Kometa collection files are written.
-      # Mounted from ./kometa/collections so exports land directly in nova-config.
+      # Mounted from /srv/nova-config/kometa/collections — same host dir Kometa reads.
       - "KOMETA_COLLECTIONS_PATH=/kometa-collections"
       # Webhook URL to trigger an immediate kometa run after each export.
       # internal-webhook is reachable via the shared internal_webhook internal network.
@@ -91,7 +91,7 @@ services:
       - "internal_webhook"   # can reach internal-webhook; no internet egress from this network
     restart: "unless-stopped"
     volumes:
-      - "../kometa/collections:/kometa-collections"
+      - "/srv/nova-config/kometa/collections:/kometa-collections"
 
   movienight-frontend:
     container_name: "movienight-frontend"
