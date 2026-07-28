@@ -71,6 +71,77 @@ Reference for consistent patterns when editing compose files or adding new servi
     when changes ship. Env/bind-mount drift is still your responsibility — recreate uses the
     existing container's config, not the on-disk compose file.
 
+## CI Deploy via Self-Hosted Runner
+
+Canonical pattern for a repo whose CI needs to redeploy on nova directly (as opposed to
+relying on WUD notify-only, or WUD `docker.local` auto-recreate). Live examples:
+`nova-firefly/movienight` and `nova-firefly/vibe-kanban-tools`. Runner infrastructure setup
+is in `context/runners.md`; this section covers the workflow contract only.
+
+Split the workflow across two runners:
+
+- **Build** on `ubuntu-latest` — free minutes, publishes to GHCR.
+- **Deploy** on `[self-hosted, nova, <repo>]` — runs inside the per-repo runner container,
+  wired to `runners-socket-proxy` (write-allowlist) with a read-only `/nova-config` mount.
+
+### GitHub side (once per repo)
+
+- Add repo **variable** (not secret) `NOVA_CONFIG_PATH=/nova-config` under
+  Settings → Secrets and variables → Actions → **Variables** tab. It is a container path,
+  not sensitive — the `${{ vars.* }}` lookup will silently resolve to empty string if it
+  is stored as a secret, breaking the deploy.
+- Confirm no `NOVA_HOST` / `NOVA_USER` / `NOVA_SSH_KEY` / `NOVA_SSH_PORT` secrets exist at
+  the repo **or** org level. Any leftover from the pre-runner era must be deleted — they
+  are unused and one leaked private key away from full shell on nova.
+- If the workflow triggers on `pull_request`, gate the deploy job on a fork guard:
+  `if: github.event.pull_request.head.repo.full_name == github.repository`.
+
+### Nova side (once per repo)
+
+Add a runner service block in `infra/compose.yaml` following the sibling blocks (labels:
+`nova,<repo>`; multi-env repos add extra comma-separated labels). Then `./nova.sh up infra`.
+Full add-a-runner checklist: `context/runners.md § Add a runner`.
+
+### Deploy job template
+
+```yaml
+deploy:
+  needs: build-and-push
+  runs-on: [self-hosted, nova, <repo>]
+  timeout-minutes: 10
+  permissions:
+    contents: read
+    packages: read
+  steps:
+    - name: Deploy
+      env:
+        NOVA_DIR: ${{ vars.NOVA_CONFIG_PATH }}
+      run: |
+        cd "$NOVA_DIR"
+        ./nova.sh update <stack>
+```
+
+Use `./nova.sh update <stack>` for the common case (VKT does this). Use an explicit
+`docker compose pull && up -d` + per-service verify loop when the workflow needs to gate
+on specific containers reporting `running` before declaring success (movienight does this
+for its 3-service stack).
+
+### GHCR pull without `docker login`
+
+Only needed if the workflow pulls **private** GHCR images. `runners-socket-proxy` has
+`AUTH=0` — `docker login` POSTs to the daemon's `/auth` endpoint, which the proxy blocks
+on purpose (narrower runner blast radius). Write `~/.docker/config.json` directly instead:
+
+```bash
+mkdir -p "$HOME/.docker" && umask 077
+AUTH_B64=$(printf '%s:%s' "${{ github.actor }}" "${{ secrets.GITHUB_TOKEN }}" | base64 -w 0)
+printf '{"auths":{"ghcr.io":{"auth":"%s"}}}\n' "$AUTH_B64" > "$HOME/.docker/config.json"
+docker compose -f "$COMPOSE_FILE" pull
+```
+
+The file dies with the ephemeral runner at end-of-job. Public packages (and repo-linked
+GHCR packages that inherit the repo's read visibility) pull anonymously — skip this step.
+
 ## Security Hardening (cap_drop)
 
 Applied to most media/arr services. Standard list:

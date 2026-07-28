@@ -194,7 +194,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Routing:** Traefik routes `/graphql` to backend, everything else to frontend — both on `movienight.NOVA_DOMAIN`
 
-**Image:** Both images are built by CI in [`nova-firefly/movienight`](https://github.com/nova-firefly/movienight) on push to `main` and published to GHCR. The CI's SSH deploy job calls `nova.sh update movienight` after the image push. WUD watches the digest of `:latest` and notifies on Discord; redeploy with `./nova.sh update movienight`.
+**Image:** Both images are built by CI in [`nova-firefly/movienight`](https://github.com/nova-firefly/movienight) on push to `master` and published to GHCR. Deploy runs on `runner-movienight` (self-hosted, see `context/patterns.md § CI Deploy via Self-Hosted Runner`) and does `docker compose pull && up -d` against `movienight/compose.yaml`, gated on all three services reporting `running`. `deploy-test.yml` uses the same runner via the shared `movienight-test` label to deploy PR branches to `movienight-test`. WUD watches the digest of `:latest` and notifies on Discord (redundant with the runner deploy but kept as a drift alarm); redeploy manually with `./nova.sh update movienight`.
 
 **Required env:** `MOVIENIGHT_DB_PASSWORD`
 
@@ -207,13 +207,13 @@ docker volume create authelia_data && docker volume create authelia_redis
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
 | vibe-kanban | local build (`../vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
-| vibe-kanban-tools | ghcr.io/kjsb25/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
+| vibe-kanban-tools | ghcr.io/nova-firefly/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
 
-**Auto-deploy (vibe-kanban-tools):** Image is built by CI in the `kjsb25/vibe-kanban-tools` repo on push to `main` and pushed to GHCR. The CI deploy job SSH-deploys immediately via `nova.sh update dev`. WUD watches the image and notifies on Discord when the digest changes but does not recreate.
+**Auto-deploy (vibe-kanban-tools):** Image is built by CI in [`nova-firefly/vibe-kanban-tools`](https://github.com/nova-firefly/vibe-kanban-tools) on push to `main` and pushed to GHCR. Deploy runs on `runner-vibe-kanban-tools` (self-hosted, see `context/patterns.md § CI Deploy via Self-Hosted Runner`) and calls `./nova.sh update dev`. WUD watches the image and notifies on Discord when the digest changes but does not recreate.
 
 **Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`
 
-**Required GitHub secrets (vibe-kanban-tools repo):** `NOVA_HOST`, `NOVA_USER`, `NOVA_SSH_KEY`
+**Required GitHub repo variable:** `NOVA_CONFIG_PATH=/nova-config`. No SSH secrets are needed — the deploy runs inside the self-hosted runner container, not over SSH.
 
 ---
 
