@@ -1,0 +1,147 @@
+{
+  "_id": "novaAudHygn1",
+  "name": "Nova - Audio hygiene",
+  "description": "If a file has no AAC stream and no 2-channel stream, add a 2-channel English AAC track at 192k / 48kHz and reorder. Files that already have AAC, or already have a 2-channel mixdown, are left untouched.",
+  "tags": "nova,audio",
+  "flowPlugins": [
+    {
+      "name": "Input File",
+      "sourceRepo": "Community",
+      "pluginName": "inputFile",
+      "version": "1.0.0",
+      "id": "novaAud-input",
+      "position": { "x": 600, "y": 80 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Check Audio Codec",
+      "sourceRepo": "Community",
+      "pluginName": "checkAudioCodec",
+      "version": "1.0.0",
+      "id": "novaAud-codec",
+      "position": { "x": 600, "y": 200 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "codec": "aac",
+        "checkBitrate": "false"
+      }
+    },
+    {
+      "name": "Check Channel Count",
+      "sourceRepo": "Community",
+      "pluginName": "checkChannelCount",
+      "version": "1.0.0",
+      "id": "novaAud-channels",
+      "position": { "x": 600, "y": 320 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "channelCount": "2"
+      }
+    },
+    {
+      "name": "Begin FFmpeg Command",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaAud-start",
+      "position": { "x": 600, "y": 380 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Ensure Audio Stream",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandEnsureAudioStream",
+      "version": "1.0.0",
+      "id": "novaAud-ensure",
+      "position": { "x": 600, "y": 440 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "audioEncoder": "aac",
+        "language": "en",
+        "channels": "2",
+        "enableBitrate": "true",
+        "bitrate": "192k",
+        "enableSamplerate": "true",
+        "samplerate": "48000"
+      }
+    },
+    {
+      "name": "Reorder Streams",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandRorderStreams",
+      "version": "1.0.0",
+      "id": "novaAud-reorder",
+      "position": { "x": 600, "y": 560 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Execute",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaAud-exec",
+      "position": { "x": 600, "y": 680 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Replace Original File",
+      "sourceRepo": "Community",
+      "pluginName": "replaceOriginalFile",
+      "version": "1.0.0",
+      "id": "novaAud-replace",
+      "position": { "x": 600, "y": 800 },
+      "fpEnabled": true
+    }
+  ],
+  "flowEdges": [
+    {
+      "source": "novaAud-input",
+      "sourceHandle": "1",
+      "target": "novaAud-codec",
+      "targetHandle": null,
+      "id": "novaAud-e1"
+    },
+    {
+      "source": "novaAud-codec",
+      "sourceHandle": "2",
+      "target": "novaAud-channels",
+      "targetHandle": null,
+      "id": "novaAud-e2"
+    },
+    {
+      "source": "novaAud-channels",
+      "sourceHandle": "2",
+      "target": "novaAud-start",
+      "targetHandle": null,
+      "id": "novaAud-e3"
+    },
+    {
+      "source": "novaAud-start",
+      "sourceHandle": "1",
+      "target": "novaAud-ensure",
+      "targetHandle": null,
+      "id": "novaAud-e3b"
+    },
+    {
+      "source": "novaAud-ensure",
+      "sourceHandle": "1",
+      "target": "novaAud-reorder",
+      "targetHandle": null,
+      "id": "novaAud-e4"
+    },
+    {
+      "source": "novaAud-reorder",
+      "sourceHandle": "1",
+      "target": "novaAud-exec",
+      "targetHandle": null,
+      "id": "novaAud-e5"
+    },
+    {
+      "source": "novaAud-exec",
+      "sourceHandle": "1",
+      "target": "novaAud-replace",
+      "targetHandle": null,
+      "id": "novaAud-e6"
+    }
+  ]
+}

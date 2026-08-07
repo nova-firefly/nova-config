@@ -23,6 +23,7 @@ See `context/stacks.md` for full stack/service inventory and ports.
 See `context/patterns.md` for conventions to follow when editing compose files.
 See `context/claude-skills.md` for which Claude expert skill to use for each task type.
 See `context/docker-access.md` for what Docker commands are allowed from inside the vibe-kanban container (read-only proxy — no start/stop/exec/pull).
+See `context/tdarr-windows-node-setup.md` for the procedure that connects the Windows + RTX 3080 desktop as an ad-hoc Tdarr worker; the in-stack `tdarr-server` handles CPU-only ongoing work between bulk runs.
 
 ## Key Conventions
 

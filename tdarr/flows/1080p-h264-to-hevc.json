@@ -1,0 +1,202 @@
+{
+  "_id": "novaH264Hevc1",
+  "name": "Nova - 1080p H.264 to HEVC",
+  "description": "Re-encode 8-bit SDR H.264 1080p files over 4000kbps to HEVC NVENC at the slow preset, capped at 4000kbps. Typical reduction on Bluray remuxes is 40-60% with no perceptible quality loss. Skips HDR, 10-bit, non-1080p, and files already at or below 4000kbps. Designed for the Windows RTX 3080 ad-hoc node; on a CPU-only worker, edit the Set Video Encoder node to disable hardware encoding.",
+  "tags": "nova,video,h264-hevc,1080p",
+  "flowPlugins": [
+    {
+      "name": "Input File",
+      "sourceRepo": "Community",
+      "pluginName": "inputFile",
+      "version": "1.0.0",
+      "id": "novaH26-input",
+      "position": { "x": 600, "y": 80 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Is h264?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoCodec",
+      "version": "1.0.0",
+      "id": "novaH26-h264",
+      "position": { "x": 600, "y": 200 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "codec": "h264"
+      }
+    },
+    {
+      "name": "Is 10-bit?",
+      "sourceRepo": "Community",
+      "pluginName": "check10Bit",
+      "version": "1.0.0",
+      "id": "novaH26-10bit",
+      "position": { "x": 600, "y": 320 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Is HDR?",
+      "sourceRepo": "Community",
+      "pluginName": "checkHdr",
+      "version": "1.0.0",
+      "id": "novaH26-hdr",
+      "position": { "x": 600, "y": 440 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Resolution?",
+      "sourceRepo": "Community",
+      "pluginName": "checkVideoResolution",
+      "version": "1.0.0",
+      "id": "novaH26-res",
+      "position": { "x": 600, "y": 560 },
+      "fpEnabled": true
+    },
+    {
+      "name": "1080p > 4000kbps?",
+      "sourceRepo": "Community",
+      "pluginName": "checkOverallBitrate",
+      "version": "1.0.0",
+      "id": "novaH26-br",
+      "position": { "x": 600, "y": 680 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "unit": "kbps",
+        "greaterThan": "4000",
+        "lessThan": "999999"
+      }
+    },
+    {
+      "name": "Begin FFmpeg Command",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandStart",
+      "version": "1.0.0",
+      "id": "novaH26-start",
+      "position": { "x": 600, "y": 800 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Encode HEVC NVENC slow",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoEncoder",
+      "version": "1.0.0",
+      "id": "novaH26-encoder",
+      "position": { "x": 600, "y": 920 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "outputCodec": "hevc",
+        "ffmpegPresetEnabled": "true",
+        "ffmpegPreset": "slow",
+        "ffmpegQualityEnabled": "false",
+        "ffmpegQuality": "25",
+        "hardwareEncoding": "true",
+        "hardwareType": "nvenc"
+      }
+    },
+    {
+      "name": "Bitrate cap 4000kbps",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandSetVideoBitrate",
+      "version": "1.0.0",
+      "id": "novaH26-bitrate",
+      "position": { "x": 600, "y": 1040 },
+      "fpEnabled": true,
+      "inputsDB": {
+        "useInputBitrate": "false",
+        "bitrate": "4000",
+        "targetBitratePercent": "50",
+        "fallbackBitrate": "4000"
+      }
+    },
+    {
+      "name": "Execute",
+      "sourceRepo": "Community",
+      "pluginName": "ffmpegCommandExecute",
+      "version": "1.0.0",
+      "id": "novaH26-exec",
+      "position": { "x": 600, "y": 1160 },
+      "fpEnabled": true
+    },
+    {
+      "name": "Replace Original File",
+      "sourceRepo": "Community",
+      "pluginName": "replaceOriginalFile",
+      "version": "1.0.0",
+      "id": "novaH26-replace",
+      "position": { "x": 600, "y": 1280 },
+      "fpEnabled": true
+    }
+  ],
+  "flowEdges": [
+    {
+      "source": "novaH26-input",
+      "sourceHandle": "1",
+      "target": "novaH26-h264",
+      "targetHandle": null,
+      "id": "novaH26-e1"
+    },
+    {
+      "source": "novaH26-h264",
+      "sourceHandle": "1",
+      "target": "novaH26-10bit",
+      "targetHandle": null,
+      "id": "novaH26-e2"
+    },
+    {
+      "source": "novaH26-10bit",
+      "sourceHandle": "2",
+      "target": "novaH26-hdr",
+      "targetHandle": null,
+      "id": "novaH26-e3"
+    },
+    {
+      "source": "novaH26-hdr",
+      "sourceHandle": "2",
+      "target": "novaH26-res",
+      "targetHandle": null,
+      "id": "novaH26-e4"
+    },
+    {
+      "source": "novaH26-res",
+      "sourceHandle": "4",
+      "target": "novaH26-br",
+      "targetHandle": null,
+      "id": "novaH26-e5"
+    },
+    {
+      "source": "novaH26-br",
+      "sourceHandle": "1",
+      "target": "novaH26-start",
+      "targetHandle": null,
+      "id": "novaH26-e6"
+    },
+    {
+      "source": "novaH26-start",
+      "sourceHandle": "1",
+      "target": "novaH26-encoder",
+      "targetHandle": null,
+      "id": "novaH26-e7"
+    },
+    {
+      "source": "novaH26-encoder",
+      "sourceHandle": "1",
+      "target": "novaH26-bitrate",
+      "targetHandle": null,
+      "id": "novaH26-e8"
+    },
+    {
+      "source": "novaH26-bitrate",
+      "sourceHandle": "1",
+      "target": "novaH26-exec",
+      "targetHandle": null,
+      "id": "novaH26-e9"
+    },
+    {
+      "source": "novaH26-exec",
+      "sourceHandle": "1",
+      "target": "novaH26-replace",
+      "targetHandle": null,
+      "id": "novaH26-e10"
+    }
+  ]
+}
