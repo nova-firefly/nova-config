@@ -142,7 +142,7 @@ services:
     container_name: "actual-mcp"
     depends_on:
       - actual
-    image: "sstefanov/actual-mcp:1.11.3"   # pin an exact version; never :latest for financial data
+    image: "sstefanov/actual-mcp:v1.11.3"   # pin an exact version (v-prefixed tag); never :latest for financial data
     command: ["--sse", "--enable-write", "--enable-bearer"]
     environment:
       - "ACTUAL_SERVER_URL=http://actual:5006"
