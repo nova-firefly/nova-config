@@ -13,7 +13,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
 | dev | dev/compose.yaml | vibe-kanban, vibe-kanban-tools |
-| tools | tools/compose.yaml | actual, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
+| tools | tools/compose.yaml | actual, actual-mcp, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | minecraft |
 | movienight-test | movienight-test/compose.yaml | movienight-test-frontend, movienight-test-backend, movienight-test-db (CI-only; excluded from reconcile). Frontend + backend are **on-demand via Sablier** (group `movienight-test`, 60m idle); DB stays running. |
@@ -221,7 +221,8 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Image | Port | URL | Notes |
 |---------|-------|------|-----|-------|
-| actual | actualbudget/actual-server | 5006 | actual.NOVA_DOMAIN | Personal budgeting. **On-demand via Sablier** (group `tools`, 60m idle). |
+| actual | actualbudget/actual-server | 5006 | actual.NOVA_DOMAIN | Personal budgeting. **Always-on** (Sablier removed) — the `actual-mcp` connector reaches it directly at `http://actual:5006`, which bypasses Sablier, so it must stay up. Behind Authelia on the browser route. |
+| actual-mcp | sstefanov/actual-mcp:1.11.3 | 3000 (no host port) | actual-mcp.NOVA_DOMAIN | Actual Budget MCP (SSE) — remote Claude connector. **Public, no Authelia** (Claude calls from Anthropic's cloud); bearer-token auth (`--enable-bearer`) + `actual-mcp-sse@file` rate limit. Reaches `actual` over `traefik_default`; downloads a local budget copy to `/data`. Runbook + security posture: `context/actual-mcp.md`. |
 | stirling-pdf | stirlingtools/stirling-pdf | 8080 | stirling-pdf.NOVA_DOMAIN | PDF manipulation tool. **On-demand via Sablier** (group `tools`, 60m idle); JVM cold start — `start_period` bumped to 60s so wake doesn't briefly flip to unhealthy. |
 | vikunja | vikunja/vikunja | 3456 | vikunja.NOVA_DOMAIN | Task management. **On-demand via Sablier** (group `tools`, 60m idle). Assumes browser-only usage; if CalDAV subscribers or the mobile app poll the host, they'll keep it warm — revert this service and remove sablier labels. |
 | uptime-kuma | louislam/uptime-kuma | 3002→3001 | status.NOVA_DOMAIN | Service uptime monitoring and alerting |
@@ -231,7 +232,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **External volumes:** `stirling_config`, `uptime_kuma_data`, `vikunja_db`, `vikunja_files`, `ntfy_data`, `snapotter_data`
 
-**Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose), `snapotter_workspace` (ephemeral processing dir; safe to wipe)
+**Compose-managed volumes:** `actual_data` (named `tools_actual_data` by Docker Compose), `actual_mcp_data` (disposable local budget copy for `actual-mcp`; re-downloads on start), `snapotter_workspace` (ephemeral processing dir; safe to wipe)
 
 **Shell auth model (defense in depth):**
 1. Traefik TLS at the edge.
@@ -354,5 +355,6 @@ Routes for host-mode services that Docker provider can't discover, plus global m
 - `ma.NOVA_DOMAIN` → `host.docker.internal:8095` (Music Assistant)
 - `glances.NOVA_DOMAIN` → `host.docker.internal:61208` (Glances) — protected by `authelia@file`
 - `authelia` middleware — forwardAuth to `http://authelia:9091/api/authz/forward-auth`
-- Per-service `sablier-<service>` middlewares — one per on-demand container for independent wake/sleep lifecycles: `sablier-actual`, `sablier-stirling-pdf`, `sablier-vikunja`, `sablier-snapotter`, `sablier-immich-power-tools`, `sablier-homescreen-hero`
+- Per-service `sablier-<service>` middlewares — one per on-demand container for independent wake/sleep lifecycles: `sablier-stirling-pdf`, `sablier-vikunja`, `sablier-snapotter`, `sablier-immich-power-tools`, `sablier-homescreen-hero`
+- `actual-mcp-sse` middleware — rate limit for the public Actual Budget MCP (SSE) route (not behind Authelia; bearer-token auth). See `context/actual-mcp.md`.
 - `sablier-movienight-test` middleware — intentional shared group: frontend + backend wake together (the app is unusable without both)

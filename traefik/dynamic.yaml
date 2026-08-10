@@ -8,13 +8,19 @@
 #                               Reference in Docker labels as: authelia@file
 #   sablier-<service>@file    - Per-container on-demand wake. One middleware per
 #                               service so each Sablier-managed container has an
-#                               independent lifecycle (a hit on `actual` must not
-#                               wake `snapotter`). Chain AFTER authelia so unauth'd
-#                               probes don't wake containers:
-#                                 middlewares: "authelia@file,sablier-actual@file"
+#                               independent lifecycle (a hit on `stirling-pdf`
+#                               must not wake `snapotter`). Chain AFTER authelia so
+#                               unauth'd probes don't wake containers:
+#                                 middlewares: "authelia@file,sablier-stirling-pdf@file"
 #                               Each target service also needs sablier.enable=true,
 #                               a matching sablier.group=<service> label, and
 #                               traefik.docker.allownonrunning=true.
+#   actual-mcp-sse@file       - Rate limit for the PUBLIC Actual Budget MCP (SSE)
+#                               route. That route is intentionally NOT behind
+#                               authelia (Claude reaches it from Anthropic's cloud,
+#                               not a browser); the MCP's own bearer token is the
+#                               auth, and this middleware adds rate limiting as
+#                               defence-in-depth. See context/actual-mcp.md.
 #   sablier-movienight-test@file
 #                             - Intentional multi-container group: the frontend
 #                               and backend of the movienight-test CI stack wake
@@ -41,23 +47,15 @@ http:
     # between edits. keepAliveInterval keeps long uploads / SSE streams warm.
     # ignoreUserAgent filters uptime probes so they don't wake containers.
 
-    sablier-actual:
-      plugin:
-        sablier:
-          sablierUrl: "http://sablier:10000"
-          group: "actual"
-          sessionDuration: "60m"
-          keepAliveInterval: "30s"
-          ignoreUserAgent:
-            - "(?i)uptimerobot"
-            - "(?i)uptime-kuma"
-            - "curl"
-            - "wget"
-          dynamic:
-            displayName: "Actual Budget"
-            theme: "ghost"
-            refreshFrequency: "5s"
-            showDetails: true
+    # Rate limit for the public Actual Budget MCP (SSE) route. Bearer-token auth
+    # is enforced by the MCP server itself; this is defence-in-depth against
+    # token brute-forcing. Generous limits so legitimate tool-call bursts and the
+    # long-lived SSE stream aren't throttled. Traefik does not buffer responses by
+    # default, so the event stream is delivered incrementally with no extra config.
+    actual-mcp-sse:
+      rateLimit:
+        average: 100
+        burst: 200
 
     sablier-stirling-pdf:
       plugin:
