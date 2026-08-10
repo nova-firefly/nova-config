@@ -4,7 +4,7 @@ Exposes the self-hosted Actual Budget instance to Claude as a **remote MCP
 connector**, reachable from any device signed into the Claude account. Lives in
 the **tools** stack as the `actual-mcp` service alongside `actual`.
 
-- **Server:** [`s-stefanov/actual-mcp`](https://github.com/s-stefanov/actual-mcp) (MIT), image `sstefanov/actual-mcp`, pinned to `1.11.3`.
+- **Server:** [`s-stefanov/actual-mcp`](https://github.com/s-stefanov/actual-mcp) (MIT), image `sstefanov/actual-mcp`, pinned to `v1.11.3` (Docker Hub tags are `v`-prefixed; amd64 digest `sha256:76291b13…`). Latest at time of writing is `v1.12.0`.
 - **Transport:** legacy two-endpoint HTTP+SSE (`--sse`). SSE is deprecated in the MCP spec but not removed; Claude clients still support it. Migration path if it breaks is at the bottom of this doc.
 - **URL:** `https://actual-mcp.${NOVA_DOMAIN}` (Traefik route, TLS at the edge, **no** host ports).
 
