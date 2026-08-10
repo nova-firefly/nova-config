@@ -14,7 +14,7 @@ Docker Compose configuration for managing self-hosted services, split into indep
 | **Backup** | `backup/compose.yaml` | Backrest, Duplicati |
 | **Gaming** | `gaming/compose.yaml` | Minecraft server |
 | **Dev** | `dev/compose.yaml` | Vibe Kanban, Vibe Kanban Tools |
-| **Tools** | `tools/compose.yaml` | Stirling PDF, Vikunja, Uptime Kuma, ntfy, Actual |
+| **Tools** | `tools/compose.yaml` | Stirling PDF, Vikunja, Uptime Kuma, ntfy, Actual, Actual MCP (Claude connector) |
 | **Movienight** | `movienight/compose.yaml` | Frontend + Backend + Postgres |
 
 ## Prerequisites
