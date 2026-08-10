@@ -142,7 +142,12 @@ services:
     container_name: "actual-mcp"
     depends_on:
       - actual
-    image: "sstefanov/actual-mcp:v1.11.3"   # pin an exact version (v-prefixed tag); never :latest for financial data
+    # Pin an exact version (v-prefixed tag); never :latest for financial data.
+    # The bundled @actual-app/api MUST be >= the actual-server version, or Actual
+    # refuses to open the (newer-schema) budget with "out-of-sync-migrations".
+    # v1.12.0 bundles @actual-app/api 26.7.0; bump this in lockstep after an
+    # actual-server upgrade. See context/actual-mcp.md "Version compatibility".
+    image: "sstefanov/actual-mcp:v1.12.0"
     command: ["--sse", "--enable-write", "--enable-bearer"]
     environment:
       - "ACTUAL_SERVER_URL=http://actual:5006"

@@ -4,7 +4,7 @@ Exposes the self-hosted Actual Budget instance to Claude as a **remote MCP
 connector**, reachable from any device signed into the Claude account. Lives in
 the **tools** stack as the `actual-mcp` service alongside `actual`.
 
-- **Server:** [`s-stefanov/actual-mcp`](https://github.com/s-stefanov/actual-mcp) (MIT), image `sstefanov/actual-mcp`, pinned to `v1.11.3` (Docker Hub tags are `v`-prefixed; amd64 digest `sha256:76291b13…`). Latest at time of writing is `v1.12.0`.
+- **Server:** [`s-stefanov/actual-mcp`](https://github.com/s-stefanov/actual-mcp) (MIT), image `sstefanov/actual-mcp`, pinned to `v1.12.0` (Docker Hub tags are `v`-prefixed; amd64 digest `sha256:459d3d4c…`). Bundles `@actual-app/api@26.7.0` — see **Version compatibility** below.
 - **Transport:** legacy two-endpoint HTTP+SSE (`--sse`). SSE is deprecated in the MCP spec but not removed; Claude clients still support it. Migration path if it breaks is at the bottom of this doc.
 - **URL:** `https://actual-mcp.${NOVA_DOMAIN}` (Traefik route, TLS at the edge, **no** host ports).
 
@@ -23,6 +23,37 @@ compose config:
   `actual` is kept **always-on** (its Sablier labels were removed) — an
   on-demand `actual` would never be woken for an MCP call, and Claude issues
   those calls from the cloud at any time.
+
+## Version compatibility (read before bumping either image)
+
+The MCP opens a local copy of the budget with its **bundled `@actual-app/api`**.
+Actual refuses to open a budget whose schema is **newer** than the API — it
+errors with `out-of-sync-migrations` / "No budget file is open". So:
+
+> **The MCP's bundled `@actual-app/api` must be ≥ the `actual` server version.**
+
+`actual` here runs `actualbudget/actual-server:latest`, so it drifts forward on
+every upgrade. The MCP must keep pace:
+
+| actual-mcp tag | bundled `@actual-app/api` |
+|---|---|
+| `v1.12.0` (current pin) | `26.7.0` |
+| `v1.11.3` | `^26.3.0` — **too old for a 2026-mid+ server**, fails to open the budget |
+
+**When you upgrade `actual-server`** (WUD will notify on Discord), before or soon
+after, bump `actual-mcp` to a tag whose `@actual-app/api` is ≥ the new server
+version (check the tag's `package.json`), then
+`./nova.sh recreate tools actual-mcp`. If the MCP starts logging
+`out-of-sync-migrations`, this coupling is why. Newest MCP tags:
+<https://hub.docker.com/r/sstefanov/actual-mcp/tags> — bundled API version is in
+the repo's `package.json` at that tag.
+
+Quick check after a bump:
+
+```bash
+docker compose -f tools/compose.yaml exec actual-mcp node build/index.js --test-resources
+# healthy: "Resource test ... OK" and NO "out-of-sync-migrations"
+```
 
 ## Auth model
 
@@ -124,6 +155,8 @@ context.
 | Symptom | Likely cause |
 |---|---|
 | Container exits on start | Missing `/data` volume, or `BEARER_TOKEN` unset while `--enable-bearer` is on |
+| `out-of-sync-migrations` / "No budget file is open" (and the public route then 404s because the container restart-loops) | MCP's bundled `@actual-app/api` is **older** than the `actual` server — bump the `actual-mcp` tag. See **Version compatibility** |
+| `manifest unknown` on pull | Wrong tag — Docker Hub tags are `v`-prefixed (`v1.12.0`, not `1.12.0`) |
 | Connector connects then drops | Proxy buffering SSE, or read timeout too short (Traefik doesn't buffer by default; check any override) |
 | "Couldn't reach MCP server" | Hostname not publicly resolvable, or an IP allowlist blocking Anthropic |
 | Auth fails despite correct token | `Authorization` value entered without the `Bearer ` prefix, or the request-header beta isn't on the account |
