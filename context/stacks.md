@@ -231,8 +231,11 @@ docker exec -it claude-dev claude    # then /login
 `shell.${NOVA_DOMAIN}` gets you a host shell from a phone if you are not at the machine.
 
 **Supervision:** in server mode Claude Code exits after ~10 min of network outage, so the
-entrypoint runs it in a relaunch loop with `--continue` (which rejoins the prior session rather
-than spawning a duplicate). The healthcheck watches for the `claude remote-control` process.
+entrypoint runs it in a relaunch loop. Each pass tries `--continue` first (which rejoins the
+prior session rather than spawning a duplicate) and falls back to a plain launch when there is
+nothing to resume — `--continue` errors with *"No recent session found in this directory or its
+worktrees"* on a fresh container, so passing it unconditionally would wedge the loop before a
+session ever existed. The healthcheck watches for the `claude remote-control` process.
 
 **Volume access differs from vibe-kanban:** one read-only bind of
 `/var/lib/docker/volumes`, so paths carry a `_data` segment

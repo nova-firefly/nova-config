@@ -134,21 +134,49 @@ done
 #
 # In server mode Claude Code gives up and exits after roughly 10 minutes of
 # network outage, so an unsupervised container would silently go offline and
-# stay offline. `--continue` rejoins the session the previous run created
-# (valid for ~4h after it stopped) instead of spawning a duplicate.
+# stay offline.
+#
+# `--continue` rejoins the session a previous run created (valid ~4h after it
+# stopped) instead of spawning a duplicate — but it FAILS when there is no
+# session to resume:
+#
+#   Error: No recent session found in this directory or its worktrees.
+#
+# which is exactly the state of a fresh container. Passing it unconditionally
+# wedges the loop before a session is ever created. So: try to resume, and fall
+# back to starting a new session when there is nothing to resume.
 # ---------------------------------------------------------------------------
-echo "[entrypoint] Starting claude remote-control (session: ${CLAUDE_DEV_SESSION_NAME:-nova})"
-while true; do
-  # Run in the background and `wait` so the SIGTERM trap above can fire —
-  # a foreground child would block signal handling until it returned.
+
+# Launch remote-control in the background and wait, so the SIGTERM trap above
+# can fire — a foreground child would block signal handling until it returned.
+# Any arguments given are prepended to the standard set.
+launch_rc() {
   # shellcheck disable=SC2086  # CLAUDE_DEV_EXTRA_ARGS is intentionally word-split
-  claude remote-control --continue \
+  claude remote-control "$@" \
     --name "${CLAUDE_DEV_SESSION_NAME:-nova}" \
     --permission-mode "${CLAUDE_DEV_PERMISSION_MODE:-acceptEdits}" \
     ${CLAUDE_DEV_EXTRA_ARGS:-} &
   CHILD_PID=$!
-  wait "$CHILD_PID" || rc=$?
-  echo "[entrypoint] remote-control exited (${rc:-0}); restarting in 10s"
-  unset rc CHILD_PID
+  launch_rc_status=0
+  wait "$CHILD_PID" || launch_rc_status=$?
+  unset CHILD_PID
+  return "$launch_rc_status"
+}
+
+echo "[entrypoint] Starting claude remote-control (session: ${CLAUDE_DEV_SESSION_NAME:-nova})"
+while true; do
+  rc=0
+  launch_rc --continue || rc=$?
+
+  # A non-zero exit here is ambiguous: either there was no session to resume
+  # (fresh container) or a real failure. Both are answered the same way — start
+  # a new session. If that also fails, the sleep below keeps the retry slow.
+  if [ "$rc" -ne 0 ]; then
+    echo "[entrypoint] Nothing to resume (exit ${rc}); starting a new session ..."
+    rc=0
+    launch_rc || rc=$?
+  fi
+
+  echo "[entrypoint] remote-control exited (${rc}); restarting in 10s"
   sleep 10
 done
