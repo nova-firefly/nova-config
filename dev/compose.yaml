@@ -1,5 +1,7 @@
-# Dev/Utility Stack - Vibe Kanban, Vibe Kanban Tools
+# Dev/Utility Stack - Claude Dev, Vibe Kanban, Vibe Kanban Tools
 # Usage: ./nova.sh up dev   (or: docker compose -f dev/compose.yaml up -d)
+# Requires .env file for: GH_TOKEN, NOVA_DOMAIN, NOVA_HOSTNAME, TZ
+# NOTE: `up`/`update` do NOT rebuild build: services. Use ./nova.sh recreate dev <svc>.
 
 name: dev
 
@@ -12,6 +14,92 @@ networks:
     name: "socket_proxy"
 
 services:
+
+  # Claude Code running `claude remote-control` 24/7. Drive it from the Claude
+  # mobile app or claude.ai/code, where it appears as an online session named
+  # ${CLAUDE_DEV_SESSION_NAME}. Deliberately NO ports and NO Traefik router:
+  # remote-control is outbound-only (HTTPS to api.anthropic.com), so there is
+  # nothing to route and no listener to protect.
+  #
+  # Auth is a ONE-TIME interactive OAuth login — API keys and setup-token
+  # tokens are not supported by remote-control. First boot self-seeds from
+  # vibe-kanban's existing login if present; otherwise see the container logs
+  # for the login command. Details: context/docker-access.md.
+  claude-dev:
+    build: "../claude-dev"
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "claude-dev"
+    environment:
+      - "GH_TOKEN=${GH_TOKEN}"
+      - "TZ=${TZ}"
+      - "IS_SANDBOX=1"
+      - "DOCKER_HOST=tcp://socket-proxy:2375"
+      - "CLAUDE_DEV_SESSION_NAME=${CLAUDE_DEV_SESSION_NAME:-nova}"
+      - "CLAUDE_DEV_PERMISSION_MODE=${CLAUDE_DEV_PERMISSION_MODE:-acceptEdits}"
+      - "CLAUDE_DEV_SEED_CREDENTIALS=${CLAUDE_DEV_SEED_CREDENTIALS:-true}"
+      - "CLAUDE_DEV_EXTRA_ARGS=${CLAUDE_DEV_EXTRA_ARGS:-}"
+    healthcheck:
+      # Long start_period: on a fresh volume the container waits for the
+      # one-time login before remote-control ever starts.
+      #
+      # Two subtleties in this pattern, both load-bearing:
+      #   - Match 'remote-control', not 'claude remote-control': the running
+      #     process is `node .../claude-code/cli.js remote-control ...`, so the
+      #     two words are never adjacent on the command line.
+      #   - The [r] bracket trick stops pgrep matching the healthcheck's own
+      #     shell, whose command line otherwise contains the pattern verbatim —
+      #     which would report healthy no matter what.
+      test: ["CMD-SHELL", "pgrep -f '[r]emote-control' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    hostname: "${NOVA_HOSTNAME}"
+    labels:
+      # No traefik.* labels — nothing to route.
+      homepage.group: "Development"
+      homepage.name: "Claude Dev"
+      homepage.icon: "mdi-robot"
+      homepage.href: "https://claude.ai/code"
+      homepage.description: "Claude Code Remote Control on nova"
+      wud.watch: "false"  # locally-built image; rebuild via `./nova.sh recreate dev claude-dev`
+    networks:
+      - "traefik_default"
+      - "socket_proxy"
+    restart: "unless-stopped"
+    stdin_open: true
+    tty: true
+    volumes:
+      - "vibe-kanban-repos:/repos"
+      - "claude-dev-claude:/root/.claude"
+      # Every named volume's contents, read-only, for log/config inspection.
+      # Contents live at /mnt/volumes/<volume>/_data/... — note the _data.
+      - "/var/lib/docker/volumes:/mnt/volumes:ro"
+      - "/home/koonan/.ssh:/root/.ssh:ro"
+      - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 
   vibe-kanban:
     build: "../vibe-kanban"
@@ -164,6 +252,11 @@ volumes:
 
   vibe-kanban-repos:
     external: true
+
+  # claude-dev's own Claude Code config + OAuth credentials. Deliberately NOT
+  # shared with vibe-kanban-claude: two live Claude Code processes writing one
+  # config dir risks corrupting the credentials.
+  claude-dev-claude:
 
   vibe-kanban-claude:
 

@@ -2,8 +2,8 @@
 
 All containers that need Docker API access connect through `socket-proxy`
 (`tecnativa/docker-socket-proxy` in `infra/compose.yaml`), not directly to
-`/var/run/docker.sock`. The vibe-kanban container is no exception — it uses
-`DOCKER_HOST=tcp://socket-proxy:2375`.
+`/var/run/docker.sock`. The two dev containers are no exception — both
+`claude-dev` and `vibe-kanban` use `DOCKER_HOST=tcp://socket-proxy:2375`.
 
 ## What the Proxy Permits (Read-Only GET endpoints)
 
@@ -45,12 +45,44 @@ or because all POST/DELETE methods are disabled by default.
 
 ## Volume Access (Read-Only)
 
-In addition to the Docker socket, vibe-kanban has **read-only** bind access to every named
-Docker volume on the host. This is useful for inspecting application logs, config files, and
-on-disk state directly without needing `docker exec`.
+Both dev containers have **read-only** access to the contents of every named Docker volume on
+the host. This is useful for inspecting application logs, config files, and on-disk state
+directly without needing `docker exec` (which the proxy blocks).
+
+They get there by two different routes, and **the paths differ** — this trips people up:
+
+| Container | Mount | Path to contents |
+|---|---|---|
+| `claude-dev` | one bind: `/var/lib/docker/volumes:/mnt/volumes:ro` | `/mnt/volumes/<volume>/`**`_data`**`/<path>` |
+| `vibe-kanban` | 44 individual `<volume>:/mnt/volumes/<volume>:ro` mounts | `/mnt/volumes/<volume>/<path>` |
+
+### `claude-dev` — single bind (preferred)
+
+One read-only bind of the host's Docker volume root, following the same precedent as
+`volume-sharer` in `infra/compose.yaml`. Nothing to maintain: volumes created in future are
+covered automatically, and adding a stack never requires editing `dev/compose.yaml`.
+
+Because this exposes Docker's on-disk layout rather than the volumes themselves, contents sit
+under a `_data` subdirectory:
+
+```bash
+tail -f /mnt/volumes/radarr_config/_data/logs/radarr.txt
+ls /mnt/volumes/                      # every volume on the host
+```
+
+> **This is no longer an explicit allowlist.** Any volume that exists — including ones added
+> after this container was built — is readable. The previous per-volume list already included
+> ACME private keys and the Authelia session store, so this is not a new *class* of exposure,
+> but it is no longer audited volume-by-volume. Assume `claude-dev` can read every secret that
+> lives in a Docker volume.
+
+Requires root inside the container: `/var/lib/docker/volumes` is mode 0700 and volume contents
+carry their own ownership. This is the same reasoning documented on `volume-sharer`.
+
+### `vibe-kanban` — explicit per-volume list (legacy)
 
 Each external volume is mounted at `/mnt/volumes/<volume_name>:ro`, where `<volume_name>` is
-the exact name shown by `docker volume ls`. For example:
+the exact name shown by `docker volume ls` — no `_data` segment. For example:
 
 | Mount path | Volume | Service |
 |---|---|---|
@@ -67,6 +99,9 @@ the exact name shown by `docker volume ls`. For example:
 
 See `dev/compose.yaml` for the full list. To add a new volume, declare it as `external: true`
 under `volumes:` and add the corresponding `:ro` bind mount to the `vibe-kanban` service.
+(`claude-dev` needs no such edit — its single bind already covers it.) Converting
+`vibe-kanban` to the same single bind would delete ~88 lines and is worth doing next time that
+service is touched.
 
 All mounts are declared with `:ro` — write operations will be rejected by the kernel.
 Application logs are typically found in `logs/` subdirectories within each mount.
@@ -74,7 +109,7 @@ Application logs are typically found in `logs/` subdirectories within each mount
 > **Note on secrets:** This grants read access to database files, session stores, ACME
 > certs, and other sensitive material. Be careful what you ask Claude to inspect.
 
-Example usage:
+Example usage (note: **no** `_data` segment on this container — see the table above):
 ```bash
 # Tail Radarr logs
 tail -f /mnt/volumes/radarr_config/logs/radarr.txt
