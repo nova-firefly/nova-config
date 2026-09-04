@@ -236,6 +236,18 @@ Those branch from the **remote's default branch**, not your local work — set
 `worktree.baseRef: "head"` in settings to change that. `.claude/` is gitignored in nova-config;
 check the other repos or spawned worktrees will show up as untracked files.
 
+**Restarts re-adopt worktree sessions.** Root sessions survive a restart on their own — their ID
+is derived from the directory, so each server re-creates the identical one and it looks like a
+resume. Sessions spawned into worktrees do not: nothing serves them and they drop off
+claude.ai, even though worktree, branch and transcript are all still on disk. After starting the
+per-repo servers the entrypoint therefore scans `<repo>/.claude/worktrees/bridge-cse_*` and
+re-attaches each one with `--session-id` — the spawner encodes the claude.ai session ID in that
+directory name, so no extra state is needed. `--continue` cannot do this: its "last session"
+record is keyed to the directory the *server* ran in, so from inside a worktree it resolves to
+the root session and is refused as already served. Adoption is one-shot (`--session-id` exits
+when the session ends) and only applies within the CLI's ~4h window, so a container down longer
+than that leaves those sessions to be reopened from the app.
+
 **Auth is a one-time interactive OAuth login.** API keys and `claude setup-token` tokens are
 not supported by remote-control. First boot copies vibe-kanban's existing credentials if
 present (`CLAUDE_DEV_SEED_CREDENTIALS=true`), which makes it zero-touch — at the cost of both
