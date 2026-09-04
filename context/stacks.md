@@ -206,7 +206,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
-| claude-dev | local build (`../claude-dev`) | Claude Code running `claude remote-control` 24/7; gh CLI, Docker CLI. **No ports, no Traefik** — outbound-only |
+| claude-dev | local build (`../claude-dev`) | One `claude remote-control` server per git repo under `/repos`; gh CLI, Docker CLI. **No ports, no Traefik** — outbound-only |
 | vibe-kanban | local build (`../vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
 | vibe-kanban-tools | ghcr.io/nova-firefly/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
 
@@ -214,10 +214,27 @@ docker volume create authelia_data && docker volume create authelia_redis
 abandoned (see the `3187d77` pin). Both run side by side for now; nothing is removed until
 claude-dev has proven itself.
 
-Reach it from the Claude mobile app or claude.ai/code — it appears in the session list as an
-online session named `${CLAUDE_DEV_SESSION_NAME}` (default `nova`) with a green dot. There is
-no web UI on the host and no listener: `claude remote-control` speaks outbound HTTPS to
-api.anthropic.com only.
+Reach it from the Claude mobile app or claude.ai/code. There is no web UI on the host and no
+listener: `claude remote-control` speaks outbound HTTPS to api.anthropic.com only.
+
+**One server per repo.** At startup the entrypoint scans `/repos/*/` and starts a supervised
+`claude remote-control` server in each git checkout, so the session list shows one online entry
+per repo (`nova-config`, `movienight`, ...) rather than a single generic one. Clone a repo into
+`/repos` and restart the container to get a server for it — no config change. Set
+`CLAUDE_DEV_REPOS` (space-separated names) to narrow the set. With no git repos found it falls
+back to a single `--spawn same-dir` server at `/repos`.
+
+The per-repo split is not cosmetic. A server's working directory decides where its sessions
+live, and `--spawn worktree` **requires that directory to be a git repository** — `/repos` is
+just a folder of checkouts, so a single server rooted there could only run `--spawn same-dir`,
+where concurrent sessions edit one working tree and conflict.
+
+**Sessions are on demand.** Each server pre-creates one session that stays in the repo root
+(`--create-session-in-dir`, on by default), and every *additional* session spawned from the app
+gets its own git worktree at `<repo>/.claude/worktrees/<name>/` on a `worktree-<name>` branch.
+Those branch from the **remote's default branch**, not your local work — set
+`worktree.baseRef: "head"` in settings to change that. `.claude/` is gitignored in nova-config;
+check the other repos or spawned worktrees will show up as untracked files.
 
 **Auth is a one-time interactive OAuth login.** API keys and `claude setup-token` tokens are
 not supported by remote-control. First boot copies vibe-kanban's existing credentials if
@@ -230,12 +247,14 @@ docker exec -it claude-dev claude    # then /login
 
 `shell.${NOVA_DOMAIN}` gets you a host shell from a phone if you are not at the machine.
 
-**Supervision:** in server mode Claude Code exits after ~10 min of network outage, so the
-entrypoint runs it in a relaunch loop. Each pass tries `--continue` first (which rejoins the
-prior session rather than spawning a duplicate) and falls back to a plain launch when there is
-nothing to resume — `--continue` errors with *"No recent session found in this directory or its
-worktrees"* on a fresh container, so passing it unconditionally would wedge the loop before a
-session ever existed. The healthcheck watches for the `claude remote-control` process.
+**Supervision:** in server mode Claude Code exits after ~10 min of network outage, so each
+server runs under its own relaunch loop and SIGTERM is forwarded down to every one of them on
+`docker stop`. `--continue` is deliberately absent: the docs state it "can't be combined with
+`--session-id`, `--spawn`, `--capacity`, or `--create-session-in-dir`", and this uses `--spawn`.
+
+The healthcheck (`claude-dev/healthcheck.sh`) compares live server count against the number the
+entrypoint recorded at startup in `/run/claude-dev-expected`, so one repo's server dying
+permanently marks the container unhealthy — a bare "is anything alive" check would not.
 
 **Volume access differs from vibe-kanban:** one read-only bind of
 `/var/lib/docker/volumes`, so paths carry a `_data` segment

@@ -60,19 +60,13 @@ services:
       - "CLAUDE_DEV_SESSION_NAME=${CLAUDE_DEV_SESSION_NAME:-nova}"
       - "CLAUDE_DEV_PERMISSION_MODE=${CLAUDE_DEV_PERMISSION_MODE:-acceptEdits}"
       - "CLAUDE_DEV_SEED_CREDENTIALS=${CLAUDE_DEV_SEED_CREDENTIALS:-true}"
+      - "CLAUDE_DEV_REPOS=${CLAUDE_DEV_REPOS:-}"
       - "CLAUDE_DEV_EXTRA_ARGS=${CLAUDE_DEV_EXTRA_ARGS:-}"
     healthcheck:
-      # Long start_period: on a fresh volume the container waits for the
-      # one-time login before remote-control ever starts.
-      #
-      # Two subtleties in this pattern, both load-bearing:
-      #   - Match 'remote-control', not 'claude remote-control': the running
-      #     process is `node .../claude-code/cli.js remote-control ...`, so the
-      #     two words are never adjacent on the command line.
-      #   - The [r] bracket trick stops pgrep matching the healthcheck's own
-      #     shell, whose command line otherwise contains the pattern verbatim —
-      #     which would report healthy no matter what.
-      test: ["CMD-SHELL", "pgrep -f '[r]emote-control' >/dev/null || exit 1"]
+      # Logic lives in the image (claude-dev/healthcheck.sh) rather than inline:
+      # it needs $(...) and quoting that compose interpolation would mangle.
+      # Healthy only when every server the entrypoint started is still alive.
+      test: ["CMD", "/healthcheck.sh"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -1,24 +1,31 @@
 #!/bin/sh
 set -e
 
-# Forward SIGTERM to the supervised child so `docker stop` shuts the session
-# down cleanly instead of waiting out the timeout and being SIGKILLed.
-term_handler() {
-  echo "[entrypoint] Caught termination signal; stopping remote-control ..."
-  if [ -n "${CHILD_PID:-}" ]; then
-    kill -TERM "$CHILD_PID" 2>/dev/null || true
-    wait "$CHILD_PID" 2>/dev/null || true
-  fi
-  exit 0
-}
-trap term_handler TERM INT
-
 CLAUDE_DIR="/root/.claude"
 CLAUDE_JSON_REAL="${CLAUDE_DIR}/claude.json"
 CLAUDE_JSON_LINK="/root/.claude.json"
 CREDS="${CLAUDE_DIR}/.credentials.json"
 SEED_CREDS="${CLAUDE_DEV_SEED_SOURCE:-/mnt/volumes/dev_vibe-kanban-claude/_data/.credentials.json}"
 SKILLS_MARKER="${CLAUDE_DIR}/skills/.jeffallan-installed"
+REPOS_ROOT="${CLAUDE_DEV_REPOS_ROOT:-/repos}"
+EXPECTED_FILE="/run/claude-dev-expected"
+
+# PIDs of the supervisor subshells, one per server. Space separated.
+CHILD_PIDS=""
+
+# Forward SIGTERM to every supervisor so `docker stop` shuts all the servers
+# down cleanly instead of waiting out the timeout and being SIGKILLed.
+term_handler() {
+  echo "[entrypoint] Caught termination signal; stopping ${SERVER_COUNT:-0} server(s) ..."
+  for p in $CHILD_PIDS; do
+    kill -TERM "$p" 2>/dev/null || true
+  done
+  for p in $CHILD_PIDS; do
+    wait "$p" 2>/dev/null || true
+  done
+  exit 0
+}
+trap term_handler TERM INT
 
 mkdir -p "$CLAUDE_DIR"
 
@@ -65,31 +72,93 @@ fi
 cp /opt/global-claude.md "${CLAUDE_DIR}/CLAUDE.md"
 
 # ---------------------------------------------------------------------------
-# 4. Seed onboarding + workspace trust.
+# 4. Discover repos.
 #
-# Remote Control refuses to serve an untrusted workspace, and there is no way
-# to accept the trust dialog from a phone. Merge (never overwrite) — this file
-# also holds the OAuth account metadata written by `claude /login`.
+# One `claude remote-control` server per git checkout under $REPOS_ROOT. The
+# server's working directory decides where its sessions live, and --spawn
+# worktree needs that directory to BE a git repo — $REPOS_ROOT itself is just a
+# folder of checkouts, so a single server rooted there could only ever run
+# --spawn same-dir, where concurrent sessions edit one tree and conflict.
+#
+# CLAUDE_DEV_REPOS (space separated names) narrows the set; unset discovers all.
 # ---------------------------------------------------------------------------
-node -e "
-  const fs = require('fs');
-  const path = '${CLAUDE_JSON_REAL}';
+REPOS=""
+SERVER_COUNT=0
+
+is_git_repo() {
+  # .git is a directory in a normal clone and a file inside a worktree.
+  [ -e "$1/.git" ]
+}
+
+if [ -n "${CLAUDE_DEV_REPOS:-}" ]; then
+  for name in $CLAUDE_DEV_REPOS; do
+    if is_git_repo "${REPOS_ROOT}/${name}"; then
+      REPOS="${REPOS} ${name}"
+      SERVER_COUNT=$((SERVER_COUNT + 1))
+    else
+      echo "[entrypoint] WARNING: CLAUDE_DEV_REPOS names '${name}', but ${REPOS_ROOT}/${name} is not a git repo — skipping."
+    fi
+  done
+else
+  for dir in "${REPOS_ROOT}"/*/; do
+    [ -d "$dir" ] || continue
+    is_git_repo "${dir%/}" || continue
+    name=$(basename "${dir%/}")
+    REPOS="${REPOS} ${name}"
+    SERVER_COUNT=$((SERVER_COUNT + 1))
+  done
+fi
+
+if [ "$SERVER_COUNT" -eq 0 ]; then
+  # An empty /repos must not make the container useless — fall back to a single
+  # server at the root. It has to be same-dir: worktree mode requires a git repo
+  # and $REPOS_ROOT is not one.
+  echo "[entrypoint] WARNING: no git repos found under ${REPOS_ROOT}."
+  echo "[entrypoint]          Falling back to one --spawn same-dir server there."
+  echo "[entrypoint]          Clone a repo into ${REPOS_ROOT} and restart for per-repo servers."
+  REPOS="."
+  SERVER_COUNT=1
+  SPAWN_MODE="same-dir"
+else
+  SPAWN_MODE="worktree"
+  echo "[entrypoint] Found ${SERVER_COUNT} repo(s):${REPOS}"
+fi
+
+# ---------------------------------------------------------------------------
+# 5. Seed onboarding + per-repo workspace trust.
+#
+# Trust is keyed on the GIT REPOSITORY ROOT, and trusting a parent covers
+# subdirectories "apart from a git repository nested inside it" — so trusting
+# $REPOS_ROOT does NOT cover the checkouts inside it. Every repo needs its own
+# entry or its first session stops on a trust prompt no phone can answer.
+#
+# Merge, never overwrite: this file also holds the OAuth account metadata.
+# ---------------------------------------------------------------------------
+TRUST_PATHS="$REPOS_ROOT"
+for name in $REPOS; do
+  if [ "$name" = "." ]; then continue; fi
+  TRUST_PATHS="${TRUST_PATHS} ${REPOS_ROOT}/${name}"
+done
+
+CLAUDE_JSON_REAL="$CLAUDE_JSON_REAL" TRUST_PATHS="$TRUST_PATHS" node -e '
+  const fs = require("fs");
+  const path = process.env.CLAUDE_JSON_REAL;
   let config = {};
-  try { config = JSON.parse(fs.readFileSync(path, 'utf8')); } catch (e) {}
+  try { config = JSON.parse(fs.readFileSync(path, "utf8")); } catch (e) {}
   config.hasCompletedOnboarding = true;
   config.remoteDialogSeen = true;
   config.projects = config.projects || {};
-  for (const ws of ['/repos', '/repos/nova-config']) {
+  for (const ws of process.env.TRUST_PATHS.trim().split(/\s+/)) {
     config.projects[ws] = config.projects[ws] || {};
     config.projects[ws].hasTrustDialogAccepted = true;
     config.projects[ws].allowedTools = config.projects[ws].allowedTools || [];
   }
   fs.writeFileSync(path, JSON.stringify(config, null, 2));
-"
-echo "[entrypoint] Onboarding + workspace trust seeded in ~/.claude.json"
+'
+echo "[entrypoint] Onboarding + workspace trust seeded for:${TRUST_PATHS}"
 
 # ---------------------------------------------------------------------------
-# 5. Credential bootstrap (optional, first run only).
+# 6. Credential bootstrap (optional, first run only).
 #
 # Remote Control accepts ONLY an interactive OAuth login — no API key, no
 # `claude setup-token` token — so there is no declarative way to authenticate.
@@ -111,8 +180,8 @@ if [ ! -s "$CREDS" ] && [ "${CLAUDE_DEV_SEED_CREDENTIALS:-true}" != "false" ] &&
 fi
 
 # ---------------------------------------------------------------------------
-# 6. Credential gate. Wait rather than hot-looping remote-control against a
-#    logged-out state (which would spin and spam the API).
+# 7. Credential gate. Wait rather than hot-looping remote-control against a
+#    logged-out state (which would spin and spam the API), once per server.
 # ---------------------------------------------------------------------------
 while [ ! -s "$CREDS" ]; do
   echo "[entrypoint] ============================================================"
@@ -130,53 +199,74 @@ while [ ! -s "$CREDS" ]; do
 done
 
 # ---------------------------------------------------------------------------
-# 7. Supervisor loop.
+# 8. Supervise one server per repo.
 #
 # In server mode Claude Code gives up and exits after roughly 10 minutes of
-# network outage, so an unsupervised container would silently go offline and
-# stay offline.
+# network outage, so an unsupervised server would silently go offline and stay
+# offline. Each repo gets its own relaunch loop.
 #
-# `--continue` rejoins the session a previous run created (valid ~4h after it
-# stopped) instead of spawning a duplicate — but it FAILS when there is no
-# session to resume:
+# NOTE: --continue is deliberately absent. The docs are explicit that it "can't
+# be combined with --session-id, --spawn, --capacity, or --create-session-in-dir",
+# and this uses --spawn, so passing it would be rejected outright.
 #
-#   Error: No recent session found in this directory or its worktrees.
-#
-# which is exactly the state of a fresh container. Passing it unconditionally
-# wedges the loop before a session is ever created. So: try to resume, and fall
-# back to starting a new session when there is nothing to resume.
+# --create-session-in-dir is left at its default (on): in worktree mode that
+# pre-created session stays in the repo root so there is always somewhere to
+# type, while every on-demand session spawned from the app gets its own
+# worktree under <repo>/.claude/worktrees/ on a `worktree-<name>` branch.
 # ---------------------------------------------------------------------------
-
-# Launch remote-control in the background and wait, so the SIGTERM trap above
-# can fire — a foreground child would block signal handling until it returned.
-# Any arguments given are prepended to the standard set.
-launch_rc() {
-  # shellcheck disable=SC2086  # CLAUDE_DEV_EXTRA_ARGS is intentionally word-split
-  claude remote-control "$@" \
-    --name "${CLAUDE_DEV_SESSION_NAME:-nova}" \
-    --permission-mode "${CLAUDE_DEV_PERMISSION_MODE:-acceptEdits}" \
-    ${CLAUDE_DEV_EXTRA_ARGS:-} &
-  CHILD_PID=$!
-  launch_rc_status=0
-  wait "$CHILD_PID" || launch_rc_status=$?
-  unset CHILD_PID
-  return "$launch_rc_status"
+# Forward a supervisor subshell's TERM down to the server it owns. Without
+# this the top-level handler would kill the supervisor and orphan the claude
+# process underneath it, leaving it to be SIGKILLed at the stop timeout.
+supervise_term() {
+  if [ -n "${_child:-}" ]; then
+    kill -TERM "$_child" 2>/dev/null || true
+    wait "$_child" 2>/dev/null || true
+  fi
+  exit 0
 }
 
-echo "[entrypoint] Starting claude remote-control (session: ${CLAUDE_DEV_SESSION_NAME:-nova})"
-while true; do
-  rc=0
-  launch_rc --continue || rc=$?
+supervise() {
+  # $1 = working directory, $2 = display name
+  _dir="$1"
+  _name="$2"
+  cd "$_dir" || exit 1
 
-  # A non-zero exit here is ambiguous: either there was no session to resume
-  # (fresh container) or a real failure. Both are answered the same way — start
-  # a new session. If that also fails, the sleep below keeps the retry slow.
-  if [ "$rc" -ne 0 ]; then
-    echo "[entrypoint] Nothing to resume (exit ${rc}); starting a new session ..."
-    rc=0
-    launch_rc || rc=$?
+  _child=""
+  trap supervise_term TERM INT
+
+  while true; do
+    # Background + wait so the trap above can fire while the server runs.
+    # shellcheck disable=SC2086  # CLAUDE_DEV_EXTRA_ARGS is intentionally word-split
+    claude remote-control \
+      --spawn "$SPAWN_MODE" \
+      --name "$_name" \
+      --remote-control-session-name-prefix "$_name" \
+      --permission-mode "${CLAUDE_DEV_PERMISSION_MODE:-acceptEdits}" \
+      ${CLAUDE_DEV_EXTRA_ARGS:-} &
+    _child=$!
+    _rc=0
+    wait "$_child" || _rc=$?
+    _child=""
+    echo "[entrypoint] [${_name}] remote-control exited (${_rc}); restarting in 10s"
+    sleep 10
+  done
+}
+
+mkdir -p "$(dirname "$EXPECTED_FILE")"
+echo "$SERVER_COUNT" > "$EXPECTED_FILE"
+
+for name in $REPOS; do
+  if [ "$name" = "." ]; then
+    dir="$REPOS_ROOT"
+    label="${CLAUDE_DEV_SESSION_NAME:-nova}"
+  else
+    dir="${REPOS_ROOT}/${name}"
+    label="$name"
   fi
-
-  echo "[entrypoint] remote-control exited (${rc}); restarting in 10s"
-  sleep 10
+  echo "[entrypoint] Starting server: ${label} (${dir}, --spawn ${SPAWN_MODE})"
+  supervise "$dir" "$label" &
+  CHILD_PIDS="${CHILD_PIDS} $!"
 done
+
+echo "[entrypoint] ${SERVER_COUNT} server(s) running. Waiting."
+wait
