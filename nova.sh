@@ -82,6 +82,13 @@ _NTFY_TITLE=""
 
 _ntfy_on_exit() {
   local rc=$?
+  # Run footer for the log file (see "Run logging" below). Emitted before the
+  # _NTFY_TITLE early-out so every command gets a footer, not just mutating ones.
+  # if, not `[[ ]] &&`: the && form returns 1 when logging is off, which under
+  # set -e would abort this trap before the ntfy notification below ever fires.
+  if [[ -n "${NOVA_LOG_FILE:-}" ]]; then
+    echo "===== exit rc=${rc} ($(date '+%F %T')) ====="
+  fi
   [[ -z "${_NTFY_TITLE:-}" ]] && return
   if [[ $rc -eq 0 ]]; then
     ntfy_notify "${_NTFY_TITLE}" "Completed $(date '+%Y-%m-%d %H:%M:%S')" "white_check_mark" "default"
@@ -217,6 +224,35 @@ STACK=""
 if [[ -n "${1:-}" && ! "${1:-}" =~ ^- ]]; then
   STACK="$1"
   shift
+fi
+
+# --- Run logging ---
+# Tee this run to ${NOVA_LOG_DIR}/nova-YYYY-MM-DD.log so claude-dev — which binds this
+# directory read-only at /mnt/nova-logs — can debug failed heal/reconcile/up runs.
+# Skipped for `logs` (follows forever) and `config` (prints resolved secrets).
+# Every step is best-effort: an unwritable log dir must never break stack management.
+NOVA_LOG_DIR="${NOVA_LOG_DIR:-$(pwd)/logs}"
+NOVA_LOG_FILE=""
+if [[ "${NOVA_LOG:-1}" == "1" && "$CMD" != "logs" && "$CMD" != "config" ]]; then
+  mkdir -p "$NOVA_LOG_DIR" 2>/dev/null || true
+  if [[ -w "$NOVA_LOG_DIR" ]]; then
+    _log_name="nova-$(date +%F).log"
+    NOVA_LOG_FILE="${NOVA_LOG_DIR}/${_log_name}"
+    # 0666 because the nova-heal/nova-reconcile timers run as root while interactive
+    # runs are the host user — whoever creates the file first must not lock the other out.
+    touch "$NOVA_LOG_FILE" 2>/dev/null && chmod 0666 "$NOVA_LOG_FILE" 2>/dev/null || true
+    # Relative symlink so it also resolves inside the container's /mnt/nova-logs bind.
+    ln -sfn "$_log_name" "${NOVA_LOG_DIR}/current.log" 2>/dev/null || true
+    find "$NOVA_LOG_DIR" -maxdepth 1 -name 'nova-*.log' -mtime +14 -delete 2>/dev/null || true
+    if [[ -w "$NOVA_LOG_FILE" ]]; then
+      # tee, not redirect: stdout still reaches the terminal, and nova-heal.sh's
+      # `nova.sh heal | tee` + PIPESTATUS logic keeps working unchanged.
+      exec > >(tee -a "$NOVA_LOG_FILE") 2>&1
+      echo "===== $(date '+%F %T') nova.sh ${CMD} ${STACK:-all} (pid $$, user $(id -un)) ====="
+    else
+      NOVA_LOG_FILE=""
+    fi
+  fi
 fi
 
 # --- Handle commands ---
@@ -355,6 +391,9 @@ case "$CMD" in
     ;;
 
   init)
+    # Create the log dir first: if the dev stack starts before it exists, Docker
+    # creates the bind source as root:root and nova.sh can no longer write into it.
+    mkdir -p "$NOVA_LOG_DIR" 2>/dev/null || true
     echo "==> Creating shared networks..."
     ensure_traefik_network
     ensure_socket_proxy_network

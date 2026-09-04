@@ -92,6 +92,11 @@ services:
       # Every named volume's contents, read-only, for log/config inspection.
       # Contents live at /mnt/volumes/<volume>/_data/... — note the _data.
       - "/var/lib/docker/volumes:/mnt/volumes:ro"
+      # nova.sh run logs from the *live* host checkout — note that is NOT the same
+      # tree as /repos/nova-config, which is a separate source checkout with no .env.
+      # Covers interactive runs plus the nova-heal and nova-reconcile timers.
+      # Tail with: tail -200 /mnt/nova-logs/current.log
+      - "${NOVA_CONFIG_PATH}/logs:/mnt/nova-logs:ro"
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 

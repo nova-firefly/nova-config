@@ -74,6 +74,10 @@ Three ways to manage stacks (overlapping but complementary):
 - **Dockge** at `dockge.${NOVA_DOMAIN}` — mobile-friendly per-stack UI: start/stop/restart/recreate, edit `compose.yaml` on disk, tail logs.
 - **Arcane** at `arcane.${NOVA_DOMAIN}` — per-container UI; finer-grained than Dockge.
 
+Every `nova.sh` run (except `logs` and `config`) is teed to `logs/nova-YYYY-MM-DD.log`, with
+`logs/current.log` symlinked to today's file and files older than 14 days pruned. The dev
+containers read it at `/mnt/nova-logs` — see `context/docker-access.md`.
+
 See `context/orchestration.md` for why we stay on plain Docker Compose vs. Swarm or k3s.
 
 ## Claude Skills
