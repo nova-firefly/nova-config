@@ -13,7 +13,7 @@ Docker Compose configuration for managing self-hosted services, split into indep
 | **Authelia** | `authelia/compose.yaml` | Authelia + Redis (forward-auth for protected services) |
 | **Backup** | `backup/compose.yaml` | Backrest, Duplicati |
 | **Gaming** | `gaming/compose.yaml` | Minecraft server |
-| **Dev** | `dev/compose.yaml` | Vibe Kanban, Vibe Kanban Tools |
+| **Dev** | `dev/compose.yaml` | Claude Dev (Remote Control), Vibe Kanban, Vibe Kanban Tools |
 | **Tools** | `tools/compose.yaml` | Stirling PDF, Vikunja, Uptime Kuma, ntfy, Actual, Actual MCP (Claude connector) |
 | **Movienight** | `movienight/compose.yaml` | Frontend + Backend + Postgres |
 

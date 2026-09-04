@@ -12,7 +12,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
-| dev | dev/compose.yaml | vibe-kanban, vibe-kanban-tools |
+| dev | dev/compose.yaml | claude-dev, vibe-kanban, vibe-kanban-tools |
 | tools | tools/compose.yaml | actual, actual-mcp, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | minecraft |
@@ -206,12 +206,48 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
+| claude-dev | local build (`../claude-dev`) | Claude Code running `claude remote-control` 24/7; gh CLI, Docker CLI. **No ports, no Traefik** — outbound-only |
 | vibe-kanban | local build (`../vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
 | vibe-kanban-tools | ghcr.io/nova-firefly/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
+
+**claude-dev** is the intended long-term replacement for vibe-kanban, whose upstream is
+abandoned (see the `3187d77` pin). Both run side by side for now; nothing is removed until
+claude-dev has proven itself.
+
+Reach it from the Claude mobile app or claude.ai/code — it appears in the session list as an
+online session named `${CLAUDE_DEV_SESSION_NAME}` (default `nova`) with a green dot. There is
+no web UI on the host and no listener: `claude remote-control` speaks outbound HTTPS to
+api.anthropic.com only.
+
+**Auth is a one-time interactive OAuth login.** API keys and `claude setup-token` tokens are
+not supported by remote-control. First boot copies vibe-kanban's existing credentials if
+present (`CLAUDE_DEV_SEED_CREDENTIALS=true`), which makes it zero-touch — at the cost of both
+containers sharing one refresh token. If rotation logs one out, set that to `false` and run:
+
+```bash
+docker exec -it claude-dev claude    # then /login
+```
+
+`shell.${NOVA_DOMAIN}` gets you a host shell from a phone if you are not at the machine.
+
+**Supervision:** in server mode Claude Code exits after ~10 min of network outage, so the
+entrypoint runs it in a relaunch loop. Each pass tries `--continue` first (which rejoins the
+prior session rather than spawning a duplicate) and falls back to a plain launch when there is
+nothing to resume — `--continue` errors with *"No recent session found in this directory or its
+worktrees"* on a fresh container, so passing it unconditionally would wedge the loop before a
+session ever existed. The healthcheck watches for the `claude remote-control` process.
+
+**Volume access differs from vibe-kanban:** one read-only bind of
+`/var/lib/docker/volumes`, so paths carry a `_data` segment
+(`/mnt/volumes/radarr_config/_data/logs/...`). See `context/docker-access.md`.
+
+**Rebuild:** `./nova.sh recreate dev claude-dev` — `up` and `update` do not rebuild `build:`
+services.
 
 **Auto-deploy (vibe-kanban-tools):** Image is built by CI in [`nova-firefly/vibe-kanban-tools`](https://github.com/nova-firefly/vibe-kanban-tools) on push to `main` and pushed to GHCR. Deploy runs on `runner-vibe-kanban-tools` (self-hosted, see `context/patterns.md § CI Deploy via Self-Hosted Runner`) and calls `./nova.sh update dev`. WUD watches the image and notifies on Discord when the digest changes but does not recreate.
 
 **Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`
+(claude-dev's `CLAUDE_DEV_*` vars are all optional and default sensibly)
 
 **Required GitHub repo variable:** `NOVA_CONFIG_PATH=/nova-config`. No SSH secrets are needed — the deploy runs inside the self-hosted runner container, not over SSH.
 
