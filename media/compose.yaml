@@ -320,7 +320,7 @@ services:
       - "/data1/plex_data_1/_data/movies:/plex_movies_1"
       - "/data2/movies:/plex_movies_2"
       - "/data3/movies:/plex_movies_3"
-      - "qbittorrent_data:/downloads"
+      - "/srv/downloads/qbittorrent:/downloads"
       - "radarr_config:/config"
 
   sonarr:
@@ -389,7 +389,7 @@ services:
       - "/data1/plex_data_1/_data/tv:/plex_tv_1"
       - "/data2/tv:/plex_tv_2"
       - "/data3/tv:/plex_tv_3"
-      - "qbittorrent_data:/downloads"
+      - "/srv/downloads/qbittorrent:/downloads"
       - "sonarr_config:/config"
 
   decluttarr:
@@ -845,7 +845,7 @@ services:
     restart: "unless-stopped"
     volumes:
       - "qbittorrent_config:/config"
-      - "qbittorrent_data:/downloads"
+      - "/srv/downloads/qbittorrent:/downloads"
 
 
 volumes:
@@ -866,8 +866,9 @@ volumes:
   qbittorrent_config:
     external: true
 
-  qbittorrent_data:
-    external: true
+  # NOTE: there is deliberately no qbittorrent_data volume. Downloads live on their own
+  # LVM volume mounted at /srv/downloads on the host and bind-mounted as /downloads.
+  # See context/patterns.md ("Dedicated-filesystem bind mounts") for why.
 
   radarr_config:
     external: true

@@ -92,6 +92,10 @@ services:
       # Every named volume's contents, read-only, for log/config inspection.
       # Contents live at /mnt/volumes/<volume>/_data/... — note the _data.
       - "/var/lib/docker/volumes:/mnt/volumes:ro"
+      # Torrent downloads, read-only. These live on their own LVM volume rather than in a
+      # named Docker volume, so they do NOT appear under /mnt/volumes. Note there is no
+      # _data segment here: contents are at /mnt/downloads/qbittorrent/<torrent>/...
+      - "/srv/downloads:/mnt/downloads:ro"
       # nova.sh run logs from the *live* host checkout — note that is NOT the same
       # tree as /repos/nova-config, which is a separate source checkout with no .env.
       # Covers interactive runs plus the nova-heal and nova-reconcile timers.

@@ -201,6 +201,35 @@ Create before first `up`: `docker volume create service_config`
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 ```
 
+### Dedicated-filesystem bind mounts (for data that can grow without bound)
+
+Named volumes all live on the root LV. Anything that can grow fast and without limit —
+torrent downloads, scratch space, large caches — must NOT be a named volume, because filling
+the root filesystem takes down every stateful container on the host at once (SQLite and
+Postgres both fail hard on `ENOSPC`).
+
+Give it its own LVM volume and bind-mount it instead:
+
+```yaml
+    volumes:
+      - "/srv/downloads/qbittorrent:/downloads"   # own LV, not a named volume
+```
+
+Two conventions that matter:
+
+- **Mount the LV one level above the bind source** (`/srv/downloads` is the mount point,
+  `/srv/downloads/qbittorrent` is what gets bound). This keeps ext4's `lost+found` out of the
+  container, where *arr import scanners would trip over it.
+- **Keep the container-side path unchanged** when migrating an existing named volume. Because
+  `/downloads` stayed `/downloads`, qBittorrent's stored resume-data paths remained valid and
+  no force-recheck was needed.
+
+Add the mount point to `MONITOR_MOUNTS` in `host-scripts/disk-space-guard.sh`, and if the dev
+containers need to inspect it, add a `:ro` bind in `dev/compose.yaml` — such data does not
+appear under `/mnt/volumes`.
+
+Precedent: `/srv/downloads` for qBittorrent (see `context/stacks.md` storage topology).
+
 ## Network Patterns
 
 ### Standard internet-facing service
