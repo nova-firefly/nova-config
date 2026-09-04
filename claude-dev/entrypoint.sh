@@ -16,7 +16,7 @@ CHILD_PIDS=""
 # Forward SIGTERM to every supervisor so `docker stop` shuts all the servers
 # down cleanly instead of waiting out the timeout and being SIGKILLed.
 term_handler() {
-  echo "[entrypoint] Caught termination signal; stopping ${SERVER_COUNT:-0} server(s) ..."
+  echo "[entrypoint] Caught termination signal; stopping all servers ..."
   for p in $CHILD_PIDS; do
     kill -TERM "$p" 2>/dev/null || true
   done
@@ -267,6 +267,107 @@ for name in $REPOS; do
   supervise "$dir" "$label" &
   CHILD_PIDS="${CHILD_PIDS} $!"
 done
+
+# ---------------------------------------------------------------------------
+# 9. Re-adopt sessions the app spawned into worktrees.
+#
+# The per-repo servers above create sessions but never re-attach to them. On
+# restart each server only re-creates its own ROOT session — that ID is derived
+# from the directory, so it comes back and looks like a resume — while every
+# session spawned from the app is orphaned: worktree, branch and transcript all
+# survive on disk, but nothing serves them, so they vanish from claude.ai.
+#
+# --continue cannot fix this. The "last session" record is keyed to the
+# directory the SERVER ran in (the repo root), so --continue from inside a
+# worktree resolves to the ROOT session and is then refused as already served.
+# --session-id takes the claude.ai session ID, and the spawner encodes exactly
+# that in the directory name — .claude/worktrees/bridge-cse_<id> — so the ID is
+# recoverable from disk with no extra bookkeeping. Worktrees not named that way
+# (hand-made, or renamed) carry no ID and are skipped.
+#
+# Three deliberate limits:
+#   - No relaunch loop. --session-id implies single-session mode and exits when
+#     the session ends, so a supervisor would resurrect finished sessions
+#     forever. One attempt each, failures logged and skipped, never fatal.
+#   - Adoption only works for ~4h after the server stopped. Worktrees accumulate
+#     and most are long dead, so only those whose transcript was touched inside
+#     that window are tried — otherwise every boot would spawn a doomed process
+#     per worktree ever created.
+#   - Adopters are NOT counted in $EXPECTED_FILE. The healthcheck compares with
+#     -ge, so the extra processes are harmless, and a finished session exiting
+#     must not turn the container unhealthy.
+# ---------------------------------------------------------------------------
+# Transcripts live in ~/.claude/projects/<path with / . _ all mapped to ->.
+transcript_dir_for() {
+  echo "${CLAUDE_DIR}/projects/$(echo "$1" | tr '/._' '---')"
+}
+
+adopt_term() {
+  if [ -n "${_adopted:-}" ]; then
+    kill -TERM "$_adopted" 2>/dev/null || true
+    wait "$_adopted" 2>/dev/null || true
+  fi
+  exit 0
+}
+
+# Mirrors supervise(): background + wait so the trap can fire mid-session.
+adopt_session() {
+  # $1 = worktree dir, $2 = claude.ai session id, $3 = display name
+  _dir="$1"
+  _sid="$2"
+  _name="$3"
+  cd "$_dir" || exit 1
+
+  _adopted=""
+  trap adopt_term TERM INT
+
+  # shellcheck disable=SC2086  # CLAUDE_DEV_EXTRA_ARGS is intentionally word-split
+  claude remote-control \
+    --session-id "$_sid" \
+    --name "$_name" \
+    --permission-mode "${CLAUDE_DEV_PERMISSION_MODE:-acceptEdits}" \
+    ${CLAUDE_DEV_EXTRA_ARGS:-} &
+  _adopted=$!
+  _rc=0
+  wait "$_adopted" || _rc=$?
+  _adopted=""
+
+  if [ "$_rc" -ne 0 ]; then
+    echo "[entrypoint] [${_name}] could not re-adopt ${_sid} (exit ${_rc}); reopen it from the app if you still need it"
+  fi
+}
+
+ADOPTED=0
+for name in $REPOS; do
+  if [ "$name" = "." ]; then
+    dir="$REPOS_ROOT"
+    label="${CLAUDE_DEV_SESSION_NAME:-nova}"
+  else
+    dir="${REPOS_ROOT}/${name}"
+    label="$name"
+  fi
+
+  for wt in "${dir}"/.claude/worktrees/bridge-cse_*; do
+    # An unmatched glob stays literal in POSIX sh; -d filters it out.
+    [ -d "$wt" ] || continue
+
+    # Skip anything outside the ~4h adoption window (see above). No transcript
+    # touched recently means the session is dead; do not waste a process on it.
+    tdir=$(transcript_dir_for "$wt")
+    [ -d "$tdir" ] || continue
+    [ -n "$(find "$tdir" -maxdepth 1 -name '*.jsonl' -mmin -240 2>/dev/null | head -n 1)" ] || continue
+
+    sid="session_${wt##*/bridge-cse_}"
+    echo "[entrypoint] [${label}] re-adopting ${sid} (${wt})"
+    adopt_session "$wt" "$sid" "$label" &
+    CHILD_PIDS="${CHILD_PIDS} $!"
+    ADOPTED=$((ADOPTED + 1))
+  done
+done
+
+if [ "$ADOPTED" -gt 0 ]; then
+  echo "[entrypoint] Re-adopted ${ADOPTED} worktree session(s)."
+fi
 
 echo "[entrypoint] ${SERVER_COUNT} server(s) running. Waiting."
 wait
