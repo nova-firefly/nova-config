@@ -4,8 +4,12 @@ After=network.target
 
 [Service]
 Type=oneshot
-# Point to the nova-config .env for credentials. Adjust path if needed.
-Environment=NOVA_ENV_FILE=/home/%u/nova-config/.env
+# Point to the nova-config .env for credentials (NTFY_TOPIC, NOVA_DOMAIN,
+# QBITTORRENT_USER/PASS). install-disk-space-guard.sh substitutes the real path.
+# Do NOT use %u here: this is a system unit, so %u resolves to "root" and yields
+# /home/root/nova-config/.env. The script would then find no QBITTORRENT_PASS,
+# qbt_login would fail, and the pause would silently no-op (every call ends in "|| true").
+Environment=NOVA_ENV_FILE=@NOVA_CONFIG_DIR@/.env
 ExecStart=/usr/local/bin/disk-space-guard.sh
 StandardOutput=journal
 StandardError=journal
