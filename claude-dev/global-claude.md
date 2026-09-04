@@ -53,6 +53,22 @@ All write operations are blocked at the proxy.
 To manage stacks (up/down/pull), commands must be run on the **host** via `nova.sh`, not
 from inside this container. Full access details: `nova-config/context/docker-access.md`
 
+## nova.sh Run Logs
+
+Every `nova.sh` run on the host is teed to a dated log file, readable here at
+`/mnt/nova-logs` (read-only). This is the fastest way to debug a stack that won't come up:
+
+```bash
+tail -200 /mnt/nova-logs/current.log              # current.log -> today's dated file
+grep -l 'exit rc=[^0]' /mnt/nova-logs/nova-*.log  # which runs failed
+```
+
+Runs are bracketed by `===== <timestamp> nova.sh <cmd> <stack> (pid N, user U) =====` and
+`===== exit rc=N (<timestamp>) =====`. Covers interactive runs plus the `nova-heal` (3h) and
+`nova-reconcile` (15min) systemd timers. `logs` and `config` runs are excluded by design.
+
+Note this is the host's **live** `nova-config`, not the `/repos/nova-config` checkout you edit.
+
 ## Volume Access (Read-Only)
 
 The host's Docker volume root is bind-mounted read-only at `/mnt/volumes`. **Every** named

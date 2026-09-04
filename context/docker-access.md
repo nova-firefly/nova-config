@@ -39,7 +39,8 @@ or because all POST/DELETE methods are disabled by default.
   running containers, tail logs, and enumerate networks/volumes, but cannot mutate
   infrastructure.
 - Stack management (`nova.sh up/down/pull`) must be run on the **host**, not from inside
-  the vibe-kanban container.
+  the vibe-kanban container. The containers cannot *run* `nova.sh`, but they can *read* what
+  it did — see "nova.sh run logs" below.
 - Services that need full socket access (Arcane, WUD) mount `/var/run/docker.sock` directly
   and do **not** go through the proxy — they are explicitly excluded from this policy.
 
@@ -120,6 +121,42 @@ tail -200 /mnt/volumes/zwave-js-ui/logs/zwavejs_$(date +%F).log
 # Check Sonarr config
 cat /mnt/volumes/sonarr_config/config.xml
 ```
+
+## nova.sh run logs (`claude-dev` only)
+
+`nova.sh` tees every run to `${NOVA_CONFIG_PATH}/logs/nova-YYYY-MM-DD.log` on the host, and
+`claude-dev` binds that directory read-only at `/mnt/nova-logs`:
+
+```bash
+tail -200 /mnt/nova-logs/current.log     # current.log -> today's dated file
+tail -F   /mnt/nova-logs/current.log     # follow a run kicked off from the host
+grep -l 'exit rc=[^0]' /mnt/nova-logs/nova-*.log   # find failed runs
+ls /mnt/nova-logs/                       # 14 days of history, older files pruned
+```
+
+Each run is bracketed by markers, so runs are separable when grepping:
+
+```
+===== 2026-09-04 03:00:11 nova.sh heal all (pid 41233, user root) =====
+...
+===== exit rc=0 (2026-09-04 03:00:29) =====
+```
+
+This covers **interactive runs and the systemd timers alike** — `nova-heal` (every 3h) and
+`nova-reconcile` (every 15min) both go through `nova.sh`, so their output lands here as well
+as in the journal (which the containers cannot read).
+
+Two commands are deliberately **not** logged: `logs` (would follow forever) and `config`
+(prints fully-resolved compose output, i.e. every secret in `.env`).
+
+Caveats:
+- The log reflects the host's **live** `nova-config`, which is a different tree from the
+  `/repos/nova-config` checkout the containers edit. A change committed in `/repos` does not
+  affect production until it is pulled on the host.
+- If `${NOVA_CONFIG_PATH}/logs` is missing when the `dev` stack starts, Docker creates it as
+  `root:root 0755` and `nova.sh` silently stops logging. Fix on the host with
+  `sudo chown $USER ~/nova-config/logs`. `nova.sh init` creates it correctly.
+- `NOVA_LOG=0` disables logging for a run; `NOVA_LOG_DIR=<path>` relocates it.
 
 ## Proxy Source
 
