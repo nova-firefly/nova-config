@@ -150,12 +150,16 @@ Two commands are deliberately **not** logged: `logs` (would follow forever) and 
 (prints fully-resolved compose output, i.e. every secret in `.env`).
 
 Caveats:
-- The log reflects the host's **live** `nova-config`, which is a different tree from the
-  `/repos/nova-config` checkout the containers edit. A change committed in `/repos` does not
-  affect production until it is pulled on the host.
+- The log reflects the host's **live** `nova-config` — the tree at `${NOVA_CONFIG_PATH}`, which
+  is *not* `~/nova-config` and *not* the `/repos/nova-config` checkout the containers edit.
+  Read the real path off the running container rather than assuming:
+  `docker inspect claude-dev --format '{{range .Mounts}}{{.Source}} {{.Destination}}{{"\n"}}{{end}}' | grep nova-logs`.
+  A change committed in `/repos` does not affect production until it is pulled on the host.
 - If `${NOVA_CONFIG_PATH}/logs` is missing when the `dev` stack starts, Docker creates it as
   `root:root 0755` and `nova.sh` silently stops logging. Fix on the host with
-  `sudo chown $USER ~/nova-config/logs`. `nova.sh init` creates it correctly.
+  `sudo chown $USER "${NOVA_CONFIG_PATH}/logs"`. `nova.sh init` creates it correctly.
+- Adding the mount needs `nova.sh recreate` (or `up`), **not** `restart` — a container's
+  volumes are fixed when it is created, so a restart can never pick up a new bind mount.
 - `NOVA_LOG=0` disables logging for a run; `NOVA_LOG_DIR=<path>` relocates it.
 
 ## Proxy Source

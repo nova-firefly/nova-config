@@ -248,7 +248,10 @@ if [[ "${NOVA_LOG:-1}" == "1" && "$CMD" != "logs" && "$CMD" != "config" ]]; then
       # tee, not redirect: stdout still reaches the terminal, and nova-heal.sh's
       # `nova.sh heal | tee` + PIPESTATUS logic keeps working unchanged.
       exec > >(tee -a "$NOVA_LOG_FILE") 2>&1
-      echo "===== $(date '+%F %T') nova.sh ${CMD} ${STACK:-all} (pid $$, user $(id -un)) ====="
+      # ${*:+ $*} appends the remaining args (service name, --no-recreate, ...) only
+      # when there are any, so `restart media` and `restart media kometa` are told
+      # apart in the log instead of producing identical headers.
+      echo "===== $(date '+%F %T') nova.sh ${CMD} ${STACK:-all}${*:+ $*} (pid $$, user $(id -un)) ====="
     else
       NOVA_LOG_FILE=""
     fi
