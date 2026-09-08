@@ -263,6 +263,20 @@ ends, never at its expense. A `CLAUDE_DEV_WATCHDOG_COOLDOWN` (default 600s) floo
 restarts keeps a root session that dies on every boot from becoming a restart loop. Disable with
 `CLAUDE_DEV_ROOT_SESSION_WATCHDOG=false`.
 
+**Stale worktree locks are cleared at boot.** Capacity is 32 per server — nova passes no
+`--capacity`, and 32 is the CLI default for `--spawn worktree`. A repo showing **"1 of 1 sessions"**
+in the app instead of "N of 32" is not a capacity setting: it means
+`projects.<repo>.activeWorktreeSession` is set in `claude.json`. A session that enters a worktree
+writes that record and clears it on exit; if the container stops first the record is orphaned, and
+because it lives in the `claude-dev-claude` volume rather than in the process, it survives every
+restart and permanently pins that repo's server to the recorded worktree — no new sessions can be
+spawned, and nothing in the logs says why. Step 5 of the entrypoint therefore strips
+`activeWorktreeSession` from every project on the same pass that seeds workspace trust; nothing is
+live that early in boot, so any record found is stale by definition. Cleared locks are logged as
+`[entrypoint] Cleared stale worktree lock: <repo> (<worktree>)`. Note the status line in
+`docker logs claude-dev` reads `Capacity: <in-use>/<max>`, so an idle healthy server sits at `1/32`
+— the pre-created root session — not `0/32`.
+
 **Auth is a one-time interactive OAuth login.** API keys and `claude setup-token` tokens are
 not supported by remote-control. First boot copies vibe-kanban's existing credentials if
 present (`CLAUDE_DEV_SEED_CREDENTIALS=true`), which makes it zero-touch — at the cost of both
