@@ -23,9 +23,10 @@ RUN git clone --depth=1 https://github.com/Jeffallan/claude-skills /opt/claude-s
     && rm -rf /opt/claude-skills-staging/.git
 
 COPY entrypoint.sh /entrypoint.sh
+COPY root-session-watchdog.sh /root-session-watchdog.sh
 COPY healthcheck.sh /healthcheck.sh
 COPY global-claude.md /opt/global-claude.md
-RUN chmod +x /entrypoint.sh /healthcheck.sh
+RUN chmod +x /entrypoint.sh /healthcheck.sh /root-session-watchdog.sh
 
 WORKDIR /repos
 

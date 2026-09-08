@@ -369,5 +369,26 @@ if [ "$ADOPTED" -gt 0 ]; then
   echo "[entrypoint] Re-adopted ${ADOPTED} worktree session(s)."
 fi
 
+# ---------------------------------------------------------------------------
+# 10. Watch the root sessions.
+#
+# Step 8 pre-creates one session per repo via --create-session-in-dir, and
+# that is the only time it happens. If the session later ends, the server
+# keeps running — supervise() only reacts to the SERVER exiting — so the repo
+# is left with no session to type into until the container restarts.
+#
+# The watchdog restarts an idle server whose root session has disappeared,
+# which puts the whole thing back through step 8. Details and trade-offs are
+# in the script; it is not counted in $EXPECTED_FILE because it is not a
+# remote-control server.
+# ---------------------------------------------------------------------------
+if [ "${CLAUDE_DEV_ROOT_SESSION_WATCHDOG:-true}" != "false" ]; then
+  # shellcheck disable=SC2086  # REPOS is intentionally word-split into args
+  CLAUDE_DEV_REPOS_ROOT="$REPOS_ROOT" /root-session-watchdog.sh $REPOS &
+  CHILD_PIDS="${CHILD_PIDS} $!"
+else
+  echo "[entrypoint] Root-session watchdog disabled by CLAUDE_DEV_ROOT_SESSION_WATCHDOG=false."
+fi
+
 echo "[entrypoint] ${SERVER_COUNT} server(s) running. Waiting."
 wait
