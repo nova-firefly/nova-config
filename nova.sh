@@ -18,6 +18,8 @@
 #   reconcile Check all stacks for missing containers and recreate them (self-healing)
 #   heal      Like `up --no-recreate` but skips services labelled sablier.enable=true
 #             (Sablier idle-stops those; heal must not fight it). Used by nova-heal timer.
+#             A failing stack does not stop the run — the rest are still healed and
+#             the command exits 1 at the end, naming the failures.
 #
 # Stack names: infra, authelia, media, immich, home, backup, gaming, dev, tools, movienight, movienight-test, strava-hevy, todoassist
 # Omit stack name to apply to all stacks.
@@ -80,6 +82,10 @@ ntfy_notify() {
 # The trap fires on both clean exit and error, so both success and failure are covered.
 _NTFY_TITLE=""
 
+# Optional extra context appended to the FAILED notification body — set it before
+# exiting non-zero so the push says *which* stacks broke, not just "exit 1".
+_NTFY_DETAIL=""
+
 _ntfy_on_exit() {
   local rc=$?
   # Run footer for the log file (see "Run logging" below). Emitted before the
@@ -93,7 +99,7 @@ _ntfy_on_exit() {
   if [[ $rc -eq 0 ]]; then
     ntfy_notify "${_NTFY_TITLE}" "Completed $(date '+%Y-%m-%d %H:%M:%S')" "white_check_mark" "default"
   else
-    ntfy_notify "${_NTFY_TITLE} FAILED" "Failed (exit ${rc}) at $(date '+%Y-%m-%d %H:%M:%S')" "warning" "high"
+    ntfy_notify "${_NTFY_TITLE} FAILED" "Failed (exit ${rc}) at $(date '+%Y-%m-%d %H:%M:%S')${_NTFY_DETAIL:+ — ${_NTFY_DETAIL}}" "warning" "high"
   fi
 }
 trap _ntfy_on_exit EXIT
@@ -488,6 +494,8 @@ case "$CMD" in
     ensure_socket_proxy_network
     ensure_internal_webhook_network
 
+    heal_failed=()
+
     for s in "${ALL_STACKS[@]}"; do
       file="${s}/compose.yaml"
       [[ -f "$file" ]] || continue
@@ -508,9 +516,23 @@ case "$CMD" in
       [[ ${#keep[@]} -eq 0 ]] && continue
 
       echo "==> $s"
-      remove_conflicting_containers "$s"
-      run_compose up "$s" --no-recreate -d "${keep[@]}"
+      # if, not a bare call: under `set -e` one broken stack aborts the loop and
+      # silently skips every stack after it in ALL_STACKS — a single unpullable
+      # image left five stacks unhealed for weeks. Record it and keep going, the
+      # same way reconcile does, then fail at the end so the run still alerts.
+      if ! { remove_conflicting_containers "$s" && run_compose up "$s" --no-recreate -d "${keep[@]}"; }; then
+        echo "  [ERROR]  ${s}: heal failed — continuing with remaining stacks"
+        heal_failed+=("$s")
+      fi
     done
+
+    echo ""
+    if [[ ${#heal_failed[@]} -gt 0 ]]; then
+      echo "==> Heal finished with errors: ${heal_failed[*]}"
+      _NTFY_DETAIL="failed stacks: ${heal_failed[*]}"
+      exit 1
+    fi
+    echo "==> Heal complete — all stacks processed."
     ;;
 
   reconcile)
