@@ -125,12 +125,21 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Seed onboarding + per-repo workspace trust.
+# 5. Seed onboarding + per-repo workspace trust, and clear stale worktree locks.
 #
 # Trust is keyed on the GIT REPOSITORY ROOT, and trusting a parent covers
 # subdirectories "apart from a git repository nested inside it" — so trusting
 # $REPOS_ROOT does NOT cover the checkouts inside it. Every repo needs its own
 # entry or its first session stops on a trust prompt no phone can answer.
+#
+# The same pass drops any leftover projects.<repo>.activeWorktreeSession. A
+# session that enters a worktree records one there and clears it on exit; if the
+# container stops first the record survives in the volume, and on the next boot
+# that repo's server comes up BOUND to the recorded worktree — the app shows it
+# as "1 of 1 sessions" instead of "N of 32" and refuses to spawn any more. It is
+# sticky: restarting the container does not clear it, because the record is in
+# the volume, not in the process. Nothing is live this early in boot, so every
+# record present here is stale by definition and safe to drop.
 #
 # Merge, never overwrite: this file also holds the OAuth account metadata.
 # ---------------------------------------------------------------------------
@@ -153,7 +162,19 @@ CLAUDE_JSON_REAL="$CLAUDE_JSON_REAL" TRUST_PATHS="$TRUST_PATHS" node -e '
     config.projects[ws].hasTrustDialogAccepted = true;
     config.projects[ws].allowedTools = config.projects[ws].allowedTools || [];
   }
+  const unlocked = [];
+  for (const ws of Object.keys(config.projects)) {
+    const proj = config.projects[ws];
+    if (proj && proj.activeWorktreeSession) {
+      const wt = proj.activeWorktreeSession.worktreeName || "unknown";
+      unlocked.push(ws + " (" + wt + ")");
+      delete proj.activeWorktreeSession;
+    }
+  }
   fs.writeFileSync(path, JSON.stringify(config, null, 2));
+  for (const entry of unlocked) {
+    console.log("[entrypoint] Cleared stale worktree lock: " + entry);
+  }
 '
 echo "[entrypoint] Onboarding + workspace trust seeded for:${TRUST_PATHS}"
 
