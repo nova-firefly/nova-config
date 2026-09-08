@@ -62,6 +62,9 @@ services:
       - "CLAUDE_DEV_SEED_CREDENTIALS=${CLAUDE_DEV_SEED_CREDENTIALS:-true}"
       - "CLAUDE_DEV_REPOS=${CLAUDE_DEV_REPOS:-}"
       - "CLAUDE_DEV_EXTRA_ARGS=${CLAUDE_DEV_EXTRA_ARGS:-}"
+      - "CLAUDE_DEV_ROOT_SESSION_WATCHDOG=${CLAUDE_DEV_ROOT_SESSION_WATCHDOG:-true}"
+      - "CLAUDE_DEV_WATCHDOG_INTERVAL=${CLAUDE_DEV_WATCHDOG_INTERVAL:-60}"
+      - "CLAUDE_DEV_WATCHDOG_COOLDOWN=${CLAUDE_DEV_WATCHDOG_COOLDOWN:-600}"
     healthcheck:
       # Logic lives in the image (claude-dev/healthcheck.sh) rather than inline:
       # it needs $(...) and quoting that compose interpolation would mangle.

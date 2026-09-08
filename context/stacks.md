@@ -248,6 +248,21 @@ the root session and is refused as already served. Adoption is one-shot (`--sess
 when the session ends) and only applies within the CLI's ~4h window, so a container down longer
 than that leaves those sessions to be reopened from the app.
 
+**A root session that dies is rebuilt.** `--create-session-in-dir` runs once, when the server
+starts. End that session from the app or let it crash and nothing recreates it: the server stays
+up, keeps serving worktree sessions, and the repo is left with nothing to type into — the symptom
+is a repo showing one fewer session than its siblings for no visible reason. `supervise()` is
+blind to it because it only watches for the *server* exiting. `claude-dev/root-session-watchdog.sh`
+polls each repo's `bridge-pointer.json` for its root session id, checks whether a runner process
+still carries that id, and after two consecutive misses restarts that repo's server so step 8
+recreates the session. Re-adopting the dead session by `--session-id` would be wrong here — it
+resurrects the ended conversation, where the point of the root session is that it is empty.
+Restarting a server drops every session it holds, so the watchdog waits until the server is
+serving none: a root session lost while you are working in a worktree is repaired once that work
+ends, never at its expense. A `CLAUDE_DEV_WATCHDOG_COOLDOWN` (default 600s) floor between
+restarts keeps a root session that dies on every boot from becoming a restart loop. Disable with
+`CLAUDE_DEV_ROOT_SESSION_WATCHDOG=false`.
+
 **Auth is a one-time interactive OAuth login.** API keys and `claude setup-token` tokens are
 not supported by remote-control. First boot copies vibe-kanban's existing credentials if
 present (`CLAUDE_DEV_SEED_CREDENTIALS=true`), which makes it zero-touch — at the cost of both
