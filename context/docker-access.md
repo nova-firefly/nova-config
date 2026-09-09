@@ -80,6 +80,23 @@ ls /mnt/volumes/                      # every volume on the host
 Requires root inside the container: `/var/lib/docker/volumes` is mode 0700 and volume contents
 carry their own ownership. This is the same reasoning documented on `volume-sharer`.
 
+### Plex logs — separate mount (`claude-dev` only)
+
+Plex is the one service whose `/config` is **not** a named volume: `media/compose.yaml` binds
+it from `/data1/plex_config/plex_config/_data`, which lives outside `/var/lib/docker/volumes`
+and is therefore invisible under `/mnt/volumes`. Its `Logs` directory is mounted separately:
+
+```bash
+tail -200 "/mnt/plex-logs/Plex Media Server.log"     # the log that actually explains stream errors
+ls /mnt/plex-logs/                                    # rotated logs, plugin logs, crash reports
+```
+
+Only `Logs` is mounted, not the whole config tree — the rest holds `Preferences.xml` (the
+server token) and the library databases. Note that Plex logs still contain `X-Plex-Token=`
+query strings in request lines; do not paste raw log lines into a chat transcript.
+
+`vibe-kanban` does not get this mount.
+
 ### `vibe-kanban` — explicit per-volume list (legacy)
 
 Each external volume is mounted at `/mnt/volumes/<volume_name>:ro`, where `<volume_name>` is

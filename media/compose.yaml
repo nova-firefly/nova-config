@@ -153,6 +153,11 @@ services:
       - "PGID=${PGID}"
       - "PLEX_CLAIM=${PLEX_CLAIM_TOKEN}"
       - "PUID=${PUID}"
+      # Without TZ the container runs UTC, which silently drags Plex's scheduled-task
+      # ("butler") window — 02:00-05:00 container-local — into 20:00-23:00 Mountain,
+      # i.e. prime viewing time. Chapter-thumbnail and deep-analysis jobs then compete
+      # with live transcodes on a 4-core box and streams start erroring.
+      - "TZ=${TZ}"
       - "VERSION=docker"
     deploy:
       resources:
