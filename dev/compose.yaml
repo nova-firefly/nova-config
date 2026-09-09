@@ -100,6 +100,12 @@ services:
       # Covers interactive runs plus the nova-heal and nova-reconcile timers.
       # Tail with: tail -200 /mnt/nova-logs/current.log
       - "${NOVA_CONFIG_PATH}/logs:/mnt/nova-logs:ro"
+      # Plex Media Server logs, read-only. Plex's /config is a bind mount on
+      # /data1 — not a named volume — so it is NOT covered by /mnt/volumes above.
+      # Only the Logs subdir is mounted: the rest of /config holds Preferences.xml
+      # (server token) and the library databases, which have no business in here.
+      # Tail with: tail -200 "/mnt/plex-logs/Plex Media Server.log"
+      - "/data1/plex_config/plex_config/_data/Library/Application Support/Plex Media Server/Logs:/mnt/plex-logs:ro"
       - "/home/koonan/.ssh:/root/.ssh:ro"
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 

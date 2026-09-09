@@ -266,6 +266,12 @@ Each compose file begins with a comment block:
   - Section header comment with stack name
   - Inline comment explaining purpose and how to generate
 - Shared vars (`TZ`, `PUID`, `PGID`, `NOVA_HOSTNAME`, `NOVA_DOMAIN`) available to all stacks
+- **Always set `TZ=${TZ}`**, even on services that look timezone-agnostic. A container
+  without it runs UTC, and anything with an internal scheduler will quietly run its jobs at
+  the wrong wall-clock time. Plex is the cautionary tale: it was the only media service
+  missing `TZ`, so its 02:00–05:00 "butler" maintenance window (chapter thumbnails, deep
+  analysis) actually ran 20:00–23:00 Mountain and competed with prime-time transcodes.
+  Audit with: `grep -L 'TZ=' */compose.yaml` and check per-service inside each file.
 
 ## Healthcheck Patterns
 
