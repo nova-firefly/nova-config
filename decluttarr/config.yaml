@@ -63,9 +63,23 @@ jobs:
   # still shows the item as stuck.
   remove_missing_files: true
 
-  # Remove downloads containing only non-media files (e.g. .exe, .nfo-only,
-  # password-protected archives) that can never be imported.
-  remove_bad_files: true
+  # DISABLED 2026-09-04 — this job was corrupting healthy downloads.
+  #
+  # It marks files "Do not Download" the first time it sees low availability, with no
+  # grace period, including on torrents seconds old that have not finished connecting to
+  # peers. qBittorrent then moves those files into .unwanted/, the torrent reports
+  # "download finished" with most episodes missing, and Sonarr's import walks into the
+  # zero-byte files and dies on ffprobe ("EBML header parsing failed").
+  #
+  # This destroyed the Love Island S08 season pack twice (Aug 28 and Sep 1 — only 14 of 58
+  # episodes survived each time) and blocklisted S08E11/E50 88 seconds after they were
+  # grabbed, on "Low availability: 0.0%".
+  #
+  # There is no way to soften it: the running container's effective-settings dump shows
+  # its only option is keep_archives — no max_strikes, no availability threshold.
+  # remove_failed_imports (30 min strikes) already covers genuine fake releases; the only
+  # loss is automatic .nfo/.txt stripping, which Sonarr ignores anyway.
+  remove_bad_files: false
 
   # Disable detect_deletions — media volumes are not mounted in this container
   detect_deletions: false

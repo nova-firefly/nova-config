@@ -2,8 +2,7 @@
 # disk-space-guard.sh — Monitor media disk usage; pause qBittorrent when critically low.
 #
 # Deploy:
-#   sudo cp disk-space-guard.sh /usr/local/bin/disk-space-guard.sh
-#   sudo chmod +x /usr/local/bin/disk-space-guard.sh
+#   sudo ./host-scripts/install-disk-space-guard.sh
 #
 # Reads credentials from NOVA_ENV_FILE (defaults to ~/nova-config/.env).
 # Override at runtime: NOVA_ENV_FILE=/path/to/.env disk-space-guard.sh
@@ -21,7 +20,15 @@ CRIT_PCT=92          # % used → pause qBittorrent + send ntfy critical
 
 # Space-separated list of mount points to monitor.
 # Each is checked independently; any one hitting CRIT triggers QB pause.
-MONITOR_MOUNTS="/data1 /data2 /data3"
+#
+# "/" and "/srv/downloads" matter as much as the media disks:
+#   /               — the root LV holds every Docker volume (Sonarr/Radarr SQLite, Immich,
+#                     the Postgres instances). On 2026-09-04 it hit 0 bytes free and Sonarr
+#                     started returning "disk I/O error (code = IoErr (10))" on every query.
+#   /srv/downloads  — the dedicated LV that now holds qBittorrent's /downloads. Filling it
+#                     only breaks downloads, which is the point of splitting it out, but we
+#                     still want to be told and to stop grabbing.
+MONITOR_MOUNTS="/ /srv/downloads /data1 /data2 /data3"
 
 QB_HOST="http://localhost:8090"
 

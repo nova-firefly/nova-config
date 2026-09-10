@@ -135,11 +135,38 @@ docker volume create authelia_data && docker volume create authelia_redis
 
 **Key:** qbittorrent runs inside gluetun's network namespace (`network_mode: service:gluetun`). Traefik labels are on gluetun, not the sidecar.
 
+### Storage topology
+
+Four physical disks, four separate filesystems:
+
+| Host mount | Device | Medium | Size | Holds |
+|---|---|---|---|---|
+| `/` | `ubuntu--vg-ubuntu--lv` on sda3 | SSD 480G | 200 GiB | all Docker named volumes (arr SQLite, Immich, Postgres) |
+| `/srv/downloads` | `ubuntu--vg-downloads--lv` on sda3 | SSD 480G | ~245 GiB | qBittorrent `/downloads` |
+| `/data1` | sdc | HDD | 1.8T | `/plex_tv_1`, `/plex_movies_1`, plex config |
+| `/data2` | sdb | HDD | 931G | `/plex_tv_2`, `/plex_movies_2` |
+| `/data3` | sdd | HDD | 9.1T | `/plex_tv_3`, `/plex_movies_3` |
+
 **Media paths:** `/data1`, `/data2`, `/data3` — mounted directly (not volumes) for media libraries
 
-**Download paths in arr services:** torrents at `/downloads` (qbittorrent_data)
+**Download paths in arr services:** torrents at `/downloads`, bind-mounted from
+`/srv/downloads/qbittorrent` on a dedicated LVM volume. It is deliberately *not* a Docker
+named volume: on 2026-09-04 a 30-episode season grab preallocated ~88 GB into the old
+`qbittorrent_data` volume, filled the root LV to 0 bytes, and Sonarr's SQLite started
+returning `disk I/O error`. Splitting downloads onto their own filesystem means a runaway
+download can only break downloads.
 
-**External volumes:** `bazarr_config`, `gluetun_data`, `homescreen_hero_data`, `overseerr_config` (aliased as `seerr_config`), `prowlarr_config`, `qbittorrent_config`, `qbittorrent_data`, `radarr_config`, `sonarr_config`, `tautulli_config`
+**No hardlinks, ever.** `/downloads` and all six library roots are on four different
+filesystems, so Sonarr/Radarr imports are always copy+delete, never atomic moves or
+hardlinks. Because the library itself is spread across three disks, no single download
+location could hardlink into all root folders — this is a deliberate trade-off, not an
+oversight. Budget for the transient second copy during import.
+
+**Disk guard:** `host-scripts/disk-space-guard.sh` (systemd timer, every 15 min) watches all
+five mounts, warns via ntfy at 85% and pauses qBittorrent at 92%. Install with
+`sudo ./host-scripts/install-disk-space-guard.sh`.
+
+**External volumes:** `bazarr_config`, `gluetun_data`, `homescreen_hero_data`, `overseerr_config` (aliased as `seerr_config`), `prowlarr_config`, `qbittorrent_config`, `radarr_config`, `sonarr_config`, `tautulli_config`
 
 **Required env:** `PUID`, `PGID`, `TZ`, `PLEX_CLAIM_TOKEN`, `PLEX_TOKEN`, `MULLVAD_WIREGUARD_PRIVATE_KEY`, `MULLVAD_WIREGUARD_ADDRESSES`, `QBITTORRENT_USER`, `QBITTORRENT_PASS`, `RADARR_API_KEY`, `SONARR_API_KEY`, `RADARR_ROOT_FOLDER`, `RADARR_QUALITY_PROFILE`, `TAUTULLI_API_KEY`, `SEERR_API_KEY`, `HSH_AUTH_PASSWORD`, `HSH_AUTH_SECRET_KEY`
 

@@ -71,6 +71,15 @@ tail -f /mnt/volumes/radarr_config/_data/logs/radarr.txt
 ls /mnt/volumes/                      # every volume on the host
 ```
 
+**Torrent downloads are not under `/mnt/volumes`.** They live on their own LVM volume rather
+than in a named Docker volume (see the storage topology in `context/stacks.md`), so they get a
+separate read-only bind — and note there is no `_data` segment on this one:
+
+```bash
+ls /mnt/downloads/qbittorrent/                            # what qBittorrent sees as /downloads
+ls /mnt/downloads/qbittorrent/<torrent-name>/.unwanted/   # files marked "do not download"
+```
+
 > **This is no longer an explicit allowlist.** Any volume that exists — including ones added
 > after this container was built — is readable. The previous per-volume list already included
 > ACME private keys and the Authelia session store, so this is not a new *class* of exposure,
