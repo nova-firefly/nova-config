@@ -146,8 +146,11 @@ services:
       - "WAKE_ALARM"
     container_name: "plex"
     environment:
-      - "ADVERTISE_IP=http://${NOVA_HOST_IP}:32400/,https://plex.${NOVA_DOMAIN}/"
-      - "ALLOWED_NETWORKS=${PLEX_LAN_NETWORK:-192.168.1.0/24}"
+      # No ADVERTISE_IP / ALLOWED_NETWORKS: those are plexinc/pms-docker variables and the
+      # linuxserver image ignores them (linuxserver/docker-plex #102, #331) — they showed up
+      # in `docker inspect` but never reached Preferences.xml. Set "Custom server access
+      # URLs" and "LAN Networks" in Plex → Settings → Network instead. Remote access also
+      # needs a static router forward of TCP 32400; UPnP mappings die with the container.
       - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
       - "NVIDIA_VISIBLE_DEVICES=all"
       - "PGID=${PGID}"
