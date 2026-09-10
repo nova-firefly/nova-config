@@ -91,7 +91,7 @@ device** (true on claude.ai, Desktop, Cowork, and mobile). So:
    ./nova.sh up tools           # or: docker compose -f tools/compose.yaml up -d
    ```
 
-4. **Verify** (run on nova — the vibe-kanban socket proxy blocks `exec`):
+4. **Verify** (run on nova — the dev container's read-only socket proxy blocks `exec`):
    ```bash
    bash tools/verify-actual-mcp.sh    # or: chmod +x tools/verify-actual-mcp.sh && ./tools/verify-actual-mcp.sh
    ```

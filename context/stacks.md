@@ -6,13 +6,13 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 
 | Stack | File | Services |
 |-------|------|----------|
-| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy, socket-proxy-sablier, sablier, runners-socket-proxy, nova-config-sync, runner-nova-config, runner-vibe-kanban-tools, runner-movienight, runner-todoassist |
+| infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy, socket-proxy-sablier, sablier, runners-socket-proxy, nova-config-sync, runner-nova-config, runner-movienight, runner-todoassist |
 | authelia | authelia/compose.yaml | authelia, redis |
 | media | media/compose.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent, decluttarr, recyclarr, homescreen-hero |
 | immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
-| dev | dev/compose.yaml | claude-dev, vibe-kanban, vibe-kanban-tools |
+| dev | dev/compose.yaml | claude-dev |
 | tools | tools/compose.yaml | actual, actual-mcp, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | minecraft |
@@ -42,7 +42,6 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | runners-socket-proxy | tecnativa/docker-socket-proxy | — | — | Write-allowlist socket proxy for self-hosted runners (POST=1, EXEC=0, BUILD=0, SECRETS=0, SYSTEM=0); reachable only on `runners_net` |
 | nova-config-sync | alpine/git (pinned digest) | — | — | Sole writer to `/srv/nova-config`; loops `git fetch && reset --hard origin/main` every 10 min. Replaces the deleted `.github/workflows/sync.yml` Actions round-trip |
 | runner-nova-config | myoung34/github-runner (pinned digest) | — | — | Ephemeral self-hosted runner for `nova-firefly/nova-config`; labels `nova,nova-config`; jobs launch via `runners-socket-proxy` |
-| runner-vibe-kanban-tools | myoung34/github-runner (pinned digest) | — | — | Ephemeral runner for `nova-firefly/vibe-kanban-tools`; labels `nova,vibe-kanban-tools` |
 | runner-movienight | myoung34/github-runner (pinned digest) | — | — | Ephemeral runner for `nova-firefly/movienight`; serves both prod and test via labels `nova,movienight,movienight-test` (one runner per repo, not per environment) |
 
 **External volumes:** `traefik_acme`, `samba_config`, `arcane_data`, `scrutiny_data`, `dockge_data`
@@ -53,7 +52,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 
 **Compose-managed networks:** `runners_net` (bridge, not internal — carries runner ↔ proxy traffic and gives runners outbound internet for GitHub long-poll), `sablier_internal` (bridge, `internal: true` — sablier ↔ socket-proxy-sablier only, no egress)
 
-**Compose-managed volumes:** `runner_nova_config_state`, `runner_vibe_kanban_tools_state`, `runner_movienight_state` — per-runner registration state so ephemeral runners don't re-register on every restart
+**Compose-managed volumes:** `runner_nova_config_state`, `runner_movienight_state`, `runner_todoassist_state` — per-runner registration state so ephemeral runners don't re-register on every restart
 
 **Required env:** `GH_PAT` for the three runner containers (fine-grained PAT scoped to all three runner repos with `Administration: write`). See `context/runners.md` for setup, digest pinning, rotation, and troubleshooting.
 
@@ -234,12 +233,10 @@ five mounts, warns via ntfy at 85% and pauses qBittorrent at 92%. Install with
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
 | claude-dev | local build (`../claude-dev`) | One `claude remote-control` server per git repo under `/repos`; gh CLI, Docker CLI. **No ports, no Traefik** — outbound-only |
-| vibe-kanban | local build (`../vibe-kanban`) | Node.js 22 container with Claude Code CLI, gh CLI, Docker CLI; ports 4000, 4001 |
-| vibe-kanban-tools | ghcr.io/nova-firefly/vibe-kanban-tools:latest | Next.js quick-capture task UI for Vibe Kanban; port 3000 |
 
-**claude-dev** is the intended long-term replacement for vibe-kanban, whose upstream is
-abandoned (see the `3187d77` pin). Both run side by side for now; nothing is removed until
-claude-dev has proven itself.
+**claude-dev** replaced vibe-kanban (removed 2026-09-10, along with vibe-kanban-tools and
+its CI runner). `/repos` still lives on the `vibe-kanban-repos` volume — the name is
+historical, and the out-of-repo `kandev` project mounts it too, so it must not be removed.
 
 Reach it from the Claude mobile app or claude.ai/code. There is no web UI on the host and no
 listener: `claude remote-control` speaks outbound HTTPS to api.anthropic.com only.
@@ -305,9 +302,9 @@ live that early in boot, so any record found is stale by definition. Cleared loc
 — the pre-created root session — not `0/32`.
 
 **Auth is a one-time interactive OAuth login.** API keys and `claude setup-token` tokens are
-not supported by remote-control. First boot copies vibe-kanban's existing credentials if
-present (`CLAUDE_DEV_SEED_CREDENTIALS=true`), which makes it zero-touch — at the cost of both
-containers sharing one refresh token. If rotation logs one out, set that to `false` and run:
+not supported by remote-control. On first boot `docker logs claude-dev` prints the login
+command; it is asked once, then never again while the `claude-dev-claude` volume survives.
+To log in again later:
 
 ```bash
 docker exec -it claude-dev claude    # then /login
@@ -324,19 +321,14 @@ The healthcheck (`claude-dev/healthcheck.sh`) compares live server count against
 entrypoint recorded at startup in `/run/claude-dev-expected`, so one repo's server dying
 permanently marks the container unhealthy — a bare "is anything alive" check would not.
 
-**Volume access differs from vibe-kanban:** one read-only bind of
+**Volume access:** one read-only bind of
 `/var/lib/docker/volumes`, so paths carry a `_data` segment
 (`/mnt/volumes/radarr_config/_data/logs/...`). See `context/docker-access.md`.
 
 **Rebuild:** `./nova.sh recreate dev claude-dev` — `up` and `update` do not rebuild `build:`
 services.
 
-**Auto-deploy (vibe-kanban-tools):** Image is built by CI in [`nova-firefly/vibe-kanban-tools`](https://github.com/nova-firefly/vibe-kanban-tools) on push to `main` and pushed to GHCR. Deploy runs on `runner-vibe-kanban-tools` (self-hosted, see `context/patterns.md § CI Deploy via Self-Hosted Runner`) and calls `./nova.sh update dev`. WUD watches the image and notifies on Discord when the digest changes but does not recreate.
-
-**Required env:** `GH_TOKEN`, `VIBE_KANBAN_API_KEY`, `VIBE_KANBAN_TOOLS_SUBMIT_TOKEN`
-(claude-dev's `CLAUDE_DEV_*` vars are all optional and default sensibly)
-
-**Required GitHub repo variable:** `NOVA_CONFIG_PATH=/nova-config`. No SSH secrets are needed — the deploy runs inside the self-hosted runner container, not over SSH.
+**Required env:** `GH_TOKEN` (claude-dev's `CLAUDE_DEV_*` vars are all optional and default sensibly)
 
 ---
 
