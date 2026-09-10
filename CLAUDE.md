@@ -13,7 +13,6 @@ nova-config/
 ├── traefik/dynamic.yaml           # Routes for host-mode services (not Docker-discoverable)
 ├── homepage/                      # Dashboard config (settings/services/widgets YAML)
 ├── claude-dev/                    # Dev container running `claude remote-control` 24/7
-├── vibe-kanban/Dockerfile         # Dev container with Claude Code, gh CLI, Docker CLI
 └── movienight/                    # Stack dir; images pulled from GHCR (built by CI in upstream repo)
 ```
 
@@ -23,7 +22,7 @@ Stack dirs (each contains `compose.yaml` + `.env` symlink):
 See `context/stacks.md` for full stack/service inventory and ports.
 See `context/patterns.md` for conventions to follow when editing compose files.
 See `context/claude-skills.md` for which Claude expert skill to use for each task type.
-See `context/docker-access.md` for what Docker commands are allowed from inside the dev containers (read-only proxy — no start/stop/exec/pull) and how each one sees host volumes.
+See `context/docker-access.md` for what Docker commands are allowed from inside the dev container (read-only proxy — no start/stop/exec/pull) and how it sees host volumes.
 
 ## Key Conventions
 
@@ -82,9 +81,9 @@ See `context/orchestration.md` for why we stay on plain Docker Compose vs. Swarm
 
 ## Claude Skills
 
-Claude expert skills (from Jeffallan/claude-skills) are installed in both dev containers
-(`claude-dev` and `vibe-kanban`) at `~/.claude/skills/`. They are pre-baked into each Docker
-image and copied to that container's volume on first start via its `entrypoint.sh`.
+Claude expert skills (from Jeffallan/claude-skills) are installed in the `claude-dev`
+container at `~/.claude/skills/`. They are pre-baked into the Docker
+image and copied to the container's volume on first start via its `entrypoint.sh`.
 
 See `context/claude-skills.md` for a task → skill mapping guide.
 

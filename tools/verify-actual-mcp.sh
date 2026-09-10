@@ -4,7 +4,7 @@
 # writes to the budget.
 #
 # Run from the host (needs a real Docker socket for the exec check; the
-# vibe-kanban read-only socket proxy blocks `exec`, so run this on nova itself):
+# dev container's read-only socket proxy blocks `exec`, so run this on nova itself):
 #   ./tools/verify-actual-mcp.sh
 #
 # Checks:

@@ -15,8 +15,8 @@ Replaces the GitHub Actions SSH-deploy round-trip with a host-side reconciliatio
 | infra stack (docker compose)                       |
 |                                                    |
 |   runner-nova-config ─┐                            |
-|   runner-vibe-kanban-tools ─┼──> runners-socket-proxy ──ro──> /var/run/docker.sock
-|   runner-movienight ─┘      (POST allowlist)                            |
+|   runner-movienight  ─┼──> runners-socket-proxy ──ro──> /var/run/docker.sock
+|   runner-todoassist  ─┘      (POST allowlist)                            |
 |                                                                          |
 |   nova-config-sync ───rw──> /srv/nova-config <──ro── (runners read here) |
 |                       ^                                                  |
@@ -52,7 +52,6 @@ Before the first `nova.sh up infra` after these services land:
 
 2. **GH_PAT** — fine-grained PAT scoped to all runner repos:
    - `nova-firefly/nova-config`
-   - `nova-firefly/vibe-kanban-tools`
    - `nova-firefly/movienight`
    - `nova-firefly/todoassist`
 
@@ -106,7 +105,6 @@ should appear as **Idle** within ~30 s. Workflows can then target it with
 3. Recreate the runners so they re-register with the new token:
    ```bash
    ./nova.sh recreate infra runner-nova-config
-   ./nova.sh recreate infra runner-vibe-kanban-tools
    ./nova.sh recreate infra runner-movienight
    ./nova.sh recreate infra runner-todoassist
    ```

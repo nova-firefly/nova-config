@@ -1,7 +1,7 @@
 # Claude Skills — Role Selection Guide
 
 Claude skills from [Jeffallan/claude-skills](https://github.com/Jeffallan/claude-skills) are installed in the
-vibe-kanban container at `~/.claude/skills/`. Each skill defines a specialized expert persona.
+claude-dev container at `~/.claude/skills/`. Each skill defines a specialized expert persona.
 
 Use the guidance below to select the right skill for each type of task in this homelab project.
 
@@ -79,9 +79,8 @@ In Claude Code, prefix your request with the skill name or describe your task in
 - Home Assistant YAML automations are Python-adjacent; use for complex automation logic
 - Scripting HA integrations or custom components
 
-### TypeScript/JavaScript (Vibe Kanban, General)
+### TypeScript/JavaScript
 **Skill:** `typescript-pro`
-- Working on vibe-kanban source code
 - Type safety improvements
 - Node.js patterns
 

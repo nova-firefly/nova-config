@@ -34,6 +34,6 @@ WORKDIR /repos
 # api.anthropic.com). There is nothing to route and nothing to listen on.
 #
 # No CMD: the entrypoint IS the application. Claude Code is installed at build
-# time by npm above, so — unlike vibe-kanban — there is no `npx` fetch at
+# time by npm above, so there is no `npx` fetch at
 # container start and no version pinned in two places.
 ENTRYPOINT ["/entrypoint.sh"]

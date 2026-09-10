@@ -35,8 +35,8 @@ You are inside the `claude-dev` container on the nova homelab host, reached over
 **Remote Control** — the user is most likely on a phone. Prefer concise answers and concrete
 commands over long explanations they would have to scroll.
 
-Repositories are checked out under `/repos` (shared read-write with the `vibe-kanban`
-container — check `git status` before assuming a clean tree).
+Repositories are checked out under `/repos` (shared read-write with other sessions and the
+`kandev` container — check `git status` before assuming a clean tree).
 
 ## Docker Access Inside This Container
 

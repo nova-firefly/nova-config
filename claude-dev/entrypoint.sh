@@ -5,7 +5,6 @@ CLAUDE_DIR="/root/.claude"
 CLAUDE_JSON_REAL="${CLAUDE_DIR}/claude.json"
 CLAUDE_JSON_LINK="/root/.claude.json"
 CREDS="${CLAUDE_DIR}/.credentials.json"
-SEED_CREDS="${CLAUDE_DEV_SEED_SOURCE:-/mnt/volumes/dev_vibe-kanban-claude/_data/.credentials.json}"
 SKILLS_MARKER="${CLAUDE_DIR}/skills/.jeffallan-installed"
 REPOS_ROOT="${CLAUDE_DEV_REPOS_ROOT:-/repos}"
 EXPECTED_FILE="/run/claude-dev-expected"
@@ -179,29 +178,7 @@ CLAUDE_JSON_REAL="$CLAUDE_JSON_REAL" TRUST_PATHS="$TRUST_PATHS" node -e '
 echo "[entrypoint] Onboarding + workspace trust seeded for:${TRUST_PATHS}"
 
 # ---------------------------------------------------------------------------
-# 6. Credential bootstrap (optional, first run only).
-#
-# Remote Control accepts ONLY an interactive OAuth login — no API key, no
-# `claude setup-token` token — so there is no declarative way to authenticate.
-# vibe-kanban's config volume is visible read-only under /mnt/volumes, and it
-# already holds a valid login, so copy it once to make first boot zero-touch.
-#
-# Caveat: both containers then hold the SAME refresh token. If the token is
-# rotated on use, whichever container refreshes second can be logged out. Set
-# CLAUDE_DEV_SEED_CREDENTIALS=false and run the login below to get an
-# independent credential.
-# ---------------------------------------------------------------------------
-if [ ! -s "$CREDS" ] && [ "${CLAUDE_DEV_SEED_CREDENTIALS:-true}" != "false" ] && [ -s "$SEED_CREDS" ]; then
-  echo "[entrypoint] No credentials yet — seeding from ${SEED_CREDS}"
-  echo "[entrypoint] NOTE: this shares one OAuth refresh token with vibe-kanban."
-  echo "[entrypoint]       If it gets rotated out, set CLAUDE_DEV_SEED_CREDENTIALS=false"
-  echo "[entrypoint]       and log in independently."
-  cp "$SEED_CREDS" "$CREDS"
-  chmod 600 "$CREDS"
-fi
-
-# ---------------------------------------------------------------------------
-# 7. Credential gate. Wait rather than hot-looping remote-control against a
+# 6. Credential gate. Wait rather than hot-looping remote-control against a
 #    logged-out state (which would spin and spam the API), once per server.
 # ---------------------------------------------------------------------------
 while [ ! -s "$CREDS" ]; do
@@ -220,7 +197,7 @@ while [ ! -s "$CREDS" ]; do
 done
 
 # ---------------------------------------------------------------------------
-# 8. Supervise one server per repo.
+# 7. Supervise one server per repo.
 #
 # In server mode Claude Code gives up and exits after roughly 10 minutes of
 # network outage, so an unsupervised server would silently go offline and stay
@@ -290,7 +267,7 @@ for name in $REPOS; do
 done
 
 # ---------------------------------------------------------------------------
-# 9. Re-adopt sessions the app spawned into worktrees.
+# 8. Re-adopt sessions the app spawned into worktrees.
 #
 # The per-repo servers above create sessions but never re-attach to them. On
 # restart each server only re-creates its own ROOT session — that ID is derived
@@ -391,15 +368,15 @@ if [ "$ADOPTED" -gt 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 10. Watch the root sessions.
+# 9. Watch the root sessions.
 #
-# Step 8 pre-creates one session per repo via --create-session-in-dir, and
+# Step 7 pre-creates one session per repo via --create-session-in-dir, and
 # that is the only time it happens. If the session later ends, the server
 # keeps running — supervise() only reacts to the SERVER exiting — so the repo
 # is left with no session to type into until the container restarts.
 #
 # The watchdog restarts an idle server whose root session has disappeared,
-# which puts the whole thing back through step 8. Details and trade-offs are
+# which puts the whole thing back through step 7. Details and trade-offs are
 # in the script; it is not counted in $EXPECTED_FILE because it is not a
 # remote-control server.
 # ---------------------------------------------------------------------------

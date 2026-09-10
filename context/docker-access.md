@@ -2,8 +2,8 @@
 
 All containers that need Docker API access connect through `socket-proxy`
 (`tecnativa/docker-socket-proxy` in `infra/compose.yaml`), not directly to
-`/var/run/docker.sock`. The two dev containers are no exception — both
-`claude-dev` and `vibe-kanban` use `DOCKER_HOST=tcp://socket-proxy:2375`.
+`/var/run/docker.sock`. The dev container is no exception —
+`claude-dev` uses `DOCKER_HOST=tcp://socket-proxy:2375`.
 
 ## What the Proxy Permits (Read-Only GET endpoints)
 
@@ -39,25 +39,22 @@ or because all POST/DELETE methods are disabled by default.
   running containers, tail logs, and enumerate networks/volumes, but cannot mutate
   infrastructure.
 - Stack management (`nova.sh up/down/pull`) must be run on the **host**, not from inside
-  the vibe-kanban container. The containers cannot *run* `nova.sh`, but they can *read* what
+  the `claude-dev` container. It cannot *run* `nova.sh`, but it can *read* what
   it did — see "nova.sh run logs" below.
 - Services that need full socket access (Arcane, WUD) mount `/var/run/docker.sock` directly
   and do **not** go through the proxy — they are explicitly excluded from this policy.
 
 ## Volume Access (Read-Only)
 
-Both dev containers have **read-only** access to the contents of every named Docker volume on
-the host. This is useful for inspecting application logs, config files, and on-disk state
+`claude-dev` has **read-only** access to the contents of every named Docker volume on the
+host. This is useful for inspecting application logs, config files, and on-disk state
 directly without needing `docker exec` (which the proxy blocks).
-
-They get there by two different routes, and **the paths differ** — this trips people up:
 
 | Container | Mount | Path to contents |
 |---|---|---|
 | `claude-dev` | one bind: `/var/lib/docker/volumes:/mnt/volumes:ro` | `/mnt/volumes/<volume>/`**`_data`**`/<path>` |
-| `vibe-kanban` | 44 individual `<volume>:/mnt/volumes/<volume>:ro` mounts | `/mnt/volumes/<volume>/<path>` |
 
-### `claude-dev` — single bind (preferred)
+### How it works — a single bind
 
 One read-only bind of the host's Docker volume root, following the same precedent as
 `volume-sharer` in `infra/compose.yaml`. Nothing to maintain: volumes created in future are
@@ -89,7 +86,7 @@ ls /mnt/downloads/qbittorrent/<torrent-name>/.unwanted/   # files marked "do not
 Requires root inside the container: `/var/lib/docker/volumes` is mode 0700 and volume contents
 carry their own ownership. This is the same reasoning documented on `volume-sharer`.
 
-### Plex logs — separate mount (`claude-dev` only)
+### Plex logs — separate mount
 
 Plex is the one service whose `/config` is **not** a named volume: `media/compose.yaml` binds
 it from `/data1/plex_config/plex_config/_data`, which lives outside `/var/lib/docker/volumes`
@@ -104,51 +101,7 @@ Only `Logs` is mounted, not the whole config tree — the rest holds `Preference
 server token) and the library databases. Note that Plex logs still contain `X-Plex-Token=`
 query strings in request lines; do not paste raw log lines into a chat transcript.
 
-`vibe-kanban` does not get this mount.
-
-### `vibe-kanban` — explicit per-volume list (legacy)
-
-Each external volume is mounted at `/mnt/volumes/<volume_name>:ro`, where `<volume_name>` is
-the exact name shown by `docker volume ls` — no `_data` segment. For example:
-
-| Mount path | Volume | Service |
-|---|---|---|
-| `/mnt/volumes/ha_config` | `ha_config` | Home Assistant |
-| `/mnt/volumes/zwave-js-ui` | `zwave-js-ui` | Z-Wave JS UI (driver logs in `logs/`) |
-| `/mnt/volumes/radarr_config` | `radarr_config` | Radarr |
-| `/mnt/volumes/sonarr_config` | `sonarr_config` | Sonarr |
-| `/mnt/volumes/bazarr_config` | `bazarr_config` | Bazarr |
-| `/mnt/volumes/prowlarr_config` | `prowlarr_config` | Prowlarr |
-| `/mnt/volumes/qbittorrent_config` | `qbittorrent_config` | qBittorrent |
-| `/mnt/volumes/seerr_config` | `seerr_config` | Seerr (Overseerr) |
-| `/mnt/volumes/tautulli_config` | `tautulli_config` | Tautulli |
-| ... | ... | ... |
-
-See `dev/compose.yaml` for the full list. To add a new volume, declare it as `external: true`
-under `volumes:` and add the corresponding `:ro` bind mount to the `vibe-kanban` service.
-(`claude-dev` needs no such edit — its single bind already covers it.) Converting
-`vibe-kanban` to the same single bind would delete ~88 lines and is worth doing next time that
-service is touched.
-
-All mounts are declared with `:ro` — write operations will be rejected by the kernel.
-Application logs are typically found in `logs/` subdirectories within each mount.
-
-> **Note on secrets:** This grants read access to database files, session stores, ACME
-> certs, and other sensitive material. Be careful what you ask Claude to inspect.
-
-Example usage (note: **no** `_data` segment on this container — see the table above):
-```bash
-# Tail Radarr logs
-tail -f /mnt/volumes/radarr_config/logs/radarr.txt
-
-# Read today's Z-Wave driver log
-tail -200 /mnt/volumes/zwave-js-ui/logs/zwavejs_$(date +%F).log
-
-# Check Sonarr config
-cat /mnt/volumes/sonarr_config/config.xml
-```
-
-## nova.sh run logs (`claude-dev` only)
+## nova.sh run logs
 
 `nova.sh` tees every run to `${NOVA_CONFIG_PATH}/logs/nova-YYYY-MM-DD.log` on the host, and
 `claude-dev` binds that directory read-only at `/mnt/nova-logs`:
