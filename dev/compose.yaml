@@ -73,6 +73,11 @@ services:
       - "CLAUDE_DEV_ROOT_SESSION_WATCHDOG=${CLAUDE_DEV_ROOT_SESSION_WATCHDOG:-true}"
       - "CLAUDE_DEV_WATCHDOG_INTERVAL=${CLAUDE_DEV_WATCHDOG_INTERVAL:-60}"
       - "CLAUDE_DEV_WATCHDOG_COOLDOWN=${CLAUDE_DEV_WATCHDOG_COOLDOWN:-600}"
+    extra_hosts:
+      # Host sshd, for the `nova` command only: claude-dev's one host key is pinned to
+      # the nova-gate forced command (host-scripts/install-nova-gate.sh), so this
+      # reaches nova.sh on the host and nothing else. See context/docker-access.md.
+      - "host.docker.internal:host-gateway"
     healthcheck:
       # Logic lives in the image (claude-dev/healthcheck.sh) rather than inline:
       # it needs $(...) and quoting that compose interpolation would mangle.

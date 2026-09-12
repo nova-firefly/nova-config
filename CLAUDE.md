@@ -22,7 +22,7 @@ Stack dirs (each contains `compose.yaml` + `.env` symlink):
 See `context/stacks.md` for full stack/service inventory and ports.
 See `context/patterns.md` for conventions to follow when editing compose files.
 See `context/claude-skills.md` for which Claude expert skill to use for each task type.
-See `context/docker-access.md` for what Docker commands are allowed from inside the dev container (read-only proxy — no start/stop/exec/pull) and how it sees host volumes.
+See `context/docker-access.md` for what Docker commands are allowed from inside the dev container (read-only proxy — no start/stop/exec/pull), how it runs `nova.sh` on the host (the `nova` command, SSH-pinned to `host-scripts/nova-gate.sh`), and how it sees host volumes.
 
 ## Key Conventions
 
