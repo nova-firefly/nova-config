@@ -50,8 +50,19 @@ All write operations are blocked at the proxy.
 **Blocked:** `docker run/start/stop/restart/kill/rm/exec`, `docker pull/build/push`,
 `docker compose up/down/pull/restart`, all network/volume create or remove commands
 
-To manage stacks (up/down/pull), commands must be run on the **host** via `nova.sh`, not
-from inside this container. Full access details: `nova-config/context/docker-access.md`
+To manage stacks, use the **`nova`** command. It runs `nova.sh` on the host over SSH, and
+it is the only host access this container has. The host decides what it will run:
+
+```bash
+nova ps dev | nova health | nova up media | nova restart media kometa | nova recreate infra scrutiny
+```
+
+Refused: `config`, `logs`, `init`, `orphans`, flags, and `down dev`. Anything that can
+recreate this container runs detached and returns immediately, for example `recreate dev claude-dev`
+or `up` with no stack. It will end your own session partway through, so say so before
+running it, and follow it with `tail -F /mnt/nova-logs/current.log`.
+
+Full access details: `nova-config/context/docker-access.md`
 
 ## nova.sh Run Logs
 
