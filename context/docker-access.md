@@ -40,9 +40,31 @@ or because all POST/DELETE methods are disabled by default.
   infrastructure.
 - Stack management (`nova.sh up/down/pull`) must be run on the **host**, not from inside
   the `claude-dev` container. It cannot *run* `nova.sh`, but it can *read* what
-  it did — see "nova.sh run logs" below.
+  it did — see "nova.sh run logs" below. It also has no SSH route to the host — see
+  "No Host SSH" below.
 - Services that need full socket access (Arcane, WUD) mount `/var/run/docker.sock` directly
   and do **not** go through the proxy — they are explicitly excluded from this policy.
+
+## No Host SSH
+
+The proxy is only a boundary if nothing else reaches the host. Host sshd **is** reachable
+from `claude-dev` (bridge gateway, `172.18.0.1:22`), so the container must hold no key the
+host accepts.
+
+It used to: `dev/compose.yaml` mounted the host's `~/.ssh` read-only for git-over-SSH, and
+that directory held a pre-runner-era deploy key listed in koonan's `authorized_keys` with no
+restrictions. That was a working shell as koonan — `docker`, `sudo` and `lxd` groups, i.e.
+root-equivalent — which made the read-only proxy moot. The mount was removed.
+
+Git now uses HTTPS only. `GH_TOKEN` authenticates through the `gh auth git-credential`
+helper in the mounted `.gitconfig`, and `GIT_CONFIG_*` env vars rewrite `git@github.com:`
+remotes to `https://github.com/` inside this container only — the checkouts in `/repos`
+keep their SSH remotes because the volume is shared with kandev. Nothing needs changing
+per repo; `git push` just works.
+
+Do not re-add `~/.ssh` (or any key) to this container. If it ever needs to act on the host,
+give it a dedicated key that the host pins to a forced command (`restrict,command=...` in
+`authorized_keys`), never a general-purpose login.
 
 ## Volume Access (Read-Only)
 

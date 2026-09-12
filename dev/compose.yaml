@@ -53,6 +53,16 @@ services:
     container_name: "claude-dev"
     environment:
       - "GH_TOKEN=${GH_TOKEN}"
+      # Git talks to GitHub over HTTPS only, authenticated by GH_TOKEN via the
+      # `gh auth git-credential` helper in the mounted .gitconfig. The checkouts
+      # in /repos keep their git@github.com: remotes (the volume is shared with
+      # kandev); these rewrite them to HTTPS inside this container only. There
+      # are deliberately no SSH keys in here — see the volumes note below.
+      - "GIT_CONFIG_COUNT=2"
+      - "GIT_CONFIG_KEY_0=url.https://github.com/.insteadOf"
+      - "GIT_CONFIG_VALUE_0=git@github.com:"
+      - "GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf"
+      - "GIT_CONFIG_VALUE_1=ssh://git@github.com/"
       - "TZ=${TZ}"
       - "IS_SANDBOX=1"
       - "DOCKER_HOST=tcp://socket-proxy:2375"
@@ -108,7 +118,11 @@ services:
       # (server token) and the library databases, which have no business in here.
       # Tail with: tail -200 "/mnt/plex-logs/Plex Media Server.log"
       - "/data1/plex_config/plex_config/_data/Library/Application Support/Plex Media Server/Logs:/mnt/plex-logs:ro"
-      - "/home/koonan/.ssh:/root/.ssh:ro"
+      # NEVER mount the host's ~/.ssh here. It used to be (for git over SSH), and
+      # it held a key in koonan's authorized_keys: with host sshd reachable on
+      # the bridge gateway, that was a full shell as koonan (docker, sudo, lxd
+      # groups) — root-equivalent, and a bypass of the read-only socket proxy.
+      # Git uses HTTPS instead (GIT_CONFIG_* above).
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 
 volumes:
