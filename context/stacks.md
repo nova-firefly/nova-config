@@ -326,7 +326,12 @@ permanently marks the container unhealthy — a bare "is anything alive" check w
 (`/mnt/volumes/radarr_config/_data/logs/...`). See `context/docker-access.md`.
 
 **Rebuild:** `./nova.sh recreate dev claude-dev` — `up` and `update` do not rebuild `build:`
-services.
+services. From inside claude-dev, the same thing is `nova recreate dev claude-dev`. It runs
+detached on the host, since it kills the calling session.
+
+**Host access:** only through the `nova` command, which uses an SSH key pinned to the
+`nova-gate` forced command. Set it up with `sudo ./host-scripts/install-nova-gate.sh`; see
+`context/docker-access.md`.
 
 **Required env:** `GH_TOKEN` (claude-dev's `CLAUDE_DEV_*` vars are all optional and default sensibly)
 
