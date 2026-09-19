@@ -37,6 +37,11 @@ In Claude Code, prefix your request with the skill name or describe your task in
 - Investigating WUD update failures
 - Volume mount or permission problems
 
+From `claude-dev` this is not read-only work: `docker logs`/`inspect`, `/mnt/volumes` and
+`/mnt/nova-logs` diagnose it, and the `nova` command applies the fix on the host —
+`nova health`, `nova restart <stack> [service]`, `nova recreate <stack> [service]`,
+`nova up <stack>`. See `context/docker-access.md` for the full allowlist.
+
 ### PostgreSQL (Immich, Movienight)
 **Skill:** `postgres-pro`
 - Optimizing immich-postgres queries or configuration

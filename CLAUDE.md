@@ -54,6 +54,14 @@ See `context/docker-access.md` for what Docker commands are allowed from inside 
 ### Add a host-mode service to Traefik
 Edit `traefik/dynamic.yaml` — add router + service pointing to `http://host.docker.internal:<port>`
 
+### Debug or restart a running service
+Diagnose with `docker logs` / `docker inspect` (read-only proxy), `/mnt/volumes/<vol>/_data/...`
+for app logs and config, and `/mnt/nova-logs/current.log` for the last `nova.sh` runs. Apply the
+fix with the `nova` command, which runs `nova.sh` on the host: `nova health`,
+`nova restart <stack> [service]`, `nova recreate <stack> [service]`, `nova up <stack>`.
+Editing a compose file in this checkout changes nothing until it is merged and pulled on the
+host — `/repos/nova-config` is not the live tree. See `context/docker-access.md`.
+
 ### Add a service to Homepage dashboard
 Add `homepage.*` labels to the service (see patterns.md). Homepage reads Docker labels automatically.
 

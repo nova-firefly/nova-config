@@ -80,6 +80,10 @@ Runs are bracketed by `===== <timestamp> nova.sh <cmd> <stack> (pid N, user U) =
 
 Note this is the host's **live** `nova-config`, not the `/repos/nova-config` checkout you edit.
 
+Reading the log is half of it — `nova` (above) is how you act on what it says, so a service
+that is down or wedged can be fixed from here: `nova health`, then
+`nova restart <stack> [service]` or `nova recreate <stack> [service]`.
+
 ## Volume Access (Read-Only)
 
 The host's Docker volume root is bind-mounted read-only at `/mnt/volumes`. **Every** named
