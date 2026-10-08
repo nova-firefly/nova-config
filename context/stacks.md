@@ -336,7 +336,7 @@ coding agents side by side, each in its own git worktree, and compares their dif
 alongside claude-dev rather than replacing it: claude-dev is the claude.ai/code front end for
 Claude only; Paseo adds other agents (Codex, OpenCode, Copilot, Antigravity) and multi-agent runs, with its own web UI and mobile apps.
 
-**Image:** `paseo/Dockerfile` extends the official image with Claude Code, Codex, OpenCode, Copilot CLI, Antigravity CLI (`agy`) and gh — the
+**Image:** `paseo/Dockerfile` extends the official image with Claude Code, Codex, OpenCode, Copilot CLI, Antigravity CLI (`agy`), gh and a plugin-seeding entrypoint — the
 upstream image deliberately ships no agent CLIs. Rebuild (picks up new Paseo *and* CLI versions):
 `./nova.sh recreate dev paseo`. `wud.watch` is off because the image is built locally.
 
@@ -434,6 +434,22 @@ identical, so it doesn't matter which copy it picks. The bind path depends on th
 name (`name: dev`) and the volume name staying as they are — renaming either silently leaves
 Paseo with an empty skills directory. Check with
 `docker exec paseo ls /home/paseo/.claude/skills`.
+
+**Plugins (paseo.cafe browser seeded on first boot).** `paseo/entrypoint.sh` wraps the upstream
+entrypoint: on a fresh `paseo_home` it waits for the daemon's health check, then installs
+[paseo-cafe](https://paseo.cafe/plugins/paseo-cafe) (`npm:paseo-cafe@0.11.0`, Apache-2.0) with
+`paseo plugin add`, which adds an in-app catalog to browse and install community plugins. Success
+writes `/home/paseo/.paseo/.nova-plugins-seeded`, so it runs once: uninstalling it in the app
+sticks. To re-seed, delete the marker and `docker restart paseo`. A failed install (e.g. paseo.cafe
+unreachable) is retried on the next boot; look for `[nova] installing plugin` in `docker logs paseo`.
+Plugins persist in `paseo_home` (`.paseo/plugins/`). Paseo's built-in **Settings → Plugins →
+Plugin source** also installs by `owner/slug` without paseo-cafe.
+
+**Plugin trust.** paseo.cafe is community-run; nothing on it is reviewed by the Paseo project.
+A plugin's server code and build commands run unsandboxed in this container, as the `paseo` user,
+with access to everything an agent has here (`GH_TOKEN`, every agent login, `/workspace`). Read a
+plugin's source before installing. paseo-cafe also auto-updates the plugins it installed every
+6 hours by default; opt individual plugins out under its settings if you'd rather update by hand.
 
 **Workspace:** `paseo_workspace` at `/workspace` — deliberately separate from
 `vibe-kanban-repos`, which claude-dev and kandev share; Paseo's worktrees and branches would

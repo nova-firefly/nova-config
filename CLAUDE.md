@@ -13,7 +13,7 @@ nova-config/
 ├── traefik/dynamic.yaml           # Routes for host-mode services (not Docker-discoverable)
 ├── homepage/                      # Dashboard config (settings/services/widgets YAML)
 ├── claude-dev/                    # Dev container running `claude remote-control` 24/7
-├── paseo/                         # Dockerfile: Paseo daemon + Claude Code/Codex CLIs (dev stack)
+├── paseo/                         # Paseo daemon image: agent CLIs + plugin-seeding entrypoint (dev stack)
 └── movienight/                    # Stack dir; images pulled from GHCR (built by CI in upstream repo)
 ```
 

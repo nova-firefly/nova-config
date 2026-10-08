@@ -44,3 +44,9 @@ RUN curl -fsSL https://antigravity.google/cli/install.sh -o /tmp/agy-install.sh 
     && HOME=/root bash /tmp/agy-install.sh --dir /usr/local/bin \
     && rm -rf /tmp/agy-install.sh /root/.cache/antigravity \
     && test -x /usr/local/bin/agy
+
+# Seeds default plugins (the paseo.cafe in-app plugin browser) once, then hands
+# off to the upstream entrypoint. See entrypoint.sh.
+COPY entrypoint.sh /usr/local/bin/nova-paseo-entrypoint
+RUN chmod +x /usr/local/bin/nova-paseo-entrypoint
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/nova-paseo-entrypoint"]
