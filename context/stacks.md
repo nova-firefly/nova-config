@@ -12,7 +12,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
-| dev | dev/compose.yaml | claude-dev |
+| dev | dev/compose.yaml | claude-dev, paseo |
 | tools | tools/compose.yaml | actual, actual-mcp, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | minecraft |
@@ -233,6 +233,7 @@ five mounts, warns via ntfy at 85% and pauses qBittorrent at 92%. Install with
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
 | claude-dev | local build (`../claude-dev`) | One `claude remote-control` server per git repo under `/repos`; gh CLI, Docker CLI. **No ports, no Traefik** — outbound-only |
+| paseo | local build (`../paseo`, FROM `ghcr.io/getpaseo/paseo`) | `paseo.NOVA_DOMAIN` → 6767. Parallel Claude Code / Codex agents in git worktrees; web UI + mobile/desktop apps. **Public route, password-only (no Authelia)** |
 
 **claude-dev** replaced vibe-kanban (removed 2026-09-10, along with vibe-kanban-tools and
 its CI runner). `/repos` still lives on the `vibe-kanban-repos` volume — the name is
@@ -328,7 +329,50 @@ permanently marks the container unhealthy — a bare "is anything alive" check w
 **Rebuild:** `./nova.sh recreate dev claude-dev` — `up` and `update` do not rebuild `build:`
 services.
 
-**Required env:** `GH_TOKEN` (claude-dev's `CLAUDE_DEV_*` vars are all optional and default sensibly)
+### paseo
+
+[Paseo](https://github.com/getpaseo/paseo) (Apache-2.0) is a daemon + web UI that runs several
+coding agents side by side, each in its own git worktree, and compares their diffs. It sits
+alongside claude-dev rather than replacing it: claude-dev is the claude.ai/code front end for
+Claude only; Paseo adds Codex and multi-agent runs, with its own web UI and mobile apps.
+
+**Image:** `paseo/Dockerfile` extends the official image with Claude Code, Codex and gh — the
+upstream image deliberately ships no agent CLIs. Rebuild (picks up new Paseo *and* CLI versions):
+`./nova.sh recreate dev paseo`. `wud.watch` is off because the image is built locally.
+
+**Access and auth — password only, by design.** `paseo.${NOVA_DOMAIN}` is internet-facing and is
+**not** behind Authelia: the native apps authenticate with the daemon password and cannot do a
+forward-auth browser login. `PASEO_PASSWORD` protects the API and WebSocket (the static web UI
+files are public), and the `paseo-ratelimit@file` middleware is defence-in-depth against
+brute-forcing it. Compose refuses to start the stack if `PASEO_PASSWORD` is unset, because an
+empty password would leave the daemon open. The Paseo relay is pinned off
+(`PASEO_RELAY_ENABLED=false`), so the Traefik route is the only way in. `PASEO_HOSTNAMES` must
+list the DNS name or the daemon answers 403.
+
+Connect from the apps with **Add host → Direct connection**: host `paseo.<NOVA_DOMAIN>`, port
+`443`, **Use SSL** on, password = `PASEO_PASSWORD`. In a browser the web UI asks for the same.
+
+**Agent login (one time, from the host):** claude-dev cannot `exec` through the socket proxy.
+
+```bash
+docker exec -it --user paseo paseo claude                       # then /login
+docker exec -it --user paseo paseo codex login --device-auth
+```
+
+Credentials persist in `paseo_home` (`/home/paseo`: `.claude`, `.codex`, `.paseo`).
+
+**Workspace:** `paseo_workspace` at `/workspace` — deliberately separate from
+`vibe-kanban-repos`, which claude-dev and kandev share; Paseo's worktrees and branches would
+otherwise pile up there. Clone repos into `/workspace` from Paseo's terminal. Git is HTTPS-only
+with `GH_TOKEN`, exactly as in claude-dev (same mounted `.gitconfig` and `GIT_CONFIG_*`
+rewrites, no SSH keys). Paseo has no Docker access at all — it is not on `socket_proxy`.
+
+**Blast radius:** anyone with the password can run agents that read and write `/workspace`, use
+the Claude/Codex logins, and act on GitHub as `GH_TOKEN`. Treat the password like that token.
+
+**Logs:** `docker logs paseo`, or `/mnt/volumes/paseo_home/_data/.paseo/daemon.log` from claude-dev.
+
+**Required env:** `GH_TOKEN`, `PASEO_PASSWORD` (claude-dev's `CLAUDE_DEV_*` vars are all optional and default sensibly)
 
 ---
 

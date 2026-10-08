@@ -21,6 +21,10 @@
 #                               not a browser); the MCP's own bearer token is the
 #                               auth, and this middleware adds rate limiting as
 #                               defence-in-depth. See context/actual-mcp.md.
+#   paseo-ratelimit@file      - Rate limit for the PUBLIC Paseo route. Also not
+#                               behind authelia (the Paseo mobile/desktop apps
+#                               use the daemon password, not a browser login);
+#                               PASEO_PASSWORD is the auth. See dev/compose.yaml.
 #   sablier-movienight-test@file
 #                             - Intentional multi-container group: the frontend
 #                               and backend of the movienight-test CI stack wake
@@ -53,6 +57,16 @@ http:
     # long-lived SSE stream aren't throttled. Traefik does not buffer responses by
     # default, so the event stream is delivered incrementally with no extra config.
     actual-mcp-sse:
+      rateLimit:
+        average: 100
+        burst: 200
+
+    # Rate limit for the public Paseo route (dev/compose.yaml). It skips Authelia
+    # because the Paseo apps authenticate with the daemon password, so this is
+    # defence-in-depth against brute-forcing PASEO_PASSWORD. Agent output streams
+    # over one long-lived WebSocket (a single request), so only page loads and
+    # API calls count toward the limit.
+    paseo-ratelimit:
       rateLimit:
         average: 100
         burst: 200

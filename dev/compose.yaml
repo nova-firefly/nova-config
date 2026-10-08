@@ -1,6 +1,6 @@
-# Dev Stack - Claude Dev (Claude Code remote-control)
+# Dev Stack - Claude Dev (Claude Code remote-control) + Paseo (parallel agents)
 # Usage: ./nova.sh up dev   (or: docker compose -f dev/compose.yaml up -d)
-# Requires .env file for: GH_TOKEN, NOVA_DOMAIN, NOVA_HOSTNAME, TZ
+# Requires .env file for: GH_TOKEN, NOVA_DOMAIN, NOVA_HOSTNAME, TZ, PASEO_PASSWORD
 # NOTE: `up`/`update` do NOT rebuild build: services. Use ./nova.sh recreate dev <svc>.
 
 name: dev
@@ -125,6 +125,95 @@ services:
       # Git uses HTTPS instead (GIT_CONFIG_* above).
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 
+  # Paseo: self-hosted daemon + web UI that runs Claude Code and Codex agents in
+  # parallel, each in its own git worktree. Reach it at paseo.${NOVA_DOMAIN} in a
+  # browser, or from the Paseo mobile/desktop apps as a direct connection
+  # (host paseo.${NOVA_DOMAIN}, port 443, SSL on) with PASEO_PASSWORD.
+  #
+  # Deliberately NO Authelia: the native apps authenticate with the daemon
+  # password and cannot complete a forward-auth browser login. PASEO_PASSWORD
+  # guards the API and WebSocket; the static web UI files are public. The route
+  # is internet-facing, so the password must be long and random.
+  #
+  # The Paseo relay is pinned off: the only way in is this Traefik route.
+  # Agent logins are a one-time step from the HOST (claude-dev cannot exec):
+  #   docker exec -it --user paseo paseo claude          # then /login
+  #   docker exec -it --user paseo paseo codex login --device-auth
+  paseo:
+    build: "../paseo"
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "paseo"
+    environment:
+      - "TZ=${TZ}"
+      - "PASEO_PASSWORD=${PASEO_PASSWORD:?set PASEO_PASSWORD in .env}"
+      # Without this the daemon answers 403 to any request by DNS name.
+      - "PASEO_HOSTNAMES=paseo.${NOVA_DOMAIN}"
+      - "PASEO_RELAY_ENABLED=false"
+      - "GH_TOKEN=${GH_TOKEN}"
+      # Same HTTPS-only git as claude-dev: GH_TOKEN via the gh credential helper
+      # in the mounted .gitconfig, with SSH-style remotes rewritten to HTTPS.
+      - "GIT_CONFIG_COUNT=2"
+      - "GIT_CONFIG_KEY_0=url.https://github.com/.insteadOf"
+      - "GIT_CONFIG_VALUE_0=git@github.com:"
+      - "GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf"
+      - "GIT_CONFIG_VALUE_1=ssh://git@github.com/"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:6767/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.paseo.rule: "Host(`paseo.${NOVA_DOMAIN}`)"
+      traefik.http.routers.paseo.entrypoints: "websecure"
+      traefik.http.routers.paseo.tls: "true"
+      # Rate limit only — no Authelia (see above). Defence-in-depth against
+      # password brute-forcing on a public route.
+      traefik.http.routers.paseo.middlewares: "paseo-ratelimit@file"
+      traefik.http.services.paseo.loadbalancer.server.port: "6767"
+      homepage.group: "Development"
+      homepage.name: "Paseo"
+      homepage.icon: "mdi-robot-outline"
+      homepage.href: "https://paseo.${NOVA_DOMAIN}"
+      homepage.description: "Parallel Claude Code / Codex agents in git worktrees"
+      wud.watch: "false"  # locally-built image; rebuild via `./nova.sh recreate dev paseo`
+    networks:
+      - "traefik_default"
+    restart: "unless-stopped"
+    volumes:
+      # Daemon state, agent sessions, and the Claude/Codex OAuth credentials.
+      - "paseo_home:/home/paseo"
+      # Paseo's own checkouts. Deliberately NOT vibe-kanban-repos: that tree is
+      # shared by claude-dev and kandev, and Paseo's worktrees/branches would
+      # pile up in it. Clone repos in from the Paseo UI or terminal.
+      - "paseo_workspace:/workspace"
+      # Never mount ~/.ssh here either — see the claude-dev note above.
+      - "/home/koonan/.gitconfig:/home/paseo/.gitconfig:ro"
+
 volumes:
 
   # /repos — the checkouts claude-dev serves. The name is historical (it was
@@ -135,3 +224,11 @@ volumes:
 
   # claude-dev's own Claude Code config + OAuth credentials.
   claude-dev-claude:
+
+  # Paseo daemon state + agent credentials, and Paseo's own checkouts.
+  # Create before first up (or run ./nova.sh init):
+  #   docker volume create paseo_home && docker volume create paseo_workspace
+  paseo_home:
+    external: true
+  paseo_workspace:
+    external: true
