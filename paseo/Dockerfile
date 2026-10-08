@@ -3,7 +3,12 @@
 # The official image ships the daemon and web UI but deliberately no agent
 # CLIs, so this child image adds them, following upstream's
 # docker/Dockerfile.agents.example. `./nova.sh recreate dev paseo` builds with
-# --pull --no-cache, which picks up both a new Paseo release and new CLI versions.
+# --pull --no-cache, which picks up a new Paseo release and new CLI versions.
+#
+# Every CLI here is a provider Paseo launches natively once it is on PATH:
+#   claude (Claude Code)   codex (Codex)   opencode (OpenCode)
+#   copilot (GitHub Copilot CLI)          agy (Google Antigravity CLI)
+# Account setup for each is a one-time manual step — see context/stacks.md.
 FROM ghcr.io/getpaseo/paseo:latest
 
 # Stay root: the base entrypoint fixes ownership of the mounted volumes as root,
@@ -22,5 +27,20 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @anthropic-ai/claude-code @openai/codex \
-    && npm cache clean --force
+# The base image sets HOME=/home/paseo, which becomes the paseo_home volume.
+# Build steps run as root, so point HOME elsewhere for them: otherwise npm and the
+# agy installer leave root-owned caches in /home/paseo that the paseo user then
+# cannot write.
+RUN HOME=/root npm install -g \
+      @anthropic-ai/claude-code \
+      @openai/codex \
+      opencode-ai \
+      @github/copilot \
+    && HOME=/root npm cache clean --force
+
+# Antigravity CLI is a single native binary from Google's installer (no npm
+# package). --dir puts it on PATH for every user instead of ~/.local/bin.
+RUN curl -fsSL https://antigravity.google/cli/install.sh -o /tmp/agy-install.sh \
+    && HOME=/root bash /tmp/agy-install.sh --dir /usr/local/bin \
+    && rm -rf /tmp/agy-install.sh /root/.cache/antigravity \
+    && test -x /usr/local/bin/agy

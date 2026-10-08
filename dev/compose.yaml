@@ -125,8 +125,9 @@ services:
       # Git uses HTTPS instead (GIT_CONFIG_* above).
       - "/home/koonan/.gitconfig:/root/.gitconfig:ro"
 
-  # Paseo: self-hosted daemon + web UI that runs Claude Code and Codex agents in
-  # parallel, each in its own git worktree. Reach it at paseo.${NOVA_DOMAIN} in a
+  # Paseo: self-hosted daemon + web UI that runs coding agents (Claude Code,
+  # Codex, OpenCode, Copilot CLI, Antigravity) in parallel, each in its own git
+  # worktree. Reach it at paseo.${NOVA_DOMAIN} in a
   # browser, or from the Paseo mobile/desktop apps as a direct connection
   # (host paseo.${NOVA_DOMAIN}, port 443, SSL on) with PASEO_PASSWORD.
   #
@@ -136,9 +137,9 @@ services:
   # is internet-facing, so the password must be long and random.
   #
   # The Paseo relay is pinned off: the only way in is this Traefik route.
-  # Agent logins are a one-time step from the HOST (claude-dev cannot exec):
-  #   docker exec -it --user paseo paseo claude          # then /login
-  #   docker exec -it --user paseo paseo codex login --device-auth
+  # Agent logins are a one-time step from the HOST (claude-dev cannot exec).
+  # Every provider's account setup, and its no-surprise-billing settings, are in
+  # context/stacks.md § paseo.
   paseo:
     build: "../paseo"
     cap_drop:
@@ -173,6 +174,10 @@ services:
       - "PASEO_HOSTNAMES=paseo.${NOVA_DOMAIN}"
       - "PASEO_RELAY_ENABLED=false"
       - "GH_TOKEN=${GH_TOKEN}"
+      # Copilot CLI reads GH_TOKEN before its own login, and rejects the classic
+      # PAT that GH_TOKEN holds. COPILOT_GITHUB_TOKEN outranks GH_TOKEN, so a
+      # fine-grained PAT here (Copilot Requests permission only) is what it uses.
+      - "COPILOT_GITHUB_TOKEN=${COPILOT_GITHUB_TOKEN:-}"
       # Same HTTPS-only git as claude-dev: GH_TOKEN via the gh credential helper
       # in the mounted .gitconfig, with SSH-style remotes rewritten to HTTPS.
       - "GIT_CONFIG_COUNT=2"
