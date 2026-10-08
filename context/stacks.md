@@ -12,7 +12,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
-| dev | dev/compose.yaml | claude-dev |
+| dev | dev/compose.yaml | claude-dev, paseo |
 | tools | tools/compose.yaml | actual, actual-mcp, stirling-pdf, vikunja, uptime-kuma, ntfy, snapotter, shell |
 | backup | backup/compose.yaml | backrest |
 | gaming | gaming/compose.yaml | minecraft |
@@ -233,6 +233,7 @@ five mounts, warns via ntfy at 85% and pauses qBittorrent at 92%. Install with
 | Service | Image/Build | Notes |
 |---------|-------------|-------|
 | claude-dev | local build (`../claude-dev`) | One `claude remote-control` server per git repo under `/repos`; gh CLI, Docker CLI. **No ports, no Traefik** — outbound-only |
+| paseo | local build (`../paseo`, FROM `ghcr.io/getpaseo/paseo`) | `paseo.NOVA_DOMAIN` → 6767. Parallel Claude Code / Codex / OpenCode / Copilot / Antigravity agents in git worktrees; web UI + mobile/desktop apps. **Public route, password-only (no Authelia)** |
 
 **claude-dev** replaced vibe-kanban (removed 2026-09-10, along with vibe-kanban-tools and
 its CI runner). `/repos` still lives on the `vibe-kanban-repos` volume — the name is
@@ -328,7 +329,140 @@ permanently marks the container unhealthy — a bare "is anything alive" check w
 **Rebuild:** `./nova.sh recreate dev claude-dev` — `up` and `update` do not rebuild `build:`
 services.
 
-**Required env:** `GH_TOKEN` (claude-dev's `CLAUDE_DEV_*` vars are all optional and default sensibly)
+### paseo
+
+[Paseo](https://github.com/getpaseo/paseo) (Apache-2.0) is a daemon + web UI that runs several
+coding agents side by side, each in its own git worktree, and compares their diffs. It sits
+alongside claude-dev rather than replacing it: claude-dev is the claude.ai/code front end for
+Claude only; Paseo adds other agents (Codex, OpenCode, Copilot, Antigravity) and multi-agent runs, with its own web UI and mobile apps.
+
+**Image:** `paseo/Dockerfile` extends the official image with Claude Code, Codex, OpenCode, Copilot CLI, Antigravity CLI (`agy`), gh and a plugin-seeding entrypoint — the
+upstream image deliberately ships no agent CLIs. Rebuild (picks up new Paseo *and* CLI versions):
+`./nova.sh recreate dev paseo`. `wud.watch` is off because the image is built locally.
+
+**Access and auth — password only, by design.** `paseo.${NOVA_DOMAIN}` is internet-facing and is
+**not** behind Authelia: the native apps authenticate with the daemon password and cannot do a
+forward-auth browser login. `PASEO_PASSWORD` protects the API and WebSocket (the static web UI
+files are public), and the `paseo-ratelimit@file` middleware is defence-in-depth against
+brute-forcing it. Compose refuses to start the stack if `PASEO_PASSWORD` is unset, because an
+empty password would leave the daemon open. The Paseo relay is pinned off
+(`PASEO_RELAY_ENABLED=false`), so the Traefik route is the only way in. `PASEO_HOSTNAMES` must
+list the DNS name or the daemon answers 403.
+
+Connect from the apps with **Add host → Direct connection**: host `paseo.<NOVA_DOMAIN>`, port
+`443`, **Use SSL** on, password = `PASEO_PASSWORD`. In a browser the web UI asks for the same.
+
+**Manual setup — agent accounts (one time, from the host).** claude-dev cannot `exec` through
+the socket proxy, so run these on nova. Every login persists in `paseo_home` (`/home/paseo`:
+`.claude`, `.codex`, `.copilot`, `.local/share/opencode`, Antigravity's state) and survives
+rebuilds. All except Claude/Codex are free tiers; the **Billing guard** line on each is the
+setting that makes a surprise bill impossible, and none of them needs a payment method.
+
+1. **Claude Code** (your Claude subscription)
+   `docker exec -it --user paseo paseo claude` → `/login` → finish in a browser.
+   *Billing guard:* leave **extra usage** off at claude.ai → Settings → Usage. Off, hitting the
+   plan limit just pauses until reset.
+2. **Codex** (your ChatGPT plan; a Free account may get a small promotional allowance)
+   `docker exec -it --user paseo paseo codex login --device-auth` → enter the code at the URL.
+   *Billing guard:* never buy Codex credits; without them, hitting the limit pauses until reset.
+3. **OpenCode Zen** (free models such as Big Pickle / Nemotron / MiMo; the list rotates)
+   Create a key at https://opencode.ai/auth, then
+   `docker exec -it --user paseo paseo opencode auth login` → **OpenCode Zen** → paste it.
+   In Paseo pick **OpenCode** and a model marked *free*.
+   *Billing guard:* Zen is a prepaid balance. If it asks for billing details, add no balance,
+   turn **auto-reload off** and set the **monthly limit to $0** in the Zen dashboard —
+   auto-reload is the one setting that can charge your card without asking.
+4. **Gemini API key** (free: 250 requests/day, Flash models) — used through OpenCode
+   Create the key at https://aistudio.google.com/apikey in a Google Cloud project with **no
+   billing account linked**, then `docker exec -it --user paseo paseo opencode auth login` →
+   **Google** → paste it.
+   *Billing guard:* free limits are per project and only exist while the project has no billing
+   account. Linking one makes every call billable from the first token. If a project ever needs
+   billing, keep this key in a different one.
+5. **OpenRouter** (`:free` models; 50 requests/day, 1,000/day after a one-time $10 credit
+   purchase) — used through OpenCode
+   Create a key at https://openrouter.ai/settings/keys, then
+   `docker exec -it --user paseo paseo opencode auth login` → **OpenRouter** → paste it, and pick
+   models whose id ends in `:free`.
+   *Billing guard:* OpenRouter is prepaid only — with $0 credits a paid model is refused, never
+   billed. If you buy the $10 to lift the daily cap, give the key a **credit limit** (e.g. $1) on
+   the keys page and leave **auto top-up** off, so a paid model picked by mistake can spend at
+   most that.
+6. **GitHub Copilot CLI** (Copilot Free: a small monthly allowance of chat/agent requests)
+   Create a fine-grained PAT at https://github.com/settings/personal-access-tokens/new owned by
+   your personal account, with **no repository access** and only Account permissions →
+   **Copilot Requests**. Put it in `.env` as `COPILOT_GITHUB_TOKEN`, then
+   `./nova.sh recreate dev paseo`. (The CLI ignores the classic PAT in `GH_TOKEN`, and
+   `COPILOT_GITHUB_TOKEN` outranks it.) Check with
+   `docker exec -it --user paseo paseo copilot` — it should start without asking to log in.
+   *Billing guard:* with no paid Copilot plan and no payment method, usage stops at the monthly
+   allowance. Do not add a paid plan or an additional-usage budget on github.com.
+7. **Antigravity CLI** (`agy`; Google's free Individual plan, unpublished weekly agent quota)
+   `docker exec -it --user paseo paseo agy` → it prints a sign-in URL → open it on any device,
+   sign in with your Google account, paste the code back. Exit once it's signed in.
+   *Billing guard:* the free plan just stops at its quota; don't buy Google AI credits.
+   **Caution:** Paseo can only run Antigravity with every permission granted
+   (`--dangerously-skip-permissions`), so it runs shell commands with `GH_TOKEN` unprompted.
+   Use it on repos you are happy to let an agent push to.
+
+If a provider shows as unavailable in Paseo after its login, restart the daemon:
+`docker restart paseo`.
+
+**No caps are enforced by nova or Paseo itself.** Paseo does not meter tokens. The guarantee
+against surprise billing is per account: no card on file (or, where one is needed, auto-reload
+off and a $0/low limit) means each provider simply refuses requests once its free allowance is
+spent.
+
+**Skills (shared from claude-dev, read-only).** claude-dev's `~/.claude/skills` — the Jeffallan
+set plus anything added there since — is the single source of truth. Paseo bind-mounts that
+directory read-only from the host path of claude-dev's volume
+(`/var/lib/docker/volumes/dev_claude-dev-claude/_data/skills`) at two places, so every agent finds
+the same set:
+
+| Path in paseo | Read by |
+|---|---|
+| `~/.claude/skills` | Claude Code, OpenCode |
+| `~/.agents/skills` | Codex, Copilot CLI, OpenCode |
+
+The global `CLAUDE.md` (skill auto-activation table) is mounted read-only from
+`claude-dev/global-claude.md`, the same file claude-dev copies in on boot. Add or edit skills in
+claude-dev (`/root/.claude/skills/<name>/SKILL.md`); Paseo agents see the change immediately and
+cannot modify the skills themselves. Only the `skills/` subdirectory is shared — the rest of the
+`claude-dev-claude` volume holds claude-dev's OAuth credentials and must never be mounted here.
+OpenCode reads both paths, so it sees each skill twice under the same name; the content is
+identical, so it doesn't matter which copy it picks. The bind path depends on the compose project
+name (`name: dev`) and the volume name staying as they are — renaming either silently leaves
+Paseo with an empty skills directory. Check with
+`docker exec paseo ls /home/paseo/.claude/skills`.
+
+**Plugins (paseo.cafe browser seeded on first boot).** `paseo/entrypoint.sh` wraps the upstream
+entrypoint: on a fresh `paseo_home` it waits for the daemon's health check, then installs
+[paseo-cafe](https://paseo.cafe/plugins/paseo-cafe) (`npm:paseo-cafe@0.11.0`, Apache-2.0) with
+`paseo plugin add`, which adds an in-app catalog to browse and install community plugins. Success
+writes `/home/paseo/.paseo/.nova-plugins-seeded`, so it runs once: uninstalling it in the app
+sticks. To re-seed, delete the marker and `docker restart paseo`. A failed install (e.g. paseo.cafe
+unreachable) is retried on the next boot; look for `[nova] installing plugin` in `docker logs paseo`.
+Plugins persist in `paseo_home` (`.paseo/plugins/`). Paseo's built-in **Settings → Plugins →
+Plugin source** also installs by `owner/slug` without paseo-cafe.
+
+**Plugin trust.** paseo.cafe is community-run; nothing on it is reviewed by the Paseo project.
+A plugin's server code and build commands run unsandboxed in this container, as the `paseo` user,
+with access to everything an agent has here (`GH_TOKEN`, every agent login, `/workspace`). Read a
+plugin's source before installing. paseo-cafe also auto-updates the plugins it installed every
+6 hours by default; opt individual plugins out under its settings if you'd rather update by hand.
+
+**Workspace:** `paseo_workspace` at `/workspace` — deliberately separate from
+`vibe-kanban-repos`, which claude-dev and kandev share; Paseo's worktrees and branches would
+otherwise pile up there. Clone repos into `/workspace` from Paseo's terminal. Git is HTTPS-only
+with `GH_TOKEN`, exactly as in claude-dev (same mounted `.gitconfig` and `GIT_CONFIG_*`
+rewrites, no SSH keys). Paseo has no Docker access at all — it is not on `socket_proxy`.
+
+**Blast radius:** anyone with the password can run agents that read and write `/workspace`, use
+every agent login above, and act on GitHub as `GH_TOKEN`. Treat the password like that token.
+
+**Logs:** `docker logs paseo`, or `/mnt/volumes/paseo_home/_data/.paseo/daemon.log` from claude-dev.
+
+**Required env:** `GH_TOKEN`, `PASEO_PASSWORD`; optional `COPILOT_GITHUB_TOKEN` (claude-dev's `CLAUDE_DEV_*` vars are all optional and default sensibly)
 
 ---
 

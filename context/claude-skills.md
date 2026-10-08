@@ -2,6 +2,9 @@
 
 Claude skills from [Jeffallan/claude-skills](https://github.com/Jeffallan/claude-skills) are installed in the
 claude-dev container at `~/.claude/skills/`. Each skill defines a specialized expert persona.
+The Paseo container (dev stack) mounts that same directory read-only, so every agent it runs —
+Claude Code, Codex, OpenCode, Copilot CLI — gets the same skills. Add or edit skills in
+claude-dev only; see `context/stacks.md` § paseo.
 
 Use the guidance below to select the right skill for each type of task in this homelab project.
 
