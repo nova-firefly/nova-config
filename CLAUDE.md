@@ -85,6 +85,7 @@ See `context/orchestration.md` for why we stay on plain Docker Compose vs. Swarm
 Claude expert skills (from Jeffallan/claude-skills) are installed in the `claude-dev`
 container at `~/.claude/skills/`. They are pre-baked into the Docker
 image and copied to the container's volume on first start via its `entrypoint.sh`.
+The `paseo` container mounts that skills directory read-only, so its agents share the same set.
 
 See `context/claude-skills.md` for a task → skill mapping guide.
 

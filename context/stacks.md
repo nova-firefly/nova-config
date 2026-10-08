@@ -413,6 +413,28 @@ against surprise billing is per account: no card on file (or, where one is neede
 off and a $0/low limit) means each provider simply refuses requests once its free allowance is
 spent.
 
+**Skills (shared from claude-dev, read-only).** claude-dev's `~/.claude/skills` — the Jeffallan
+set plus anything added there since — is the single source of truth. Paseo bind-mounts that
+directory read-only from the host path of claude-dev's volume
+(`/var/lib/docker/volumes/dev_claude-dev-claude/_data/skills`) at two places, so every agent finds
+the same set:
+
+| Path in paseo | Read by |
+|---|---|
+| `~/.claude/skills` | Claude Code, OpenCode |
+| `~/.agents/skills` | Codex, Copilot CLI, OpenCode |
+
+The global `CLAUDE.md` (skill auto-activation table) is mounted read-only from
+`claude-dev/global-claude.md`, the same file claude-dev copies in on boot. Add or edit skills in
+claude-dev (`/root/.claude/skills/<name>/SKILL.md`); Paseo agents see the change immediately and
+cannot modify the skills themselves. Only the `skills/` subdirectory is shared — the rest of the
+`claude-dev-claude` volume holds claude-dev's OAuth credentials and must never be mounted here.
+OpenCode reads both paths, so it sees each skill twice under the same name; the content is
+identical, so it doesn't matter which copy it picks. The bind path depends on the compose project
+name (`name: dev`) and the volume name staying as they are — renaming either silently leaves
+Paseo with an empty skills directory. Check with
+`docker exec paseo ls /home/paseo/.claude/skills`.
+
 **Workspace:** `paseo_workspace` at `/workspace` — deliberately separate from
 `vibe-kanban-repos`, which claude-dev and kandev share; Paseo's worktrees and branches would
 otherwise pile up there. Clone repos into `/workspace` from Paseo's terminal. Git is HTTPS-only

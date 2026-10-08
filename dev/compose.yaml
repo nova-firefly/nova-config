@@ -218,6 +218,20 @@ services:
       - "paseo_workspace:/workspace"
       # Never mount ~/.ssh here either — see the claude-dev note above.
       - "/home/koonan/.gitconfig:/home/paseo/.gitconfig:ro"
+      # Skills: claude-dev's ~/.claude/skills is the single source of truth
+      # (Jeffallan set + anything added since). Shared read-only — add or edit
+      # skills through claude-dev and Paseo sees them immediately; Paseo agents
+      # cannot change them. Bound from the host path of claude-dev's volume
+      # (project `dev` + volume `claude-dev-claude`) rather than mounting the
+      # volume itself, because the rest of that volume holds claude-dev's OAuth
+      # credentials. Mounted twice so every agent finds the same set:
+      #   ~/.claude/skills  — Claude Code (and OpenCode)
+      #   ~/.agents/skills  — Codex and Copilot CLI (and OpenCode)
+      - "/var/lib/docker/volumes/dev_claude-dev-claude/_data/skills:/home/paseo/.claude/skills:ro"
+      - "/var/lib/docker/volumes/dev_claude-dev-claude/_data/skills:/home/paseo/.agents/skills:ro"
+      # Same global CLAUDE.md claude-dev writes on boot (skill auto-activation
+      # table), straight from the repo.
+      - "../claude-dev/global-claude.md:/home/paseo/.claude/CLAUDE.md:ro"
 
 volumes:
 
