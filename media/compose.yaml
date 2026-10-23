@@ -1,4 +1,4 @@
-# Media Stack - Plex, *arr apps, Gluetun + qBittorrent, Tautulli, Seerr
+# Media Stack - Plex, *arr apps, Gluetun + qBittorrent, MeTube, Tautulli, Seerr
 # Usage: ./nova.sh up media   (or: docker compose -f media/compose.yaml up -d)
 # Requires .env file for: PLEX_CLAIM_TOKEN, MULLVAD_WIREGUARD_*, NOVA_DOMAIN
 
@@ -329,7 +329,74 @@ services:
       - "/data2/movies:/plex_movies_2"
       - "/data3/movies:/plex_movies_3"
       - "/srv/downloads/qbittorrent:/downloads"
+      - "/srv/downloads/metube:/metube"
       - "radarr_config:/config"
+
+  # yt-dlp web UI for films legitimately free on YouTube (public domain, creator uploads).
+  # Not an *arr download client: grab the URL here, then Radarr → Wanted → Manual Import
+  # from /metube. Downloads share the /srv/downloads LV with qBittorrent (see patterns.md).
+  metube:
+    cap_drop:
+      - "AUDIT_CONTROL"
+      - "BLOCK_SUSPEND"
+      - "DAC_READ_SEARCH"
+      - "IPC_LOCK"
+      - "IPC_OWNER"
+      - "LEASE"
+      - "LINUX_IMMUTABLE"
+      - "MAC_ADMIN"
+      - "MAC_OVERRIDE"
+      - "NET_ADMIN"
+      - "NET_BROADCAST"
+      - "SYSLOG"
+      - "SYS_ADMIN"
+      - "SYS_BOOT"
+      - "SYS_MODULE"
+      - "SYS_NICE"
+      - "SYS_PACCT"
+      - "SYS_PTRACE"
+      - "SYS_RAWIO"
+      - "SYS_RESOURCE"
+      - "SYS_TIME"
+      - "SYS_TTY_CONFIG"
+      - "WAKE_ALARM"
+    container_name: "metube"
+    environment:
+      - "PGID=${PGID}"
+      - "PUID=${PUID}"
+      - "TZ=${TZ}"
+      - "DEFAULT_THEME=dark"
+      # Merge best video+audio into mkv, which Plex and Radarr both handle cleanly.
+      - 'YTDL_OPTIONS={"merge_output_format": "mkv"}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    image: "ghcr.io/alexta69/metube:latest"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.metube.rule: "Host(`metube.${NOVA_DOMAIN}`)"
+      traefik.http.routers.metube.entrypoints: "websecure"
+      traefik.http.routers.metube.tls: "true"
+      traefik.http.routers.metube.middlewares: "authelia@file"
+      traefik.http.services.metube.loadbalancer.server.port: "8081"
+      homepage.group: "Downloads"
+      homepage.name: "MeTube"
+      homepage.icon: "metube.png"
+      homepage.href: "https://metube.${NOVA_DOMAIN}"
+      homepage.description: "YouTube downloads for Radarr import"
+      wud.watch: "true"
+      wud.watch.digest: "true"
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "traefik_default"
+    # No host port: MeTube has no auth of its own, so it is only reachable via Authelia.
+    restart: "unless-stopped"
+    volumes:
+      # Own subdir on the downloads LV; CHOWN_DIRS (default true) fixes ownership on first start.
+      - "/srv/downloads/metube:/downloads"
 
   sonarr:
     cap_drop:
