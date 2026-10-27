@@ -544,7 +544,7 @@ services:
 
   runner-nova-config:
     container_name: "runner-nova-config"
-    image: "myoung34/github-runner@sha256:67c2447f2717227277560b76ba7e281e9f981d13508fe934b9f9f3cfd68e2d52"
+    image: "myoung34/github-runner@sha256:3d1d5ba4fc9bc6dc21ff0cace63e5e39eb9e299fdd5da6e60be06aa895a95215"
     init: true
     cap_drop:
       - "ALL"
@@ -595,7 +595,7 @@ services:
     # Single runner serves both movienight and movienight-test workflows via the
     # shared `movienight,movienight-test` labels — see decision #6 in the Phase 1
     # spec (one runner per repo, not per environment).
-    image: "myoung34/github-runner@sha256:67c2447f2717227277560b76ba7e281e9f981d13508fe934b9f9f3cfd68e2d52"
+    image: "myoung34/github-runner@sha256:3d1d5ba4fc9bc6dc21ff0cace63e5e39eb9e299fdd5da6e60be06aa895a95215"
     init: true
     cap_drop:
       - "ALL"
@@ -643,7 +643,7 @@ services:
 
   runner-todoassist:
     container_name: "runner-todoassist"
-    image: "myoung34/github-runner@sha256:67c2447f2717227277560b76ba7e281e9f981d13508fe934b9f9f3cfd68e2d52"
+    image: "myoung34/github-runner@sha256:3d1d5ba4fc9bc6dc21ff0cace63e5e39eb9e299fdd5da6e60be06aa895a95215"
     init: true
     cap_drop:
       - "ALL"
