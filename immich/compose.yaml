@@ -16,9 +16,15 @@ services:
   immich-server:
     container_name: immich_server
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
-    # extends:
-    #   file: hwaccel.transcoding.yml
-    #   service: cpu # set to one of [nvenc, quicksync, rkmpp, vaapi, vaapi-wsl] for accelerated transcoding
+    # NVENC transcoding (same GPU reservation as plex). Immich admin settings →
+    # Video Transcoding → Hardware Acceleration must be set to NVENC to use it.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     volumes:
       # Do not edit the next line. If you want to change the media storage location on your system, edit the value of UPLOAD_LOCATION in the .env file
       - ${UPLOAD_LOCATION}:/data
@@ -26,6 +32,8 @@ services:
     environment:
       - "TZ=${TZ}"
       - "DB_PASSWORD=${IMMICH_DB_PASSWORD}"
+      # `video` is required for NVENC; the toolkit default is compute,utility only.
+      - "NVIDIA_DRIVER_CAPABILITIES=compute,video,utility"
       - "IMMICH_DB_PATH=${IMMICH_DB_PATH}"
       - "UPLOAD_LOCATION=${UPLOAD_LOCATION}"
       - "DB_DATA_LOCATION=${DB_DATA_LOCATION}"
