@@ -74,8 +74,8 @@ Reference for consistent patterns when editing compose files or adding new servi
 ## CI Deploy via Self-Hosted Runner
 
 Canonical pattern for a repo whose CI needs to redeploy on nova directly (as opposed to
-relying on WUD notify-only, or WUD `docker.local` auto-recreate). Live examples:
-`nova-firefly/movienight` and `nova-firefly/todoassist`. Runner infrastructure setup
+relying on WUD notify-only, or WUD `docker.local` auto-recreate). Live example:
+`nova-firefly/movienight`. Runner infrastructure setup
 is in `context/runners.md`; this section covers the workflow contract only.
 
 Split the workflow across two runners:

@@ -15,8 +15,8 @@ Replaces the GitHub Actions SSH-deploy round-trip with a host-side reconciliatio
 | infra stack (docker compose)                       |
 |                                                    |
 |   runner-nova-config ─┐                            |
-|   runner-movienight  ─┼──> runners-socket-proxy ──ro──> /var/run/docker.sock
-|   runner-todoassist  ─┘      (POST allowlist)                            |
+|   runner-movienight  ─┴──> runners-socket-proxy ──ro──> /var/run/docker.sock
+|                             (POST allowlist)                            |
 |                                                                          |
 |   nova-config-sync ───rw──> /srv/nova-config <──ro── (runners read here) |
 |                       ^                                                  |
@@ -53,7 +53,6 @@ Before the first `nova.sh up infra` after these services land:
 2. **GH_PAT** — fine-grained PAT scoped to all runner repos:
    - `nova-firefly/nova-config`
    - `nova-firefly/movienight`
-   - `nova-firefly/todoassist`
 
    Required permission: **Administration: read & write** (lets the runner register and
    unregister itself). Recommended extra: **Actions: read** (for log fetches). No org scope.
@@ -106,7 +105,6 @@ should appear as **Idle** within ~30 s. Workflows can then target it with
    ```bash
    ./nova.sh recreate infra runner-nova-config
    ./nova.sh recreate infra runner-movienight
-   ./nova.sh recreate infra runner-todoassist
    ```
 4. In GitHub, delete the now-orphaned old runner entries from
    **Settings → Actions → Runners** for each repo (the ephemeral pattern means stale
