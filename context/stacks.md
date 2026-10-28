@@ -77,6 +77,8 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 
 **Middleware reference:** `authelia@file` — defined in `traefik/dynamic.yaml`; add to any router with: `traefik.http.routers.<name>.middlewares: "authelia@file"`
 
+**Path bypasses (`access_control.rules` in `configuration.yml`):** `bazarr` `^/api` — key-authenticated API reachable by scripts; UI stays behind 2FA. Add other `*arr` APIs the same way if needed.
+
 **Services excluded from Authelia protection:**
 - `plex` — native Plex app uses token auth; redirect breaks all clients
 - `homeassistant` — webhooks, integrations, mobile app use Bearer tokens; routed via dynamic.yaml (host network mode)
