@@ -36,6 +36,13 @@ totp:
 
 access_control:
   default_policy: two_factor
+  rules:
+    # Bazarr's API is key-authenticated (401 without X-API-KEY), so let
+    # scripts reach it without an SSO session. UI paths stay behind 2FA.
+    - domain: 'bazarr.{{ env "NOVA_DOMAIN" }}'
+      resources:
+        - '^/api([/?].*)?$'
+      policy: bypass
 
 session:
   name: authelia_session
