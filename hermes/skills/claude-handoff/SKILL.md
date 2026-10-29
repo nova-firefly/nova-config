@@ -5,6 +5,12 @@ version: 1.0.0
 author: nova-config
 license: MIT
 platforms: [linux]
+# Hermes strips credential env vars from terminal/execute_code children unless a
+# loaded skill declares them. GH_TOKEN comes from the container env (compose).
+required_environment_variables:
+  - name: GH_TOKEN
+    prompt: GitHub fine-grained PAT (Issues RW) for filing @claude issues
+    help: Set HERMES_GITHUB_TOKEN in nova-config's root .env, then ./nova.sh up hermes
 metadata:
   hermes:
     tags: [github, claude, coding, delegation, pull-requests]
@@ -39,7 +45,8 @@ hostnames/IPs, or log excerpts containing them in an issue or comment.
 
 Write a self-contained spec: goal, context (file paths you checked in `/repos`,
 which is a read-only checkout), acceptance criteria. The body must start with `@claude`.
-Use Python (no `jq`/`gh` in this image); `$GH_TOKEN` is set.
+Use Python (no `jq`/`gh` in this image). Load this skill with skill_view first — that is
+what passes `$GH_TOKEN` through to terminal/execute_code; without it the variable is stripped.
 
 ```bash
 python3 - <<'PY'
