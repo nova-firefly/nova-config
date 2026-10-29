@@ -480,7 +480,7 @@ You ──Signal───▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped
 
 **Model + data residency:** MiniMax M3 on OpenRouter, pinned in `hermes/managed/config.yaml` (read-only managed scope — the agent can't switch models or hosts) with `provider_routing.models` to US-hosted providers (DeepInfra, Together, Parasail), `require_parameters: true`, `data_collection: deny` (`only` means no other host is ever tried). MiniMax's own API (not US) is never used. ~$0.28/$1.10 per M tokens. The spend cap is the credit limit on the dedicated `HERMES_OPENROUTER_API_KEY` — no other provider key is wired into the container.
 
-**GitHub + Claude handoff:** Hermes' **built-in `github` skill** does repo status / PRs / CI via its curl method: `gh-env.sh` reads `GITHUB_TOKEN` from `/opt/data/.env` (set once with `hermes config set GITHUB_TOKEN`). It can't come from a container env var — Hermes always strips `GH_TOKEN`/`GITHUB_TOKEN` from tool subprocesses and refuses to pass them through. `hermes/skills/claude-handoff/SKILL.md` (bind-mounted read-only into `/opt/data/skills/software-development/claude-handoff`; the skill loader ignores managed scope) reuses that auth to file an issue whose body starts with `@claude` and track Claude's comments / workflow runs. The bundled `claude-code` and `codex` skills are disabled once with `hermes config set skills.disabled` so Hermes never runs a coding CLI itself. Workflow side: `.github/workflows/claude.yml` — only fires for actor `kjsb25`, runs on **GitHub-hosted** runners (not the nova self-hosted runner), auth via `CLAUDE_CODE_OAUTH_TOKEN` (plan usage, shared with interactive Claude Code). To enable another repo, copy the workflow and its secret there.
+**GitHub + Claude handoff:** Hermes' **built-in `github` skill** works unmodified once `gh` exists and is logged in: `./hermes/gh-setup.sh` installs `gh` (SHA-256 checked) into `/opt/data/.local/bin` (on the image PATH, persisted in `hermes_data`) and writes `/opt/data/home/.config/gh/hosts.yml` (the agent's tool shells run with `HOME=/opt/data/home`). It must be file-based: Hermes always strips `GH_TOKEN`/`GITHUB_TOKEN` from tool subprocesses and refuses to pass them through, and the skill's `.env` curl fallback is buried too deep in its reference for the model to find reliably. `hermes/skills/claude-handoff/SKILL.md` (bind-mounted read-only into `/opt/data/skills/software-development/claude-handoff`; the skill loader ignores managed scope) uses the same `gh` to file an issue whose body starts with `@claude` and track Claude's comments / workflow runs. The bundled `claude-code` and `codex` skills are disabled once with `hermes config set skills.disabled` so Hermes never runs a coding CLI itself. Workflow side: `.github/workflows/claude.yml` — only fires for actor `kjsb25`, runs on **GitHub-hosted** runners (not the nova self-hosted runner), auth via `CLAUDE_CODE_OAUTH_TOKEN` (plan usage, shared with interactive Claude Code). To enable another repo, copy the workflow and its secret there.
 
 **Docker access:** `DOCKER_HOST=tcp://socket-proxy:2375` on the `socket_proxy` network. Read-only verbs only (see `context/docker-access.md`).
 
@@ -535,10 +535,9 @@ docker logs -f hermes        # wait for the dashboard + gateway to come up
 # One-time: disable the bundled self-coding skills (skills.* can't be managed)
 docker exec hermes hermes config set skills.disabled '["claude-code","codex"]'
 
-# One-time (and on token rotation): GitHub PAT into Hermes' own .env, where the
-# built-in github skill's gh-env.sh reads it (env vars GH_TOKEN/GITHUB_TOKEN are
-# always stripped from the agent's shell, so a compose env var would not work)
-docker exec hermes hermes config set GITHUB_TOKEN "$(grep '^HERMES_GITHUB_TOKEN=' .env | cut -d= -f2)"
+# One-time (and on token rotation): install + log in gh for the agent, so the
+# built-in github skill's normal path works. Reads HERMES_GITHUB_TOKEN from .env.
+./hermes/gh-setup.sh       # ends with "gh auth status" → Logged in to github.com
 docker restart hermes
 
 # Optional check — header should name /etc/hermes/config.yaml and list the pinned keys
