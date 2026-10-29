@@ -151,8 +151,10 @@ services:
     security_opt:
       - "no-new-privileges:true"
     read_only: true
+    # exec: libsignal-client unpacks its JNI .so into /tmp and dlopen()s it. Docker's
+    # tmpfs default is noexec, which fails with "failed to map segment from shared object".
     tmpfs:
-      - "/tmp"
+      - "/tmp:exec,nosuid,nodev,size=64m"
     pids_limit: 256
     mem_limit: "1g"
     volumes:

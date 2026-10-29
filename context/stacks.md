@@ -470,7 +470,7 @@ You ──Signal───▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped
 | Service | Image/Build | Port | URL | Notes |
 |---------|-------------|------|-----|-------|
 | hermes | nousresearch/hermes-agent:stable | 9119 (container only) | hermes.NOVA_DOMAIN | `gateway run` + dashboard (`HERMES_DASHBOARD=1`), both supervised by s6-overlay inside the one container |
-| hermes-signal-cli | ghcr.io/asamk/signal-cli:0.14.9 | 8080 (`hermes_signal` network only) | — | signal-cli HTTP daemon (JSON-RPC + SSE) for the bot's own Signal number. Non-root, `cap_drop: ALL`, read-only rootfs. Pinned semver tag; WUD notifies on new releases |
+| hermes-signal-cli | ghcr.io/asamk/signal-cli:0.14.9 | 8080 (`hermes_signal` network only) | — | signal-cli HTTP daemon (JSON-RPC + SSE) for the bot's own Signal number. Non-root, `cap_drop: ALL`, read-only rootfs (`/tmp` tmpfs is `exec` — libsignal loads its JNI library from there). Pinned semver tag; WUD notifies on new releases |
 
 **Image:** Upstream publishes `nousresearch/hermes-agent` on Docker Hub (`stable` = release-gated); it ships `docker-cli`, python3, git, curl (no `gh`, no `jq`). WUD watches the digest and notifies on Discord; redeploy with `./nova.sh update hermes`.
 
