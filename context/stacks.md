@@ -19,6 +19,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 | movienight-test | movienight-test/compose.yaml | movienight-test-frontend, movienight-test-backend, movienight-test-db (CI-only; excluded from reconcile). Frontend + backend are **on-demand via Sablier** (group `movienight-test`, 60m idle); DB stays running. |
 | strava-hevy | strava-hevy/compose.yaml | strava-hevy |
 | todoassist | todoassist/compose.yaml | todoassist |
+| hermes | hermes/compose.yaml | hermes |
 
 ---
 
@@ -451,6 +452,108 @@ docker volume create minecraft_data
 4. Modules → **Recurring task hygiene** → set grace-days threshold, choose action (`reschedule` or `report`), enable **dry-run**, click **Run now**, review the activity log, then flip dry-run off and enable the schedule.
 
 **Recovery:** if the Todoist token is revoked, re-do step 3. Losing `TODOASSIST_ENCRYPTION_KEY` means the stored token can no longer be decrypted — re-enter it via the UI. To wipe state, remove the `todoassist_data` volume.
+
+## hermes stack (`hermes/compose.yaml`)
+
+**Purpose:** Self-hosted [NousResearch Hermes Agent](https://github.com/NousResearch/hermes-agent) — always-on chat agent (Signal) with memory and cron, on a cheap model. Development work is **handed off to Claude Code** (your Claude subscription) through GitHub, never done by Hermes itself.
+
+```
+You ──Signal───▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped key)
+                     │ files issue "@claude …" as kjsb25 (fine-grained PAT, Issues RW)
+                     ▼
+     GitHub ──▶ .github/workflows/claude.yml (claude-code-action, CLAUDE_CODE_OAUTH_TOKEN)
+                     │ GitHub-hosted runner → branch / PR
+                     ▼
+     Hermes reports status back on request
+```
+
+| Service | Image/Build | Port | URL | Notes |
+|---------|-------------|------|-----|-------|
+| hermes | nousresearch/hermes-agent:stable | 9119 (container only) | hermes.NOVA_DOMAIN | `gateway run` + dashboard (`HERMES_DASHBOARD=1`), both supervised by s6-overlay inside the one container |
+| hermes-signal-cli | ghcr.io/asamk/signal-cli:0.14.9 | 8080 (`hermes_signal` network only) | — | signal-cli HTTP daemon (JSON-RPC + SSE) for the bot's own Signal number. Non-root, `cap_drop: ALL`, read-only rootfs (`/tmp` tmpfs is `exec` — libsignal loads its JNI library from there). Pinned semver tag; WUD notifies on new releases |
+
+**Image:** Upstream publishes `nousresearch/hermes-agent` on Docker Hub (`stable` = release-gated); it ships `docker-cli`, python3, git, curl (no `gh`, no `jq`). WUD watches the digest and notifies on Discord; redeploy with `./nova.sh update hermes`.
+
+**Deviation from upstream's `docker-compose.yml`:** Upstream uses `network_mode: host`. Nova drops host mode so the container sits on `traefik_default` (Traefik label routing) and `socket_proxy`. Gateway and dashboard stay in **one** container — upstream only supports a split dashboard container when it shares the gateway's PID namespace.
+
+**Dashboard auth (two layers):** Authelia 2FA at the Traefik edge, then Hermes' built-in username/password gate. Upstream made its gate mandatory on any non-loopback bind after the June 2026 exposed-dashboard campaign (`--insecure` / `HERMES_DASHBOARD_INSECURE` are now no-ops), so the dashboard **fails closed at startup** if `HERMES_DASHBOARD_USERNAME`/`_PASSWORD` are unset. `HERMES_DASHBOARD_PUBLIC_URL` must match the Traefik host or requests are rejected with "Invalid Host header".
+
+**Model + data residency:** MiniMax M3 on OpenRouter, pinned in `hermes/managed/config.yaml` (read-only managed scope — the agent can't switch models or hosts) with `provider_routing.models` to US-hosted providers (DeepInfra, Together, Parasail), `require_parameters: true`, `data_collection: deny` (`only` means no other host is ever tried). MiniMax's own API (not US) is never used. ~$0.28/$1.10 per M tokens. The spend cap is the credit limit on the dedicated `HERMES_OPENROUTER_API_KEY` — no other provider key is wired into the container.
+
+**GitHub + Claude handoff:** Hermes' **built-in `github` skill** works unmodified once `gh` exists and is logged in: `./hermes/gh-setup.sh` installs `gh` (SHA-256 checked) into `/opt/data/.local/bin` (on the image PATH, persisted in `hermes_data`) and writes `/opt/data/home/.config/gh/hosts.yml` (the agent's tool shells run with `HOME=/opt/data/home`). It must be file-based: Hermes always strips `GH_TOKEN`/`GITHUB_TOKEN` from tool subprocesses and refuses to pass them through, and the skill's `.env` curl fallback is buried too deep in its reference for the model to find reliably. `hermes/skills/claude-handoff/SKILL.md` (bind-mounted read-only into `/opt/data/skills/software-development/claude-handoff`; the skill loader ignores managed scope) uses the same `gh` to file an issue whose body starts with `@claude` and track Claude's comments / workflow runs. The bundled `claude-code` and `codex` skills are disabled once with `hermes config set skills.disabled` so Hermes never runs a coding CLI itself. Workflow side: `.github/workflows/claude.yml` — only fires for actor `kjsb25`, runs on **GitHub-hosted** runners (not the nova self-hosted runner), auth via `CLAUDE_CODE_OAUTH_TOKEN` (plan usage, shared with interactive Claude Code). To enable another repo, copy the workflow and its secret there.
+
+**Docker access:** `DOCKER_HOST=tcp://socket-proxy:2375` on the `socket_proxy` network. Read-only verbs only (see `context/docker-access.md`).
+
+**Repo read access:** The `/repos` checkouts (`vibe-kanban-repos` volume, shared with `claude-dev`) at `/repos:ro`. Service config volumes are deliberately **not** mounted — they hold API keys (arr `config.xml`, qbittorrent) and the agent is chat-reachable with internet egress. Use `docker logs` via the proxy instead.
+
+**External volumes:** `hermes_data` (persistent agent state — sessions, memory, skills, `.env`, `config.yaml`, kanban SQLite), `hermes_signal_data` (bot's Signal identity keys + message store — back it up; losing it means re-registering the number) and `vibe-kanban-repos` (`:ro`).
+
+**Required env:** `HERMES_DASHBOARD_USERNAME`, `HERMES_DASHBOARD_PASSWORD`, `HERMES_DASHBOARD_SECRET`, `HERMES_OPENROUTER_API_KEY`, `HERMES_GITHUB_TOKEN`, `HERMES_SIGNAL_ACCOUNT`, `HERMES_SIGNAL_ALLOWED_USERS` (plus shared `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`). Prefixed so they are dedicated, scoped credentials rather than shared host keys.
+
+**Security:**
+- Dashboard stores state on disk in `hermes_data` — never publish port 9119.
+- Container hardening: `cap_drop: ALL` + only what s6-overlay's root-run init needs (`CHOWN DAC_OVERRIDE FOWNER SETUID SETGID KILL`), `no-new-privileges`, `pids_limit: 1024`, `mem_limit: 4g`. No read-only rootfs (init rewrites `/etc/passwd` via usermod).
+- Signal answers only `HERMES_SIGNAL_ALLOWED_USERS` (groups ignored). The signal-cli daemon has **no auth** — it is reachable only on the stack-private `hermes_signal` network; never add Traefik labels or ports to it.
+- The bot uses a **dedicated number**, not yours. Linking signal-cli to your own number ("Note to Self" mode) would give it a copy of every Signal conversation you have.
+- `nova-config` is a **public** repo: issues Hermes files are public. The skill forbids secrets in issue text and treats GitHub content from anyone but `kjsb25`/bots as untrusted data.
+- Known gap: the socket proxy allows `docker inspect`, which exposes every container's env vars (most of `.env`). Hermes inherits this, as does `claude-dev`.
+
+**First-run setup:**
+
+*A. Accounts (phone/browser)*
+1. **OpenRouter** → Keys → Create key `hermes-nova` with a **credit limit** (e.g. $15). Settings → Privacy: disable prompt logging/training. Optionally also set the account-wide allowed providers to DeepInfra, Together, Parasail as a second lock. Don't enable auto top-up.
+2. **GitHub** → Settings → Developer settings → Fine-grained tokens → resource owner `nova-firefly`, Repository access **All repositories** → Issues: Read & write; Contents, Pull requests, Actions: Read-only. (It can also read any public repo, including `kjsb25`'s; `kjsb25` private repos would need a separate token.)
+3. **A second phone number for the bot** that can receive one SMS or voice call: a Google Voice number (free, US) usually works, or a cheap prepaid SIM. Don't use your own number.
+
+*B. Claude Code Action (any machine with Claude Code logged in to your plan)*
+```bash
+claude setup-token                       # prints a long-lived OAuth token
+gh secret set CLAUDE_CODE_OAUTH_TOKEN -R nova-firefly/nova-config   # paste it
+```
+Then install the Claude GitHub App on the repo (https://github.com/apps/claude) — the action uses it to comment and push.
+
+*C. Host*
+```bash
+cd ~/nova-config && git pull
+# .env: fill the HERMES_* block (see .env.example)
+docker volume create hermes_data
+docker volume create hermes_signal_data
+
+# Register the bot's Signal number (one-time). Captcha: open
+# https://signalcaptchas.org/registration/generate.html in a browser, solve it,
+# then copy the "Open Signal" link (signalcaptcha://...) — long-press it on a phone.
+cd hermes
+docker compose run --rm --no-deps signal-cli -a +1BOTNUMBER register --captcha 'signalcaptcha://...'
+#   (no SMS after ~1 min? re-run register with --voice to get a call instead)
+docker compose run --rm --no-deps signal-cli -a +1BOTNUMBER verify 123456
+docker compose run --rm --no-deps signal-cli -a +1BOTNUMBER updateProfile --given-name Hermes
+cd ..
+
+./nova.sh up hermes
+docker logs -f hermes        # wait for the dashboard + gateway to come up
+
+# One-time: disable the bundled self-coding skills (skills.* can't be managed)
+docker exec hermes hermes config set skills.disabled '["claude-code","codex"]'
+
+# One-time (and on token rotation): install + log in gh for the agent, so the
+# built-in github skill's normal path works. Reads HERMES_GITHUB_TOKEN from .env.
+./hermes/gh-setup.sh       # ends with "gh auth status" → Logged in to github.com
+docker restart hermes
+
+# Optional check — header should name /etc/hermes/config.yaml and list the pinned keys
+docker exec hermes hermes config
+```
+
+Model and provider routing need no post-up commands: they come from `hermes/managed/config.yaml`, mounted read-only as Hermes' **managed scope** (`/etc/hermes/config.yaml`). Managed keys win over the user config and env, and Hermes refuses to change them (dashboard, `hermes config set`, or the agent itself). To change one, edit the file and `./nova.sh recreate hermes`.
+
+*D. Smoke test*
+1. `https://hermes.${NOVA_DOMAIN}` → Authelia → Hermes login → dashboard loads.
+2. In Signal, message the bot's number "hi" → it replies. From any other number → no reply.
+3. OpenRouter → Activity: requests show provider DeepInfra/Together/Parasail.
+4. DM: "Ask Claude to fix a typo in context/stacks.md" → issue appears starting `@claude`, the **Claude Code** workflow runs, Claude comments with a branch/PR.
+5. Approval allowlist (dashboard): add read-only docker verbs (`docker ps*`, `docker logs*`, `docker inspect*`, `docker stats*`) so troubleshooting doesn't prompt every time.
+
+**Cost:** Hermes only spends tokens when messaged or when a cron job fires; idle is free. Expect ~$5–15/month for light daily use; the OpenRouter key limit is the hard ceiling. Claude Code Action runs count against your Claude plan's usage limits.
 
 ---
 
