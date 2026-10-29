@@ -126,10 +126,11 @@ services:
     volumes:
       - "hermes_data:/opt/data"
       - "vibe-kanban-repos:/repos:ro"
-      # Nova-maintained skills (claude-handoff). Read-only so the agent can't rewrite
-      # its own instructions; registered via skills.external_dirs in managed/config.yaml.
-      - "./skills:/opt/nova-skills:ro"
-      # Managed scope: model, US-only provider routing and skills, pinned so the
+      # Nova-maintained skill, mounted straight into the local skills dir (the loader
+      # ignores managed scope, so skills.external_dirs can't be pinned). Read-only so
+      # the agent can't rewrite its own instructions.
+      - "./skills/claude-handoff:/opt/data/skills/software-development/claude-handoff:ro"
+      # Managed scope: model and US-only provider routing, pinned so the
       # dashboard/agent can't change them. Replaces any post-up `hermes config set`.
       - "./managed/config.yaml:/etc/hermes/config.yaml:ro"
 

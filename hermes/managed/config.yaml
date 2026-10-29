@@ -22,8 +22,7 @@ provider_routing:
     "minimax/minimax-m3":
       only: ["deepinfra", "together", "parasail"]
 
-skills:
-  # claude-handoff (hermes/skills, mounted read-only).
-  external_dirs: ["/opt/nova-skills"]
-  # Hermes never runs a coding CLI itself — dev work goes to Claude Code via GitHub.
-  disabled: ["claude-code", "codex"]
+# NOTE: skills.* can NOT be pinned here — Hermes' skill loader reads only the user
+# config (/opt/data/config.yaml) and ignores managed scope. The claude-handoff skill
+# is bind-mounted into the local skills dir instead (see compose.yaml), and
+# claude-code/codex are disabled once via `hermes config set skills.disabled`.
