@@ -2,7 +2,8 @@
 # Usage: ./nova.sh up hermes   (or: docker compose -f hermes/compose.yaml up -d)
 # Requires .env file for: NOVA_DOMAIN, TZ, PUID, PGID,
 #   HERMES_DASHBOARD_USERNAME, HERMES_DASHBOARD_PASSWORD, HERMES_DASHBOARD_SECRET,
-#   and at least one LLM provider key (ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY)
+#   HERMES_OPENROUTER_API_KEY, HERMES_GITHUB_TOKEN,
+#   HERMES_TELEGRAM_BOT_TOKEN, HERMES_TELEGRAM_ALLOWED_USERS
 #
 # Prereqs:
 #   1. Create the persistent volume:  docker volume create hermes_data
@@ -53,9 +54,17 @@ services:
       - "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=${HERMES_DASHBOARD_PASSWORD}"
       # Signs session cookies; without it every restart logs you out.
       - "HERMES_DASHBOARD_BASIC_AUTH_SECRET=${HERMES_DASHBOARD_SECRET}"
-      - "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
-      - "OPENAI_API_KEY=${OPENAI_API_KEY:-}"
-      - "OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}"
+      # Model: MiniMax M3 via OpenRouter, pinned to US-hosted providers in
+      # /opt/data/config.yaml (provider_routing — see context/stacks.md). The spend cap
+      # is the credit limit on this OpenRouter key; only this provider is wired.
+      - "OPENROUTER_API_KEY=${HERMES_OPENROUTER_API_KEY}"
+      # Fine-grained PAT (kjsb25): Issues RW, Contents/PRs/Actions read on repos with
+      # .github/workflows/claude.yml. Used by the claude-handoff skill to file
+      # "@claude" issues that the Claude Code Action picks up. No code write access.
+      - "GH_TOKEN=${HERMES_GITHUB_TOKEN}"
+      - "TELEGRAM_BOT_TOKEN=${HERMES_TELEGRAM_BOT_TOKEN}"
+      # Numeric Telegram user ID(s). Without this the bot answers no one.
+      - "TELEGRAM_ALLOWED_USERS=${HERMES_TELEGRAM_ALLOWED_USERS}"
     healthcheck:
       # /api/status is on the dashboard's public allowlist (no auth, no secrets).
       test: ["CMD-SHELL", "curl -fsS http://localhost:9119/api/status >/dev/null || exit 1"]
@@ -104,6 +113,9 @@ services:
     volumes:
       - "hermes_data:/opt/data"
       - "vibe-kanban-repos:/repos:ro"
+      # Nova-maintained skills (claude-handoff). Read-only so the agent can't rewrite
+      # its own instructions; registered via skills.external_dirs in config.yaml.
+      - "./skills:/opt/nova-skills:ro"
 
 volumes:
   hermes_data:

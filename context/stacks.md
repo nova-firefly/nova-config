@@ -455,52 +455,94 @@ docker volume create minecraft_data
 
 ## hermes stack (`hermes/compose.yaml`)
 
-**Purpose:** Self-hosted [NousResearch Hermes Agent](https://github.com/NousResearch/hermes-agent) — persistent AI agent with web dashboard, messaging gateways (Telegram/Discord/Slack/WhatsApp/Signal/Email), built-in cron scheduler, durable memory, and an agent-first Kanban.
+**Purpose:** Self-hosted [NousResearch Hermes Agent](https://github.com/NousResearch/hermes-agent) — always-on chat agent (Telegram) with memory and cron, on a cheap model. Development work is **handed off to Claude Code** (your Claude subscription) through GitHub, never done by Hermes itself.
+
+```
+You ──Telegram──▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped key)
+                     │ files issue "@claude …" as kjsb25 (fine-grained PAT, Issues RW)
+                     ▼
+     GitHub ──▶ .github/workflows/claude.yml (claude-code-action, CLAUDE_CODE_OAUTH_TOKEN)
+                     │ GitHub-hosted runner → branch / PR
+                     ▼
+     Hermes reports status back on request
+```
 
 | Service | Image/Build | Port | URL | Notes |
 |---------|-------------|------|-----|-------|
 | hermes | nousresearch/hermes-agent:stable | 9119 (container only) | hermes.NOVA_DOMAIN | `gateway run` + dashboard (`HERMES_DASHBOARD=1`), both supervised by s6-overlay inside the one container |
 
-**Image:** Upstream publishes `nousresearch/hermes-agent` on Docker Hub (`stable` = release-gated). It already ships `docker-cli`, so no local wrapper build is needed. WUD watches the digest and notifies on Discord; redeploy with `./nova.sh update hermes`. `docker compose` is not in the image — the agent uses plain `docker ps`/`docker logs`.
+**Image:** Upstream publishes `nousresearch/hermes-agent` on Docker Hub (`stable` = release-gated); it ships `docker-cli`, python3, git, curl (no `gh`, no `jq`). WUD watches the digest and notifies on Discord; redeploy with `./nova.sh update hermes`.
 
 **Deviation from upstream's `docker-compose.yml`:** Upstream uses `network_mode: host`. Nova drops host mode so the container sits on `traefik_default` (Traefik label routing) and `socket_proxy`. Gateway and dashboard stay in **one** container — upstream only supports a split dashboard container when it shares the gateway's PID namespace.
 
 **Dashboard auth (two layers):** Authelia 2FA at the Traefik edge, then Hermes' built-in username/password gate. Upstream made its gate mandatory on any non-loopback bind after the June 2026 exposed-dashboard campaign (`--insecure` / `HERMES_DASHBOARD_INSECURE` are now no-ops), so the dashboard **fails closed at startup** if `HERMES_DASHBOARD_USERNAME`/`_PASSWORD` are unset. `HERMES_DASHBOARD_PUBLIC_URL` must match the Traefik host or requests are rejected with "Invalid Host header".
 
-**Docker access:** `DOCKER_HOST=tcp://socket-proxy:2375` on the `socket_proxy` network. Read-only verbs only (see `context/docker-access.md`) — Hermes physically cannot `exec`, `stop`, `rm`, `restart`, `pull`, etc. even if prompt-injected.
+**Model + data residency:** MiniMax M3 on OpenRouter, pinned with `provider_routing.models` to US-hosted providers (DeepInfra, Together, Parasail), `require_parameters: true`, `data_collection: deny` (`only` means no other host is ever tried). MiniMax's own API (not US) is never used. ~$0.28/$1.10 per M tokens. The spend cap is the credit limit on the dedicated `HERMES_OPENROUTER_API_KEY` — no other provider key is wired into the container.
+
+**Claude handoff:** `hermes/skills/claude-handoff/SKILL.md` (mounted read-only at `/opt/nova-skills`, registered via `skills.external_dirs`) tells Hermes to file an issue whose body starts with `@claude` and to track Claude's comments / workflow runs. The bundled `claude-code` and `codex` skills are disabled so Hermes never tries to run a coding CLI itself. Workflow side: `.github/workflows/claude.yml` — only fires for actor `kjsb25`, runs on **GitHub-hosted** runners (not the nova self-hosted runner), auth via `CLAUDE_CODE_OAUTH_TOKEN` (plan usage, shared with interactive Claude Code). To enable another repo, copy the workflow and its secret there and add the repo to the PAT.
+
+**Docker access:** `DOCKER_HOST=tcp://socket-proxy:2375` on the `socket_proxy` network. Read-only verbs only (see `context/docker-access.md`).
 
 **Repo read access:** The `/repos` checkouts (`vibe-kanban-repos` volume, shared with `claude-dev`) at `/repos:ro`. Service config volumes are deliberately **not** mounted — they hold API keys (arr `config.xml`, qbittorrent) and the agent is chat-reachable with internet egress. Use `docker logs` via the proxy instead.
 
 **External volumes:** `hermes_data` (persistent agent state — sessions, memory, skills, `.env`, `config.yaml`, kanban SQLite) and `vibe-kanban-repos` (`:ro`).
 
-**Required env:** `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`, `HERMES_DASHBOARD_USERNAME`, `HERMES_DASHBOARD_PASSWORD`, `HERMES_DASHBOARD_SECRET`. At least one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY` (or configure Nous Portal from the dashboard).
+**Required env:** `HERMES_DASHBOARD_USERNAME`, `HERMES_DASHBOARD_PASSWORD`, `HERMES_DASHBOARD_SECRET`, `HERMES_OPENROUTER_API_KEY`, `HERMES_GITHUB_TOKEN`, `HERMES_TELEGRAM_BOT_TOKEN`, `HERMES_TELEGRAM_ALLOWED_USERS` (plus shared `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`). Prefixed so they are dedicated, scoped credentials rather than shared host keys.
 
 **Security:**
-- Dashboard stores API keys on disk in `hermes_data` — never publish port 9119.
+- Dashboard stores state on disk in `hermes_data` — never publish port 9119.
 - Container hardening: `cap_drop: ALL` + only what s6-overlay's root-run init needs (`CHOWN DAC_OVERRIDE FOWNER SETUID SETGID KILL`), `no-new-privileges`, `pids_limit: 1024`, `mem_limit: 4g`. No read-only rootfs (init rewrites `/etc/passwd` via usermod).
+- Telegram answers only `HERMES_TELEGRAM_ALLOWED_USERS`.
+- `nova-config` is a **public** repo: issues Hermes files are public. The skill forbids secrets in issue text and treats GitHub content from anyone but `kjsb25`/bots as untrusted data.
 - Known gap: the socket proxy allows `docker inspect`, which exposes every container's env vars (most of `.env`). Hermes inherits this, as does `claude-dev`.
-- Approval mode: by default Hermes prompts before every shell command. Pre-allowlist the read-only docker verbs in the dashboard's approval settings — list in `.env.example`.
-- Messaging gateways: set a sender allowlist for every platform you connect. An open Telegram/Discord bot is a prompt-injection entry point with read access to the mounts above.
 
-**Cost:** The gateway is always-on; every chat or cron-triggered prompt costs LLM tokens on a separate API key (not covered by a Claude subscription). Cap spend at the provider.
+**First-run setup:**
 
-**First-run bootstrap:**
+*A. Accounts (phone/browser)*
+1. **OpenRouter** → Keys → Create key `hermes-nova` with a **credit limit** (e.g. $15). Settings → Privacy: disable prompt logging/training. Optionally also set the account-wide allowed providers to DeepInfra, Together, Parasail as a second lock. Don't enable auto top-up.
+2. **GitHub** → Settings → Developer settings → Fine-grained tokens → resource owner `nova-firefly`, repo `nova-config` → Issues: Read & write; Contents, Pull requests, Actions: Read-only.
+3. **Telegram** → @BotFather `/newbot` → token. @userinfobot → your numeric ID.
+
+*B. Claude Code Action (any machine with Claude Code logged in to your plan)*
 ```bash
-# 1. Create the persistent volume
+claude setup-token                       # prints a long-lived OAuth token
+gh secret set CLAUDE_CODE_OAUTH_TOKEN -R nova-firefly/nova-config   # paste it
+```
+Then install the Claude GitHub App on the repo (https://github.com/apps/claude) — the action uses it to comment and push.
+
+*C. Host*
+```bash
+cd ~/nova-config && git pull
+# .env: fill the HERMES_* block (see .env.example)
 docker volume create hermes_data
-
-# 2. Set in .env: HERMES_DASHBOARD_USERNAME / _PASSWORD / _SECRET and a provider key
-
-# 3. Bring the stack up
 ./nova.sh up hermes
+docker logs -f hermes        # wait for the dashboard + gateway to come up
 
-# 4. Visit https://hermes.${NOVA_DOMAIN}: Authelia, then Hermes login, then:
-#    - Settings → Model → pick provider
-#    - Channels → configure Telegram / Discord / etc. (with a sender allowlist)
-#    - Approval → add read-only docker verbs to the allowlist
+# Model: MiniMax M3, US-hosted providers only
+docker exec hermes hermes config set model.provider openrouter
+docker exec hermes hermes config set model.model minimax/minimax-m3
+docker exec hermes hermes config set provider_routing.models \
+  '{"minimax/minimax-m3": {"only": ["deepinfra", "together", "parasail"], "require_parameters": true, "data_collection": "deny"}}'
+
+# Skills: add the handoff skill, disable self-coding skills
+docker exec hermes hermes config set skills.external_dirs '["/opt/nova-skills"]'
+docker exec hermes hermes config set skills.disabled '["claude-code", "codex"]'
+
+# Verify
+docker exec hermes hermes config get model
+docker exec hermes hermes config get provider_routing
+docker exec hermes hermes skills list | grep -E 'claude'
+docker restart hermes
 ```
 
-**How this differs from claude-dev:** `claude-dev` runs Claude Code Remote Control — a human-driven coding session against the repos. Hermes is an *always-on* agent reachable from chat platforms with persistent memory and scheduled jobs — for ambient "DM me an answer" / "run X every morning" workflows.
+*D. Smoke test*
+1. `https://hermes.${NOVA_DOMAIN}` → Authelia → Hermes login → dashboard loads.
+2. DM the bot "hi" → it replies. From another Telegram account → ignored.
+3. OpenRouter → Activity: requests show provider DeepInfra/Together/Parasail.
+4. DM: "Ask Claude to fix a typo in context/stacks.md" → issue appears starting `@claude`, the **Claude Code** workflow runs, Claude comments with a branch/PR.
+5. Approval allowlist (dashboard): add read-only docker verbs (`docker ps*`, `docker logs*`, `docker inspect*`, `docker stats*`) so troubleshooting doesn't prompt every time.
+
+**Cost:** Hermes only spends tokens when messaged or when a cron job fires; idle is free. Expect ~$5–15/month for light daily use; the OpenRouter key limit is the hard ceiling. Claude Code Action runs count against your Claude plan's usage limits.
 
 ---
 
