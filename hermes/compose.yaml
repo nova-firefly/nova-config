@@ -67,12 +67,14 @@ services:
       # .github/workflows/claude.yml. Used by the claude-handoff skill to file
       # "@claude" issues that the Claude Code Action picks up. No code write access.
       - "GH_TOKEN=${HERMES_GITHUB_TOKEN}"
-      # Signal via the signal-cli sidecar below. ACCOUNT is the bot's own number;
-      # ALLOWED_USERS is YOUR number (E.164) — everyone else gets no reply.
+      # Signal via the signal-cli sidecar below. ACCOUNT is the bot's own number.
+      # ALLOWED_USERS: your number AND your Signal UUID, comma-separated — sealed-sender
+      # messages can arrive identified only by UUID, and would otherwise be dropped.
+      # HOME_CHANNEL: your number alone (where cron output is delivered).
       - "SIGNAL_HTTP_URL=http://signal-cli:8080"
       - "SIGNAL_ACCOUNT=${HERMES_SIGNAL_ACCOUNT}"
       - "SIGNAL_ALLOWED_USERS=${HERMES_SIGNAL_ALLOWED_USERS}"
-      - "SIGNAL_HOME_CHANNEL=${HERMES_SIGNAL_ALLOWED_USERS}"
+      - "SIGNAL_HOME_CHANNEL=${HERMES_SIGNAL_HOME_CHANNEL:-}"
     healthcheck:
       # /api/status is on the dashboard's public allowlist (no auth, no secrets).
       test: ["CMD-SHELL", "curl -fsS http://localhost:9119/api/status >/dev/null || exit 1"]
