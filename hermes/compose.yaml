@@ -3,11 +3,12 @@
 # Requires .env file for: NOVA_DOMAIN, TZ, PUID, PGID,
 #   HERMES_DASHBOARD_USERNAME, HERMES_DASHBOARD_PASSWORD, HERMES_DASHBOARD_SECRET,
 #   HERMES_OPENROUTER_API_KEY, HERMES_GITHUB_TOKEN,
-#   HERMES_TELEGRAM_BOT_TOKEN, HERMES_TELEGRAM_ALLOWED_USERS
+#   HERMES_SIGNAL_ACCOUNT, HERMES_SIGNAL_ALLOWED_USERS
 #
 # Prereqs:
-#   1. Create the persistent volume:  docker volume create hermes_data
-#   2. `./nova.sh up hermes` (or via Dockge)
+#   1. Create the volumes:  docker volume create hermes_data && docker volume create hermes_signal_data
+#   2. Register the bot's Signal number (context/stacks.md → hermes → Signal)
+#   3. `./nova.sh up hermes` (or via Dockge)
 #
 # One container, upstream image. `gateway run` is supervised by s6-overlay inside the
 # image, and HERMES_DASHBOARD=1 brings the web dashboard up as a sibling s6 service in
@@ -34,6 +35,10 @@ networks:
   socket_proxy:
     external: true
     name: "socket_proxy"
+  # hermes <-> signal-cli only. The signal-cli HTTP daemon has no auth, so nothing
+  # else may join this network.
+  signal:
+    name: "hermes_signal"
 
 services:
 
@@ -62,9 +67,12 @@ services:
       # .github/workflows/claude.yml. Used by the claude-handoff skill to file
       # "@claude" issues that the Claude Code Action picks up. No code write access.
       - "GH_TOKEN=${HERMES_GITHUB_TOKEN}"
-      - "TELEGRAM_BOT_TOKEN=${HERMES_TELEGRAM_BOT_TOKEN}"
-      # Numeric Telegram user ID(s). Without this the bot answers no one.
-      - "TELEGRAM_ALLOWED_USERS=${HERMES_TELEGRAM_ALLOWED_USERS}"
+      # Signal via the signal-cli sidecar below. ACCOUNT is the bot's own number;
+      # ALLOWED_USERS is YOUR number (E.164) — everyone else gets no reply.
+      - "SIGNAL_HTTP_URL=http://signal-cli:8080"
+      - "SIGNAL_ACCOUNT=${HERMES_SIGNAL_ACCOUNT}"
+      - "SIGNAL_ALLOWED_USERS=${HERMES_SIGNAL_ALLOWED_USERS}"
+      - "SIGNAL_HOME_CHANNEL=${HERMES_SIGNAL_ALLOWED_USERS}"
     healthcheck:
       # /api/status is on the dashboard's public allowlist (no auth, no secrets).
       test: ["CMD-SHELL", "curl -fsS http://localhost:9119/api/status >/dev/null || exit 1"]
@@ -87,9 +95,12 @@ services:
       wud.watch: "true"
       wud.watch.digest: "true"
       wud.trigger.include: "discord.notify"
+    depends_on:
+      - "signal-cli"
     networks:
       - "traefik_default"
       - "socket_proxy"
+      - "signal"
     restart: "unless-stopped"
     # Hardening. The image boots as root under s6-overlay: cont-init does usermod +
     # chown/chmod on /opt/data and the s6 supervise dirs, then drops to the `hermes`
@@ -117,8 +128,39 @@ services:
       # its own instructions; registered via skills.external_dirs in config.yaml.
       - "./skills:/opt/nova-skills:ro"
 
+  signal-cli:
+    container_name: "hermes-signal-cli"
+    image: "ghcr.io/asamk/signal-cli:0.14.9"
+    # JSON-RPC + SSE over HTTP, which is what Hermes' Signal adapter speaks.
+    command: ["--account", "${HERMES_SIGNAL_ACCOUNT}", "daemon", "--http", "0.0.0.0:8080"]
+    environment:
+      - "TZ=${TZ}"
+    labels:
+      wud.watch: "true"
+      wud.tag.include: '^\d+\.\d+\.\d+$'
+      wud.trigger.include: "discord.notify"
+    networks:
+      - "signal"
+    restart: "unless-stopped"
+    # Runs as the image's non-root signal-cli user; needs no capabilities.
+    cap_drop:
+      - "ALL"
+    security_opt:
+      - "no-new-privileges:true"
+    read_only: true
+    tmpfs:
+      - "/tmp"
+    pids_limit: 256
+    mem_limit: "1g"
+    volumes:
+      # Signal identity keys + message store for the bot account. Back this up:
+      # losing it means re-registering the number.
+      - "hermes_signal_data:/var/lib/signal-cli"
+
 volumes:
   hermes_data:
+    external: true
+  hermes_signal_data:
     external: true
   vibe-kanban-repos:
     external: true

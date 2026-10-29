@@ -455,10 +455,10 @@ docker volume create minecraft_data
 
 ## hermes stack (`hermes/compose.yaml`)
 
-**Purpose:** Self-hosted [NousResearch Hermes Agent](https://github.com/NousResearch/hermes-agent) — always-on chat agent (Telegram) with memory and cron, on a cheap model. Development work is **handed off to Claude Code** (your Claude subscription) through GitHub, never done by Hermes itself.
+**Purpose:** Self-hosted [NousResearch Hermes Agent](https://github.com/NousResearch/hermes-agent) — always-on chat agent (Signal) with memory and cron, on a cheap model. Development work is **handed off to Claude Code** (your Claude subscription) through GitHub, never done by Hermes itself.
 
 ```
-You ──Telegram──▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped key)
+You ──Signal───▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped key)
                      │ files issue "@claude …" as kjsb25 (fine-grained PAT, Issues RW)
                      ▼
      GitHub ──▶ .github/workflows/claude.yml (claude-code-action, CLAUDE_CODE_OAUTH_TOKEN)
@@ -470,6 +470,7 @@ You ──Telegram──▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped 
 | Service | Image/Build | Port | URL | Notes |
 |---------|-------------|------|-----|-------|
 | hermes | nousresearch/hermes-agent:stable | 9119 (container only) | hermes.NOVA_DOMAIN | `gateway run` + dashboard (`HERMES_DASHBOARD=1`), both supervised by s6-overlay inside the one container |
+| hermes-signal-cli | ghcr.io/asamk/signal-cli:0.14.9 | 8080 (`hermes_signal` network only) | — | signal-cli HTTP daemon (JSON-RPC + SSE) for the bot's own Signal number. Non-root, `cap_drop: ALL`, read-only rootfs. Pinned semver tag; WUD notifies on new releases |
 
 **Image:** Upstream publishes `nousresearch/hermes-agent` on Docker Hub (`stable` = release-gated); it ships `docker-cli`, python3, git, curl (no `gh`, no `jq`). WUD watches the digest and notifies on Discord; redeploy with `./nova.sh update hermes`.
 
@@ -485,14 +486,15 @@ You ──Telegram──▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped 
 
 **Repo read access:** The `/repos` checkouts (`vibe-kanban-repos` volume, shared with `claude-dev`) at `/repos:ro`. Service config volumes are deliberately **not** mounted — they hold API keys (arr `config.xml`, qbittorrent) and the agent is chat-reachable with internet egress. Use `docker logs` via the proxy instead.
 
-**External volumes:** `hermes_data` (persistent agent state — sessions, memory, skills, `.env`, `config.yaml`, kanban SQLite) and `vibe-kanban-repos` (`:ro`).
+**External volumes:** `hermes_data` (persistent agent state — sessions, memory, skills, `.env`, `config.yaml`, kanban SQLite), `hermes_signal_data` (bot's Signal identity keys + message store — back it up; losing it means re-registering the number) and `vibe-kanban-repos` (`:ro`).
 
-**Required env:** `HERMES_DASHBOARD_USERNAME`, `HERMES_DASHBOARD_PASSWORD`, `HERMES_DASHBOARD_SECRET`, `HERMES_OPENROUTER_API_KEY`, `HERMES_GITHUB_TOKEN`, `HERMES_TELEGRAM_BOT_TOKEN`, `HERMES_TELEGRAM_ALLOWED_USERS` (plus shared `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`). Prefixed so they are dedicated, scoped credentials rather than shared host keys.
+**Required env:** `HERMES_DASHBOARD_USERNAME`, `HERMES_DASHBOARD_PASSWORD`, `HERMES_DASHBOARD_SECRET`, `HERMES_OPENROUTER_API_KEY`, `HERMES_GITHUB_TOKEN`, `HERMES_SIGNAL_ACCOUNT`, `HERMES_SIGNAL_ALLOWED_USERS` (plus shared `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`). Prefixed so they are dedicated, scoped credentials rather than shared host keys.
 
 **Security:**
 - Dashboard stores state on disk in `hermes_data` — never publish port 9119.
 - Container hardening: `cap_drop: ALL` + only what s6-overlay's root-run init needs (`CHOWN DAC_OVERRIDE FOWNER SETUID SETGID KILL`), `no-new-privileges`, `pids_limit: 1024`, `mem_limit: 4g`. No read-only rootfs (init rewrites `/etc/passwd` via usermod).
-- Telegram answers only `HERMES_TELEGRAM_ALLOWED_USERS`.
+- Signal answers only `HERMES_SIGNAL_ALLOWED_USERS` (groups ignored). The signal-cli daemon has **no auth** — it is reachable only on the stack-private `hermes_signal` network; never add Traefik labels or ports to it.
+- The bot uses a **dedicated number**, not yours. Linking signal-cli to your own number ("Note to Self" mode) would give it a copy of every Signal conversation you have.
 - `nova-config` is a **public** repo: issues Hermes files are public. The skill forbids secrets in issue text and treats GitHub content from anyone but `kjsb25`/bots as untrusted data.
 - Known gap: the socket proxy allows `docker inspect`, which exposes every container's env vars (most of `.env`). Hermes inherits this, as does `claude-dev`.
 
@@ -501,7 +503,7 @@ You ──Telegram──▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped 
 *A. Accounts (phone/browser)*
 1. **OpenRouter** → Keys → Create key `hermes-nova` with a **credit limit** (e.g. $15). Settings → Privacy: disable prompt logging/training. Optionally also set the account-wide allowed providers to DeepInfra, Together, Parasail as a second lock. Don't enable auto top-up.
 2. **GitHub** → Settings → Developer settings → Fine-grained tokens → resource owner `nova-firefly`, repo `nova-config` → Issues: Read & write; Contents, Pull requests, Actions: Read-only.
-3. **Telegram** → @BotFather `/newbot` → token. @userinfobot → your numeric ID.
+3. **A second phone number for the bot** that can receive one SMS or voice call: a Google Voice number (free, US) usually works, or a cheap prepaid SIM. Don't use your own number.
 
 *B. Claude Code Action (any machine with Claude Code logged in to your plan)*
 ```bash
@@ -515,6 +517,18 @@ Then install the Claude GitHub App on the repo (https://github.com/apps/claude) 
 cd ~/nova-config && git pull
 # .env: fill the HERMES_* block (see .env.example)
 docker volume create hermes_data
+docker volume create hermes_signal_data
+
+# Register the bot's Signal number (one-time). Captcha: open
+# https://signalcaptchas.org/registration/generate.html in a browser, solve it,
+# then copy the "Open Signal" link (signalcaptcha://...) — long-press it on a phone.
+cd hermes
+docker compose run --rm --no-deps signal-cli -a +1BOTNUMBER register --captcha 'signalcaptcha://...'
+#   (no SMS after ~1 min? re-run register with --voice to get a call instead)
+docker compose run --rm --no-deps signal-cli -a +1BOTNUMBER verify 123456
+docker compose run --rm --no-deps signal-cli -a +1BOTNUMBER updateProfile --given-name Hermes
+cd ..
+
 ./nova.sh up hermes
 docker logs -f hermes        # wait for the dashboard + gateway to come up
 
@@ -537,7 +551,7 @@ docker restart hermes
 
 *D. Smoke test*
 1. `https://hermes.${NOVA_DOMAIN}` → Authelia → Hermes login → dashboard loads.
-2. DM the bot "hi" → it replies. From another Telegram account → ignored.
+2. In Signal, message the bot's number "hi" → it replies. From any other number → no reply.
 3. OpenRouter → Activity: requests show provider DeepInfra/Together/Parasail.
 4. DM: "Ask Claude to fix a typo in context/stacks.md" → issue appears starting `@claude`, the **Claude Code** workflow runs, Claude comments with a branch/PR.
 5. Approval allowlist (dashboard): add read-only docker verbs (`docker ps*`, `docker logs*`, `docker inspect*`, `docker stats*`) so troubleshooting doesn't prompt every time.
