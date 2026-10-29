@@ -469,14 +469,16 @@ docker volume create minecraft_data
 
 **Docker access:** `DOCKER_HOST=tcp://socket-proxy:2375` on the `socket_proxy` network. Read-only verbs only (see `context/docker-access.md`) — Hermes physically cannot `exec`, `stop`, `rm`, `restart`, `pull`, etc. even if prompt-injected.
 
-**Repo + config read access:** The `/repos` checkouts (`vibe-kanban-repos` volume, shared with `claude-dev`) at `/repos:ro`, and selected *arr/tools configs at `/mnt/configs/*:ro`. Note these configs contain API keys (arr `config.xml`, qbittorrent) — anything the agent reads can end up in an LLM provider's context.
+**Repo read access:** The `/repos` checkouts (`vibe-kanban-repos` volume, shared with `claude-dev`) at `/repos:ro`. Service config volumes are deliberately **not** mounted — they hold API keys (arr `config.xml`, qbittorrent) and the agent is chat-reachable with internet egress. Use `docker logs` via the proxy instead.
 
-**External volumes:** `hermes_data` (persistent agent state — sessions, memory, skills, `.env`, `config.yaml`, kanban SQLite). Plus the config volumes above mounted `:ro` (`seerr_config` is the `overseerr_config` volume, same as the media stack).
+**External volumes:** `hermes_data` (persistent agent state — sessions, memory, skills, `.env`, `config.yaml`, kanban SQLite) and `vibe-kanban-repos` (`:ro`).
 
 **Required env:** `NOVA_DOMAIN`, `TZ`, `PUID`, `PGID`, `HERMES_DASHBOARD_USERNAME`, `HERMES_DASHBOARD_PASSWORD`, `HERMES_DASHBOARD_SECRET`. At least one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY` (or configure Nous Portal from the dashboard).
 
 **Security:**
 - Dashboard stores API keys on disk in `hermes_data` — never publish port 9119.
+- Container hardening: `cap_drop: ALL` + only what s6-overlay's root-run init needs (`CHOWN DAC_OVERRIDE FOWNER SETUID SETGID KILL`), `no-new-privileges`, `pids_limit: 1024`, `mem_limit: 4g`. No read-only rootfs (init rewrites `/etc/passwd` via usermod).
+- Known gap: the socket proxy allows `docker inspect`, which exposes every container's env vars (most of `.env`). Hermes inherits this, as does `claude-dev`.
 - Approval mode: by default Hermes prompts before every shell command. Pre-allowlist the read-only docker verbs in the dashboard's approval settings — list in `.env.example`.
 - Messaging gateways: set a sender allowlist for every platform you connect. An open Telegram/Discord bot is a prompt-injection entry point with read access to the mounts above.
 

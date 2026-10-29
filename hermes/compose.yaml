@@ -82,43 +82,31 @@ services:
       - "traefik_default"
       - "socket_proxy"
     restart: "unless-stopped"
+    # Hardening. The image boots as root under s6-overlay: cont-init does usermod +
+    # chown/chmod on /opt/data and the s6 supervise dirs, then drops to the `hermes`
+    # user via s6-setuidgid (a setuid() syscall, not a setuid binary — so
+    # no-new-privileges is safe). s6-supervise (root) signals the hermes-owned
+    # services, hence KILL. read_only rootfs is not possible: usermod rewrites
+    # /etc/passwd at boot.
+    cap_drop:
+      - "ALL"
+    cap_add:
+      - "CHOWN"
+      - "DAC_OVERRIDE"
+      - "FOWNER"
+      - "SETUID"
+      - "SETGID"
+      - "KILL"
+    security_opt:
+      - "no-new-privileges:true"
+    pids_limit: 1024
+    mem_limit: "4g"
     volumes:
       - "hermes_data:/opt/data"
       - "vibe-kanban-repos:/repos:ro"
-      - "bazarr_config:/mnt/configs/bazarr:ro"
-      - "prowlarr_config:/mnt/configs/prowlarr:ro"
-      - "seerr_config:/mnt/configs/seerr:ro"
-      - "qbittorrent_config:/mnt/configs/qbittorrent:ro"
-      - "radarr_config:/mnt/configs/radarr:ro"
-      - "sonarr_config:/mnt/configs/sonarr:ro"
-      - "tautulli_config:/mnt/configs/tautulli:ro"
-      - "stirling_config:/mnt/configs/stirling:ro"
-      - "samba_config:/mnt/configs/samba:ro"
-      - "backrest_backrest_config:/mnt/configs/backrest:ro"
 
 volumes:
   hermes_data:
     external: true
   vibe-kanban-repos:
-    external: true
-  bazarr_config:
-    external: true
-  prowlarr_config:
-    external: true
-  seerr_config:
-    external: true
-    name: overseerr_config
-  qbittorrent_config:
-    external: true
-  radarr_config:
-    external: true
-  sonarr_config:
-    external: true
-  tautulli_config:
-    external: true
-  stirling_config:
-    external: true
-  samba_config:
-    external: true
-  backrest_backrest_config:
     external: true
