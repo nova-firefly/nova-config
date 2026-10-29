@@ -153,8 +153,9 @@ services:
     read_only: true
     # exec: libsignal-client unpacks its JNI .so into /tmp and dlopen()s it. Docker's
     # tmpfs default is noexec, which fails with "failed to map segment from shared object".
+    # The extracted .so is larger than 64m ("No space left on device"), hence 256m.
     tmpfs:
-      - "/tmp:exec,nosuid,nodev,size=64m"
+      - "/tmp:exec,nosuid,nodev,size=256m"
     pids_limit: 256
     mem_limit: "1g"
     volumes:
