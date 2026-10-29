@@ -60,7 +60,7 @@ services:
       # Signs session cookies; without it every restart logs you out.
       - "HERMES_DASHBOARD_BASIC_AUTH_SECRET=${HERMES_DASHBOARD_SECRET}"
       # Model: MiniMax M3 via OpenRouter, pinned to US-hosted providers in
-      # /opt/data/config.yaml (provider_routing — see context/stacks.md). The spend cap
+      # managed/config.yaml (mounted as Hermes' read-only managed scope). The spend cap
       # is the credit limit on this OpenRouter key; only this provider is wired.
       - "OPENROUTER_API_KEY=${HERMES_OPENROUTER_API_KEY}"
       # Fine-grained PAT (kjsb25): Issues RW, Contents/PRs/Actions read on repos with
@@ -125,8 +125,11 @@ services:
       - "hermes_data:/opt/data"
       - "vibe-kanban-repos:/repos:ro"
       # Nova-maintained skills (claude-handoff). Read-only so the agent can't rewrite
-      # its own instructions; registered via skills.external_dirs in config.yaml.
+      # its own instructions; registered via skills.external_dirs in managed/config.yaml.
       - "./skills:/opt/nova-skills:ro"
+      # Managed scope: model, US-only provider routing and skills, pinned so the
+      # dashboard/agent can't change them. Replaces any post-up `hermes config set`.
+      - "./managed/config.yaml:/etc/hermes/config.yaml:ro"
 
   signal-cli:
     container_name: "hermes-signal-cli"

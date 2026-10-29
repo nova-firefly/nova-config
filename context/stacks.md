@@ -478,9 +478,9 @@ You ──Signal───▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped
 
 **Dashboard auth (two layers):** Authelia 2FA at the Traefik edge, then Hermes' built-in username/password gate. Upstream made its gate mandatory on any non-loopback bind after the June 2026 exposed-dashboard campaign (`--insecure` / `HERMES_DASHBOARD_INSECURE` are now no-ops), so the dashboard **fails closed at startup** if `HERMES_DASHBOARD_USERNAME`/`_PASSWORD` are unset. `HERMES_DASHBOARD_PUBLIC_URL` must match the Traefik host or requests are rejected with "Invalid Host header".
 
-**Model + data residency:** MiniMax M3 on OpenRouter, pinned with `provider_routing.models` to US-hosted providers (DeepInfra, Together, Parasail), `require_parameters: true`, `data_collection: deny` (`only` means no other host is ever tried). MiniMax's own API (not US) is never used. ~$0.28/$1.10 per M tokens. The spend cap is the credit limit on the dedicated `HERMES_OPENROUTER_API_KEY` — no other provider key is wired into the container.
+**Model + data residency:** MiniMax M3 on OpenRouter, pinned in `hermes/managed/config.yaml` (read-only managed scope — the agent can't switch models or hosts) with `provider_routing.models` to US-hosted providers (DeepInfra, Together, Parasail), `require_parameters: true`, `data_collection: deny` (`only` means no other host is ever tried). MiniMax's own API (not US) is never used. ~$0.28/$1.10 per M tokens. The spend cap is the credit limit on the dedicated `HERMES_OPENROUTER_API_KEY` — no other provider key is wired into the container.
 
-**Claude handoff:** `hermes/skills/claude-handoff/SKILL.md` (mounted read-only at `/opt/nova-skills`, registered via `skills.external_dirs`) tells Hermes to file an issue whose body starts with `@claude` and to track Claude's comments / workflow runs. The bundled `claude-code` and `codex` skills are disabled so Hermes never tries to run a coding CLI itself. Workflow side: `.github/workflows/claude.yml` — only fires for actor `kjsb25`, runs on **GitHub-hosted** runners (not the nova self-hosted runner), auth via `CLAUDE_CODE_OAUTH_TOKEN` (plan usage, shared with interactive Claude Code). To enable another repo, copy the workflow and its secret there and add the repo to the PAT.
+**Claude handoff:** `hermes/skills/claude-handoff/SKILL.md` (mounted read-only at `/opt/nova-skills`, registered via `skills.external_dirs` in the managed config) tells Hermes to file an issue whose body starts with `@claude` and to track Claude's comments / workflow runs. The bundled `claude-code` and `codex` skills are disabled so Hermes never tries to run a coding CLI itself. Workflow side: `.github/workflows/claude.yml` — only fires for actor `kjsb25`, runs on **GitHub-hosted** runners (not the nova self-hosted runner), auth via `CLAUDE_CODE_OAUTH_TOKEN` (plan usage, shared with interactive Claude Code). To enable another repo, copy the workflow and its secret there and add the repo to the PAT.
 
 **Docker access:** `DOCKER_HOST=tcp://socket-proxy:2375` on the `socket_proxy` network. Read-only verbs only (see `context/docker-access.md`).
 
@@ -532,22 +532,11 @@ cd ..
 ./nova.sh up hermes
 docker logs -f hermes        # wait for the dashboard + gateway to come up
 
-# Model: MiniMax M3, US-hosted providers only
-docker exec hermes hermes config set model.provider openrouter
-docker exec hermes hermes config set model.model minimax/minimax-m3
-docker exec hermes hermes config set provider_routing.models \
-  '{"minimax/minimax-m3": {"only": ["deepinfra", "together", "parasail"], "require_parameters": true, "data_collection": "deny"}}'
-
-# Skills: add the handoff skill, disable self-coding skills
-docker exec hermes hermes config set skills.external_dirs '["/opt/nova-skills"]'
-docker exec hermes hermes config set skills.disabled '["claude-code", "codex"]'
-
-# Verify
-docker exec hermes hermes config get model
-docker exec hermes hermes config get provider_routing
-docker exec hermes hermes skills list | grep -E 'claude'
-docker restart hermes
+# Optional check — header should name /etc/hermes/config.yaml and list the pinned keys
+docker exec hermes hermes config
 ```
+
+Model, provider routing and skills need no post-up commands: they come from `hermes/managed/config.yaml`, mounted read-only as Hermes' **managed scope** (`/etc/hermes/config.yaml`). Managed keys win over the user config and env, and Hermes refuses to change them (dashboard, `hermes config set`, or the agent itself). To change one, edit the file and `./nova.sh recreate hermes`.
 
 *D. Smoke test*
 1. `https://hermes.${NOVA_DOMAIN}` → Authelia → Hermes login → dashboard loads.

@@ -1,0 +1,29 @@
+# Hermes managed scope — mounted read-only at /etc/hermes/config.yaml.
+# Keys here win over /opt/data/config.yaml, the dashboard, `hermes config set`,
+# and the agent itself (Hermes refuses to change a managed key). Merge is per leaf:
+# anything not listed stays user-editable in the dashboard.
+# Edit here, then `./nova.sh recreate hermes`.
+
+# MiniMax M3 via OpenRouter. Pinned so neither the dashboard nor the agent can
+# switch to a model whose hosts aren't on the US list below.
+model:
+  provider: openrouter
+  default: minimax/minimax-m3
+
+# No automatic failover to another provider/model.
+fallback_providers: []
+
+# US-hosted OpenRouter providers only. `only` means no other host is ever tried —
+# MiniMax's own (non-US) API included.
+provider_routing:
+  data_collection: deny
+  require_parameters: true
+  models:
+    "minimax/minimax-m3":
+      only: ["deepinfra", "together", "parasail"]
+
+skills:
+  # claude-handoff (hermes/skills, mounted read-only).
+  external_dirs: ["/opt/nova-skills"]
+  # Hermes never runs a coding CLI itself — dev work goes to Claude Code via GitHub.
+  disabled: ["claude-code", "codex"]
