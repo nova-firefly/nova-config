@@ -2,7 +2,7 @@
 # Usage: ./nova.sh up hermes   (or: docker compose -f hermes/compose.yaml up -d)
 # Requires .env file for: NOVA_DOMAIN, TZ, PUID, PGID,
 #   HERMES_DASHBOARD_USERNAME, HERMES_DASHBOARD_PASSWORD, HERMES_DASHBOARD_SECRET,
-#   HERMES_OPENROUTER_API_KEY, HERMES_GITHUB_TOKEN,
+#   HERMES_OPENROUTER_API_KEY,
 #   HERMES_SIGNAL_ACCOUNT, HERMES_SIGNAL_ALLOWED_USERS
 #
 # Prereqs:
@@ -63,10 +63,6 @@ services:
       # managed/config.yaml (mounted as Hermes' read-only managed scope). The spend cap
       # is the credit limit on this OpenRouter key; only this provider is wired.
       - "OPENROUTER_API_KEY=${HERMES_OPENROUTER_API_KEY}"
-      # Fine-grained PAT (kjsb25): Issues RW, Contents/PRs/Actions read on repos with
-      # .github/workflows/claude.yml. Used by the claude-handoff skill to file
-      # "@claude" issues that the Claude Code Action picks up. No code write access.
-      - "GH_TOKEN=${HERMES_GITHUB_TOKEN}"
       # Signal via the signal-cli sidecar below. ACCOUNT is the bot's own number.
       # ALLOWED_USERS: your number AND your Signal UUID, comma-separated — sealed-sender
       # messages can arrive identified only by UUID, and would otherwise be dropped.

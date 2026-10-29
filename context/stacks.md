@@ -480,7 +480,7 @@ You ──Signal───▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped
 
 **Model + data residency:** MiniMax M3 on OpenRouter, pinned in `hermes/managed/config.yaml` (read-only managed scope — the agent can't switch models or hosts) with `provider_routing.models` to US-hosted providers (DeepInfra, Together, Parasail), `require_parameters: true`, `data_collection: deny` (`only` means no other host is ever tried). MiniMax's own API (not US) is never used. ~$0.28/$1.10 per M tokens. The spend cap is the credit limit on the dedicated `HERMES_OPENROUTER_API_KEY` — no other provider key is wired into the container.
 
-**Claude handoff:** `hermes/skills/claude-handoff/SKILL.md` (bind-mounted read-only into `/opt/data/skills/software-development/claude-handoff` — Hermes' skill loader ignores managed scope, so `skills.external_dirs` can't be pinned) tells Hermes to file an issue whose body starts with `@claude` and to track Claude's comments / workflow runs. The bundled `claude-code` and `codex` skills are disabled once with `hermes config set skills.disabled` (user config, same reason) so Hermes never tries to run a coding CLI itself. Workflow side: `.github/workflows/claude.yml` — only fires for actor `kjsb25`, runs on **GitHub-hosted** runners (not the nova self-hosted runner), auth via `CLAUDE_CODE_OAUTH_TOKEN` (plan usage, shared with interactive Claude Code). To enable another repo, copy the workflow and its secret there and add the repo to the PAT.
+**GitHub + Claude handoff:** Hermes' **built-in `github` skill** does repo status / PRs / CI via its curl method: `gh-env.sh` reads `GITHUB_TOKEN` from `/opt/data/.env` (set once with `hermes config set GITHUB_TOKEN`). It can't come from a container env var — Hermes always strips `GH_TOKEN`/`GITHUB_TOKEN` from tool subprocesses and refuses to pass them through. `hermes/skills/claude-handoff/SKILL.md` (bind-mounted read-only into `/opt/data/skills/software-development/claude-handoff`; the skill loader ignores managed scope) reuses that auth to file an issue whose body starts with `@claude` and track Claude's comments / workflow runs. The bundled `claude-code` and `codex` skills are disabled once with `hermes config set skills.disabled` so Hermes never runs a coding CLI itself. Workflow side: `.github/workflows/claude.yml` — only fires for actor `kjsb25`, runs on **GitHub-hosted** runners (not the nova self-hosted runner), auth via `CLAUDE_CODE_OAUTH_TOKEN` (plan usage, shared with interactive Claude Code). To enable another repo, copy the workflow and its secret there.
 
 **Docker access:** `DOCKER_HOST=tcp://socket-proxy:2375` on the `socket_proxy` network. Read-only verbs only (see `context/docker-access.md`).
 
@@ -502,7 +502,7 @@ You ──Signal───▶ Hermes (MiniMax M3 via OpenRouter, US hosts, capped
 
 *A. Accounts (phone/browser)*
 1. **OpenRouter** → Keys → Create key `hermes-nova` with a **credit limit** (e.g. $15). Settings → Privacy: disable prompt logging/training. Optionally also set the account-wide allowed providers to DeepInfra, Together, Parasail as a second lock. Don't enable auto top-up.
-2. **GitHub** → Settings → Developer settings → Fine-grained tokens → resource owner `nova-firefly`, repo `nova-config` → Issues: Read & write; Contents, Pull requests, Actions: Read-only.
+2. **GitHub** → Settings → Developer settings → Fine-grained tokens → resource owner `nova-firefly`, Repository access **All repositories** → Issues: Read & write; Contents, Pull requests, Actions: Read-only. (It can also read any public repo, including `kjsb25`'s; `kjsb25` private repos would need a separate token.)
 3. **A second phone number for the bot** that can receive one SMS or voice call: a Google Voice number (free, US) usually works, or a cheap prepaid SIM. Don't use your own number.
 
 *B. Claude Code Action (any machine with Claude Code logged in to your plan)*
@@ -534,6 +534,11 @@ docker logs -f hermes        # wait for the dashboard + gateway to come up
 
 # One-time: disable the bundled self-coding skills (skills.* can't be managed)
 docker exec hermes hermes config set skills.disabled '["claude-code","codex"]'
+
+# One-time (and on token rotation): GitHub PAT into Hermes' own .env, where the
+# built-in github skill's gh-env.sh reads it (env vars GH_TOKEN/GITHUB_TOKEN are
+# always stripped from the agent's shell, so a compose env var would not work)
+docker exec hermes hermes config set GITHUB_TOKEN "$(grep '^HERMES_GITHUB_TOKEN=' .env | cut -d= -f2)"
 docker restart hermes
 
 # Optional check — header should name /etc/hermes/config.yaml and list the pinned keys
