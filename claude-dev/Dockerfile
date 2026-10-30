@@ -26,7 +26,8 @@ COPY entrypoint.sh /entrypoint.sh
 COPY root-session-watchdog.sh /root-session-watchdog.sh
 COPY healthcheck.sh /healthcheck.sh
 COPY global-claude.md /opt/global-claude.md
-RUN chmod +x /entrypoint.sh /healthcheck.sh /root-session-watchdog.sh
+COPY nova-host.sh /usr/local/bin/nova
+RUN chmod +x /entrypoint.sh /healthcheck.sh /root-session-watchdog.sh /usr/local/bin/nova
 
 WORKDIR /repos
 

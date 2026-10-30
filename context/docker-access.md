@@ -38,20 +38,64 @@ or because all POST/DELETE methods are disabled by default.
 - **Read-only observation** is the intended use case: Claude and other tools can inspect
   running containers, tail logs, and enumerate networks/volumes, but cannot mutate
   infrastructure.
-- Stack management (`nova.sh up/down/pull`) must be run on the **host**, not from inside
-  the `claude-dev` container. It cannot *run* `nova.sh`, but it can *read* what
-  it did — see "nova.sh run logs" below. It also has no SSH route to the host — see
-  "No Host SSH" below.
+- Stack management goes through `nova.sh` on the **host**. `claude-dev` reaches it one way
+  only: the `nova` command, over SSH, pinned to the `nova-gate` forced command — see
+  "Host Access: nova-gate Only" below. It can also *read* what every run did — see
+  "nova.sh run logs" below.
 - Services that need full socket access (Arcane, WUD) mount `/var/run/docker.sock` directly
   and do **not** go through the proxy — they are explicitly excluded from this policy.
 
-## No Host SSH
+## Host Access: nova-gate Only
 
 The proxy is only a boundary if nothing else reaches the host. Host sshd **is** reachable
-from `claude-dev` (bridge gateway, `172.18.0.1:22`), so the container must hold no key the
-host accepts.
+from `claude-dev` (as `host.docker.internal:22`), so the container holds exactly one key the
+host accepts, and sshd pins that key to a single program:
 
-It used to: `dev/compose.yaml` mounted the host's `~/.ssh` read-only for git-over-SSH, and
+```
+restrict,from="<claude-dev's subnets>",command="/usr/local/bin/nova-gate" ssh-ed25519 … claude-dev-nova-gate
+```
+
+Whatever the client asks for, sshd runs `nova-gate` (`host-scripts/nova-gate.sh`), which
+validates the request and then execs the live `nova.sh`. `restrict` rules out a pty and all
+forwarding. From inside the container:
+
+```bash
+nova ps dev                    # → nova.sh ps dev on the host
+nova up media
+nova restart media kometa
+nova recreate dev claude-dev   # rebuilds this container; see "detached" below
+```
+
+| Allowed | Refused |
+|---|---|
+| `ps [stack]`, `health`, `heal`, `reconcile` | `config` — prints every secret in `.env` |
+| `up`/`pull`/`update [stack]` | `logs` — read `/mnt/nova-logs` or `docker logs` |
+| `restart`/`recreate <stack> [service]` | `init`, `orphans` (interactive prompt) |
+| `down <stack>`, except `dev` | any flag: `nova.sh` passes extra args straight to compose |
+
+Stacks are checked against `ALL_STACKS` read out of `nova.sh` itself, and the whole request
+against `^[a-z0-9 _-]*$` before it is split, so nothing reaches a shell. Every request,
+allowed or refused, is logged: `journalctl -t nova-gate` on the host.
+
+**Detached runs.** `up`/`update`/`restart`/`recreate` on `dev`, or on every stack, can
+recreate `claude-dev` itself, taking the SSH connection with it. Those run detached
+(`setsid`), so `nova.sh` finishes on the host rather than dying between `rm` and `up`. The
+command returns straight away — follow it with `tail -F /mnt/nova-logs/current.log`.
+
+**Setup** (on the host, from the live checkout, with `claude-dev` running):
+`sudo ./host-scripts/install-nova-gate.sh`. It installs `/usr/local/bin/nova-gate`, generates
+the key straight into `claude-dev`'s config volume (`/root/.claude/nova-gate/`), pins the
+host keys there so the container never trusts on first use, and writes the restricted
+`authorized_keys` line. Re-run it after changing `claude-dev`'s networks (`from=` is derived
+from them); `--rotate` issues a new key.
+
+**What the gate does not protect against:** `nova.sh up` runs whatever compose files are in
+the live tree. That tree changes only when someone pulls on the host, so the gate is exactly
+as strong as the review of what lands on `main`.
+
+### History: the `~/.ssh` mount
+
+The container previously held a general-purpose key: `dev/compose.yaml` mounted the host's `~/.ssh` read-only for git-over-SSH, and
 that directory held a pre-runner-era deploy key listed in koonan's `authorized_keys` with no
 restrictions. That was a working shell as koonan — `docker`, `sudo` and `lxd` groups, i.e.
 root-equivalent — which made the read-only proxy moot. The mount was removed.
@@ -62,9 +106,8 @@ remotes to `https://github.com/` inside this container only — the checkouts in
 keep their SSH remotes because the volume is shared with kandev. Nothing needs changing
 per repo; `git push` just works.
 
-Do not re-add `~/.ssh` (or any key) to this container. If it ever needs to act on the host,
-give it a dedicated key that the host pins to a forced command (`restrict,command=...` in
-`authorized_keys`), never a general-purpose login.
+Do not re-add `~/.ssh` (or any key) to this container. New host capabilities belong in
+`nova-gate`'s allowlist, never in a general-purpose login.
 
 ## Volume Access (Read-Only)
 
