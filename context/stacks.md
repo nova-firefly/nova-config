@@ -8,7 +8,7 @@ All stacks managed via `./nova.sh` (or via the Dockge UI at `dockge.${NOVA_DOMAI
 |-------|------|----------|
 | infra | infra/compose.yaml | traefik, homepage, arcane, dockge, duckdns, glances, volume-sharer, wud, scrutiny, socket-proxy, socket-proxy-sablier, sablier, runners-socket-proxy, nova-config-sync, runner-nova-config, runner-movienight, runner-todoassist |
 | authelia | authelia/compose.yaml | authelia, redis |
-| media | media/compose.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent, decluttarr, recyclarr, homescreen-hero |
+| media | media/compose.yaml | plex, radarr, sonarr, bazarr, prowlarr, tautulli, seerr, kometa, kometa-quickstart, internal-webhook, gluetun, qbittorrent, metube, decluttarr, recyclarr, homescreen-hero |
 | immich | immich/compose.yaml | immich-server, immich-machine-learning, immich-postgres, immich-redis, immich-power-tools |
 | home | home/compose.yaml | homeassistant, zwave-js-ui, music-assistant, matter-server |
 | movienight | movienight/compose.yaml | movienight-frontend, movienight-backend, movienight-db |
@@ -132,6 +132,7 @@ docker volume create authelia_data && docker volume create authelia_redis
 | internal-webhook | local build (`../internal-webhook/`) | 9000 (internal only) | — | Internal webhook server for container-to-container triggers; only reachable from `internal_webhook` internal Docker network; currently handles `/kometa/trigger` |
 | gluetun | qmcgaw/gluetun | 8090 | qbittorrent.NOVA_DOMAIN | Mullvad WireGuard VPN gateway; Traefik routes qBittorrent through it |
 | qbittorrent | lscr.io/linuxserver/qbittorrent | (via gluetun) 8090 | qbittorrent.NOVA_DOMAIN | Torrent client; `network_mode: service:gluetun`; WebUI on 8090 (WEBUI_PORT=8090) |
+| metube | ghcr.io/alexta69/metube | 8081 (no host port) | metube.NOVA_DOMAIN | yt-dlp web UI behind Authelia, for films free on YouTube. Saves to `/srv/downloads/metube`, which Radarr sees as `/metube` for Manual Import. YouTube "Free with ads" titles are DRM-locked and won't download |
 | decluttarr | ghcr.io/manimatter/decluttarr | — | — | Auto-cleans stalled / failed / slow downloads from *arr queues; config in `../decluttarr/config.yaml` (root-level dir); no UI |
 | recyclarr | ghcr.io/recyclarr/recyclarr | — | — | Syncs TRaSH Guides quality profiles + custom formats to Sonarr & Radarr; config in `../recyclarr/recyclarr.yml`; cron via `CRON_SCHEDULE` (default 04:00 daily); no UI |
 
@@ -144,7 +145,7 @@ Four physical disks, four separate filesystems:
 | Host mount | Device | Medium | Size | Holds |
 |---|---|---|---|---|
 | `/` | `ubuntu--vg-ubuntu--lv` on sda3 | SSD 480G | 200 GiB | all Docker named volumes (arr SQLite, Immich, Postgres) |
-| `/srv/downloads` | `ubuntu--vg-downloads--lv` on sda3 | SSD 480G | ~245 GiB | qBittorrent `/downloads` |
+| `/srv/downloads` | `ubuntu--vg-downloads--lv` on sda3 | SSD 480G | ~245 GiB | qBittorrent `/downloads`; MeTube (`metube/` subdir) |
 | `/data1` | sdc | HDD | 1.8T | `/plex_tv_1`, `/plex_movies_1`, plex config |
 | `/data2` | sdb | HDD | 931G | `/plex_tv_2`, `/plex_movies_2` |
 | `/data3` | sdd | HDD | 9.1T | `/plex_tv_3`, `/plex_movies_3` |
