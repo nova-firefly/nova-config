@@ -50,6 +50,14 @@ jobs:
     min_speed: 500
     max_strikes: 10
 
+  # Remove magnets that never fetch metadata after 12 strikes × 10min = 2 hours.
+  # qBittorrent reports these as "metaDL", which the *arrs map to "queued" (not
+  # "warning"), so remove_stalled never sees them. Before this was enabled, five
+  # dead TPB magnets (0 seeds in swarm) sat in the Radarr queue for up to 7 weeks
+  # (Moonshot, grabbed 2026-09-13) without Radarr ever searching for another release.
+  remove_metadata_missing:
+    max_strikes: 12
+
   # Remove items already marked as failed in the *arr queue
   remove_failed_downloads: true
 
